@@ -365,40 +365,123 @@ const quickTiles = [
     },
 ];
 
-/* ---------- SuggestionsCard Component - Simplified ---------- */
+/* ---------- SuggestionsCard Component - Enhanced ---------- */
 const SuggestionsCard = () => {
-    const suggestions = [
+    const [suggestions, setSuggestions] = useState([
         {
             id: "1",
-            title: "5-min breathing exercise 🌬️",
-            thumbnail: "https://i.ytimg.com/vi/1NE9v9x4tG0/maxresdefault.jpg",
+            title: "5-Minute Breathing Exercise for Anxiety Relief",
+            thumbnail: "https://i.ytimg-nocookie.com/vi/tybOi4hjZFQ/maxresdefault.jpg",
+            duration: "5:32",
+            category: "Breathing"
         },
         {
-            id: "2",
-            title: "Mindful body scan (7 mins)",
-            thumbnail: "https://i.ytimg.com/vi/2n7oQwZgYVY/maxresdefault.jpg",
+            id: "2", 
+            title: "Mindful Body Scan Meditation for Stress",
+            thumbnail: "https://i.ytimg-nocookie.com/vi/15q-N-_kkrU/maxresdefault.jpg",
+            duration: "7:45",
+            category: "Meditation"
         },
-    ];
+        {
+            id: "3",
+            title: "Quick Progressive Muscle Relaxation",
+            thumbnail: "https://i.ytimg-nocookie.com/vi/86HUcX8ZtAk/maxresdefault.jpg", 
+            duration: "4:28",
+            category: "Relaxation"
+        }
+    ]);
 
-    const [current, setCurrent] = useState(suggestions[0]);
+    const [loading, setLoading] = useState(false);
+
+    // Simulate API call - replace with your actual API call
+    const fetchSuggestions = async () => {
+        setLoading(true);
+        try {
+            // Replace this with your actual API call
+            // const response = await fetch('your-api-endpoint');
+            // const data = await response.json();
+            // setSuggestions(data);
+            
+            // Simulated delay
+            setTimeout(() => {
+                setLoading(false);
+            }, 1000);
+        } catch (error) {
+            console.error('Error fetching suggestions:', error);
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const t = setInterval(() => {
-            setCurrent((prev) => {
-                const next = suggestions[(suggestions.indexOf(prev) + 1) % suggestions.length];
-                return next;
-            });
-        }, 8000);
-        return () => clearInterval(t);
+        fetchSuggestions();
     }, []);
 
-    return (
-        <View style={[styles.sectionCard, { flexDirection: "row", alignItems: "center" }]}>
-            <Image source={{ uri: current.thumbnail }} style={styles.thumb} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.cardTitle}>Suggested for you</Text>
-                <Text style={styles.cardSubtitle}>{current.title}</Text>
+    const renderSuggestionItem = ({ item, index }) => (
+        <TouchableOpacity 
+            style={[styles.suggestionCard, { marginRight: index === suggestions.length - 1 ? 16 : 12 }]}
+            activeOpacity={0.8}
+            onPress={() => {
+                // Handle video play/navigation
+                console.log('Play video:', item.title);
+            }}
+        >
+            <View style={styles.thumbnailContainer}>
+                <Image source={{ uri: item.thumbnail }} style={styles.suggestionThumbnail} />
+                <View style={styles.durationBadge}>
+                    <Text style={styles.durationText}>{item.duration}</Text>
+                </View>
+                <View style={styles.playButton}>
+                    <Icon name="play-arrow" size={24} color="#FFFFFF" />
+                </View>
             </View>
+            <View style={styles.suggestionContent}>
+                <View style={styles.categoryBadge}>
+                    <Text style={styles.categoryText}>{item.category}</Text>
+                </View>
+                <Text style={styles.suggestionTitle} numberOfLines={2}>
+                    {item.title}
+                </Text>
+                <View style={styles.suggestionFooter}>
+                    <Icon name="thumb-up" size={14} color="#6C63FF" />
+                    <Text style={styles.footerText}>Recommended</Text>
+                </View>
+            </View>
+        </TouchableOpacity>
+    );
+
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <View style={styles.loadingCard}>
+                    <View style={styles.loadingThumbnail} />
+                    {/* <Text>Vertical: 10</Text> */}
+                    <View style={styles.loadingText} />
+                    <View style={styles.loadingTextSmall} />
+                </View>
+                <View style={styles.loadingCard}>
+                    <View style={styles.loadingThumbnail} />
+                    <View style={styles.loadingText} />
+                    <View style={styles.loadingTextSmall} />
+                </View>
+                <View style={styles.loadingCard}>
+                    <View style={styles.loadingThumbnail} />
+                    <View style={styles.loadingText} />
+                    <View style={styles.loadingTextSmall} />
+                </View>
+            </View>
+        );
+    }
+
+    return (
+        <View style={styles.suggestionsContainer}>
+            <FlatList
+                data={suggestions}
+                renderItem={renderSuggestionItem}
+                keyExtractor={(item) => item.id}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.suggestionsList}
+            />
         </View>
     );
 };
@@ -966,5 +1049,151 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 8,
         fontWeight: '600',
+    },
+
+    // Enhanced Suggestions Styles
+    suggestionsContainer: {
+        marginBottom: 8,
+        paddingTop: 10,
+    },
+    suggestionsList: {
+        paddingLeft: 0,
+        paddingRight: 4,
+    },
+    suggestionCard: {
+        width: 200,
+        marginBottom: 10,
+        backgroundColor: "#FFFFFF",
+        borderRadius: 16,
+        shadowColor: "#6C63FF",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#F0F4FF',
+        overflow: 'hidden',
+    },
+    thumbnailContainer: {
+        position: 'relative',
+        width: '100%',
+        height: 110,
+    },
+    suggestionThumbnail: {
+        width: '100%',
+        height: '100%',
+        backgroundColor: "#F0F4FF",
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+    },
+    durationBadge: {
+        position: 'absolute',
+        bottom: 8,
+        right: 8,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    durationText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: '600',
+    },
+    playButton: {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: [{ translateX: -20 }, { translateY: -20 }],
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(108, 99, 255, 0.9)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#6C63FF',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 4,
+    },
+    suggestionContent: {
+        padding: 12,
+    },
+    categoryBadge: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#E8F0FF',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 10,
+        marginBottom: 8,
+    },
+    categoryText: {
+        fontSize: 9,
+        fontWeight: '600',
+        color: '#6C63FF',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    suggestionTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#1F2153',
+        lineHeight: 18,
+        marginBottom: 8,
+        letterSpacing: 0.2,
+    },
+    suggestionFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    footerText: {
+        fontSize: 10,
+        fontWeight: '500',
+        color: '#6C63FF',
+        marginLeft: 4,
+        opacity: 0.8,
+    },
+
+    // Loading State Styles
+    loadingContainer: {
+        flexDirection: 'row',
+        paddingRight: 16,
+    },
+    loadingCard: {
+        width: 200,
+        backgroundColor: "#FFFFFF",
+        borderRadius: 16,
+        padding: 12,
+        marginRight: 12,
+        borderWidth: 1,
+        borderColor: '#F0F4FF',
+        marginVertical: 10
+    },
+    loadingThumbnail: {
+        width: '100%',
+        height: 110,
+        backgroundColor: '#F0F4FF',
+        borderRadius: 8,
+        marginBottom: 12,
+    },
+    loadingText: {
+        height: 14,
+        backgroundColor: '#F0F4FF',
+        borderRadius: 4,
+        marginBottom: 8,
+        width: '80%',
+    },
+    loadingTextSmall: {
+        height: 10,
+        backgroundColor: '#F0F4FF',
+        borderRadius: 4,
+        width: '60%',
     },
 });
