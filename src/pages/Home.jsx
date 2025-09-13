@@ -173,7 +173,7 @@ const AnimatedButton = ({ children, onPress, style, isActive }) => {
 /* ---------- MoodTracker Component ---------- */
 const MoodTracker = ({ value, onSelect, trendData }) => {
     const [isSubmitted, setIsSubmitted] = useState(false);
-    
+
     const moodIcons = [
         { icon: 'sentiment-very-satisfied', color: '#4CAF50', label: 'Great' },
         { icon: 'sentiment-satisfied', color: '#8BC34A', label: 'Good' },
@@ -223,10 +223,10 @@ const MoodTracker = ({ value, onSelect, trendData }) => {
                             styles.submittedMoodIcon,
                             { backgroundColor: selectedMood.color + '20' }
                         ]}>
-                            <Icon 
-                                name={selectedMood.icon} 
-                                size={32} 
-                                color={selectedMood.color} 
+                            <Icon
+                                name={selectedMood.icon}
+                                size={32}
+                                color={selectedMood.color}
                             />
                         </View>
                         <Text style={[styles.submittedMoodText, { color: selectedMood.color }]}>
@@ -259,10 +259,10 @@ const MoodTracker = ({ value, onSelect, trendData }) => {
                                             styles.moodIconWrapper,
                                             isSelected && { backgroundColor: moodItem.color + '15' }
                                         ]}>
-                                            <Icon 
-                                                name={moodItem.icon} 
-                                                size={24} 
-                                                color={isSelected ? moodItem.color : '#9CA3AF'} 
+                                            <Icon
+                                                name={moodItem.icon}
+                                                size={24}
+                                                color={isSelected ? moodItem.color : '#9CA3AF'}
                                             />
                                         </View>
                                         <Text style={[
@@ -287,10 +287,10 @@ const MoodTracker = ({ value, onSelect, trendData }) => {
                                 !value && styles.submitButtonDisabled
                             ]}
                         >
-                            <Icon 
-                                name="send" 
-                                size={18} 
-                                color={value ? "#FFFFFF" : "#B0B0B0"} 
+                            <Icon
+                                name="send"
+                                size={18}
+                                color={value ? "#FFFFFF" : "#B0B0B0"}
                                 style={{ marginRight: 8 }}
                             />
                             <Text style={[
@@ -315,21 +315,55 @@ const MoodTracker = ({ value, onSelect, trendData }) => {
     );
 };
 
-/* ---------- QuickAccessTile Component - Simplified ---------- */
-const QuickAccessTile = ({ label, color = "#F0F7FF", onPress, iconName }) => {
+/* ---------- QuickAccessTile Component - Enhanced ---------- */
+const QuickAccessTile = ({ label, onPress, iconName, description }) => {
     return (
         <TouchableOpacity
             onPress={onPress}
             activeOpacity={0.8}
-            style={[styles.tileCard, { backgroundColor: color }]}
+            style={styles.tileCard}
         >
-            <View style={styles.tileIcon}>
-                <Icon name={iconName} size={20} color="#6C63FF" />
+            <View style={styles.tileHeader}>
+                <View style={styles.tileIcon}>
+                    <Icon name={iconName} size={22} color="#6C63FF" />
+                </View>
+                <View style={styles.tileArrow}>
+                    <Icon name="arrow-forward-ios" size={12} color="#9CA3AF" />
+                </View>
             </View>
             <Text style={styles.tileLabel}>{label}</Text>
+            <Text style={styles.tileDescription}>{description}</Text>
         </TouchableOpacity>
     );
 };
+
+// Update the quickTiles data to remove colors
+const quickTiles = [
+    { 
+        id: "ai", 
+        label: "AI Chat Support", 
+        icon: "chat", 
+        description: "Get instant mental health support and guidance from our AI assistant available 24/7"
+    },
+    { 
+        id: "book", 
+        label: "Book a Counselor", 
+        icon: "calendar-today", 
+        description: "Schedule professional counseling sessions with licensed therapists and mental health experts"
+    },
+    { 
+        id: "well", 
+        label: "Wellness Hub", 
+        icon: "spa", 
+        description: "Access curated content including meditation, breathing exercises, and relaxation techniques"
+    },
+    { 
+        id: "peer", 
+        label: "Peer Support", 
+        icon: "group", 
+        description: "Connect with others facing similar challenges in a safe, supportive community environment"
+    },
+];
 
 /* ---------- SuggestionsCard Component - Simplified ---------- */
 const SuggestionsCard = () => {
@@ -401,31 +435,24 @@ const Home = () => {
     const trendData = useMemo(() => {
         const data = [];
         const today = new Date();
-        
+
         for (let i = 29; i >= 0; i--) {
             const date = new Date(today);
             date.setDate(date.getDate() - i);
-            
+
             // Format date as MM/DD for better readability
             const label = `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
-            
+
             // Generate random mood data with some pattern
             const baseValue = 3;
             const variation = Math.sin(i * 0.1) * 0.8 + (Math.random() - 0.5) * 1.2;
             const mood = Math.max(1, Math.min(5, Math.round(baseValue + variation)));
-            
+
             data.push({ x: label, y: mood });
         }
-        
+
         return data;
     }, []);
-
-    const quickTiles = [
-        { id: "ai", label: "AI Chat Support", color: "#E8F8F5", icon: "chat" },
-        { id: "book", label: "Book a Counselor", color: "#EEF7FF", icon: "calendar-today" },
-        { id: "well", label: "Wellness Hub", color: "#F6F0FF", icon: "spa" },
-        { id: "peer", label: "Peer Support", color: "#F3F7E8", icon: "group" },
-    ];
 
     return (
         <SafeAreaView style={styles.container}>
@@ -438,15 +465,20 @@ const Home = () => {
                         <MoodTracker value={todayMood} onSelect={setTodayMood} trendData={trendData} />
 
                         <View style={[styles.section, { marginTop: 12 }]}>
-                            <Text style={styles.sectionHeading}>Quick Access</Text>
+                            <View style={styles.sectionHeaderContainer}>
+                                {/* <View style={styles.sectionHeaderIcon}>
+                                    <Icon name="dashboard" size={18} color="#6C63FF" />
+                                </View> */}
+                                <Text style={styles.sectionHeading}>Quick Access</Text>
+                            </View>
                             <View style={styles.grid}>
                                 {quickTiles.map((t) => (
-                                    <QuickAccessTile 
-                                        key={t.id} 
-                                        label={t.label} 
-                                        color={t.color} 
+                                    <QuickAccessTile
+                                        key={t.id}
+                                        label={t.label}
                                         iconName={t.icon}
-                                        onPress={() => { }} 
+                                        description={t.description}
+                                        onPress={() => { }}
                                     />
                                 ))}
                             </View>
@@ -474,7 +506,7 @@ export default Home;
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#FFFFFF", marginBottom: 30 },
-    
+
     // Enhanced Header Styles
     header: {
         flexDirection: 'row',
@@ -571,7 +603,7 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: "#FFFFFF",
     },
-    
+
     // Existing styles
     section: { marginBottom: 12 },
     simpleChart: {
@@ -599,29 +631,104 @@ const styles = StyleSheet.create({
         textAlign: "center",
     },
 
-    sectionHeading: { fontSize: 16, fontWeight: "600", color: "#2E3057", marginBottom: 8 },
-    grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+    sectionHeading: {
+        fontSize: 22,
+        fontWeight: "700",
+        color: "#1F2153",
+        letterSpacing: 0.3,
+        flex: 1,
+    },
+    sectionHeaderContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+        paddingBottom: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F4FF',
+    },
+    sectionHeaderIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        backgroundColor: '#F0F4FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    grid: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        justifyContent: "space-between",
+        gap: 12,
+    },
     tileCard: {
         width: (width - 56) / 2,
-        borderRadius: 22,
-        padding: 14,
+        borderRadius: 20,
+        padding: 18,
+        paddingBottom: 12,
         marginBottom: 12,
-        shadowColor: "#000",
-        shadowOpacity: 0.05,
+        backgroundColor: "#FFFFFF",
+        borderWidth: 1,
+        borderColor: "#F0F4FF",
+        shadowColor: "#6C63FF",
+        shadowOffset: {
+            width: 0,
+            height: 3,
+        },
+        shadowOpacity: 0.08,
         shadowRadius: 12,
-        elevation: 3,
+        elevation: 4,
         alignItems: "flex-start",
+        position: 'relative',
+        minHeight: 140, // Added minimum height to accommodate description
+    },
+    tileHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
+        marginBottom: 12,
     },
     tileIcon: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        backgroundColor: "#FFFFFF",
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        backgroundColor: "#F0F4FF",
         alignItems: "center",
         justifyContent: "center",
-        marginBottom: 10,
+        shadowColor: "#6C63FF",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+        elevation: 2,
     },
-    tileLabel: { fontSize: 14, fontWeight: "600", color: "#2E3057" },
+    tileArrow: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: "#F8FAFF",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    tileLabel: {
+        fontSize: 15,
+        fontWeight: "700",
+        color: "#1F2153",
+        marginBottom: 8,
+        letterSpacing: 0.2,
+        lineHeight: 20,
+    },
+    tileDescription: {
+        fontSize: 11,
+        fontWeight: "500",
+        color: "#6B7280",
+        lineHeight: 16,
+        letterSpacing: 0.1,
+        textAlign: 'left',
+    },
 
     sectionCard: {
         borderRadius: 18,
@@ -639,7 +746,7 @@ const styles = StyleSheet.create({
     cardDetail: { fontSize: 13, marginTop: 8, color: "#7B7B8A" },
 
     // Enhanced MoodTracker Styles
-    moodSection: { 
+    moodSection: {
         marginBottom: 20,
         backgroundColor: '#FAFBFF',
         borderRadius: 24,
@@ -674,10 +781,10 @@ const styles = StyleSheet.create({
     greetingTextContainer: {
         flex: 1,
     },
-    greeting: { 
-        fontSize: 22, 
-        fontWeight: "800", 
-        color: "#1F2153", 
+    greeting: {
+        fontSize: 22,
+        fontWeight: "800",
+        color: "#1F2153",
         marginBottom: 4,
         letterSpacing: 0.3,
     },
@@ -687,9 +794,9 @@ const styles = StyleSheet.create({
         color: "#6C63FF",
         opacity: 0.8,
     },
-    moodRow: { 
-        flexDirection: "row", 
-        justifyContent: "space-between", 
+    moodRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
         marginBottom: 24,
         paddingHorizontal: 8,
     },
