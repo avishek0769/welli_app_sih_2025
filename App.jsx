@@ -6,23 +6,26 @@ import {
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import TabNavigator from './src/TabNavigator';
 import { NavigationContainer } from '@react-navigation/native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 function App() {
     const Stack = createNativeStackNavigator()
 
     return (
-        <SafeAreaProvider>
-            <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={[]}>
-                <StatusBar translucent backgroundColor="transparent" style="dark" />
+        <GestureHandlerRootView>
+            <SafeAreaProvider>
+                <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={[]}>
+                    <StatusBar translucent backgroundColor="transparent" style="dark" />
 
-                <NavigationContainer>
-                    <Stack.Navigator initialRouteName="TabNavigator" screenOptions={{ headerShown: false }} >
-                        <Stack.Screen name="TabNavigator" component={TabNavigator} />
-                    </Stack.Navigator>
-                </NavigationContainer>
+                    <NavigationContainer>
+                        <Stack.Navigator initialRouteName="TabNavigator" screenOptions={{ headerShown: false }} >
+                            <Stack.Screen name="TabNavigator" component={TabNavigator} />
+                        </Stack.Navigator>
+                    </NavigationContainer>
 
-            </SafeAreaView>
-        </SafeAreaProvider>
+                </SafeAreaView>
+            </SafeAreaProvider>
+        </GestureHandlerRootView>
     )
 }
 
