@@ -11,10 +11,10 @@ import {
     Animated,
 } from "react-native";
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { LineChart } from 'react-native-gifted-charts';
 
 const { width } = Dimensions.get("window");
 
-const moodEmojis = ["😃", "🙂", "😐", "😔", "😢"];
 const pastelColors = ["#E8F8F5", "#EEF7FF", "#F6F0FF", "#F3F7E8"];
 
 /* ---------- Header Component ---------- */
@@ -42,49 +42,117 @@ const Header = () => {
     );
 };
 
-/* ---------- Simple Chart Component ---------- */
-const SimpleChart = ({ data }) => {
-    const maxValue = Math.max(...data.map(d => d.y));
-    const minValue = Math.min(...data.map(d => d.y));
-    const range = maxValue - minValue || 1;
+/* ---------- Enhanced Chart Component with Gifted Charts ---------- */
+const MoodChart = ({ data }) => {
+    // Convert mood data to chart format
+    const chartData = data.map((point) => ({
+        value: point.y,
+        label: point.x,
+        dataPointText: point.y.toString(),
+    }));
+
+    // Mood labels for Y-axis
+    const moodLabels = {
+        5: 'Happy',
+        4: 'Good',
+        3: 'Okay',
+        2: 'Low',
+        1: 'Upset'
+    };
 
     return (
-        <View style={styles.simpleChart}>
-            <View style={styles.chartContainer}>
-                {data.map((point, index) => {
-                    const height = ((point.y - minValue) / range) * 60 + 10;
+        <View style={styles.chartWrapper}>
+            <LineChart
+                data={chartData}
+                width={width - 100}
+                height={180}
+                spacing={45}
+                color="#6C63FF"
+                thickness={2}
+                dataPointsColor="#6C63FF"
+                dataPointsRadius={4}
+                textColor="#666"
+                textShiftY={-8}
+                textShiftX={0}
+                textFontSize={9}
+                showVerticalLines={false}
+                rulesColor="#E0E7FF"
+                rulesType="solid"
+                initialSpacing={10}
+                endSpacing={10}
+                maxValue={5}
+                minValue={1}
+                noOfSections={5}
+                yAxisTextStyle={{ color: '#666', fontSize: 9 }}
+                xAxisTextNumberOfLines={1}
+                curved={false}
+                animateOnDataChange={true}
+                animationDuration={800}
+                onDataChangeAnimationDuration={300}
+                isAnimated={true}
+                hideDataPoints={false}
+                showDataPointOnPress={true}
+                pressEnabled={true}
+                showStripOnPress={true}
+                stripColor="#6C63FF"
+                stripOpacity={0.2}
+                stripWidth={2}
+                formatYLabel={(value) => {
+                    return moodLabels[Math.round(value)] || '';
+                }}
+                yAxisLabelSuffix=""
+                hideYAxisText={false}
+                yAxisOffset={0}
+                backgroundColor="transparent"
+                focusEnabled={true}
+                showDataPointLabelOnFocus={true}
+                dataPointLabelComponent={(item, index) => {
                     return (
-                        <View key={index} style={styles.chartPoint}>
-                            <View 
-                                style={[
-                                    styles.chartBar, 
-                                    { height, backgroundColor: '#6C63FF' }
-                                ]} 
-                            />
-                            <Text style={styles.chartLabel}>{point.x}</Text>
+                        <View style={styles.dataPointLabel}>
+                            <Text style={styles.dataPointLabelText}>
+                                {moodLabels[item.value] || item.value}
+                            </Text>
                         </View>
                     );
-                })}
-            </View>
+                }}
+            />
         </View>
     );
 };
 
 /* ---------- AnimatedButton Component ---------- */
 const AnimatedButton = ({ children, onPress, style, isActive }) => {
-    const scaleValue = new Animated.Value(1);
+    const [scaleValue] = useState(new Animated.Value(1));
+
+    useEffect(() => {
+        if (isActive) {
+            Animated.spring(scaleValue, {
+                toValue: 1.05,
+                useNativeDriver: true,
+            }).start();
+        } else {
+            Animated.spring(scaleValue, {
+                toValue: 1,
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [isActive, scaleValue]);
 
     const handlePressIn = () => {
         Animated.spring(scaleValue, {
-            toValue: 0.92,
+            toValue: 0.95,
             useNativeDriver: true,
+            tension: 300,
+            friction: 10,
         }).start();
     };
 
     const handlePressOut = () => {
         Animated.spring(scaleValue, {
-            toValue: isActive ? 1.08 : 1,
+            toValue: isActive ? 1.05 : 1,
             useNativeDriver: true,
+            tension: 300,
+            friction: 10,
         }).start();
     };
 
@@ -93,7 +161,7 @@ const AnimatedButton = ({ children, onPress, style, isActive }) => {
             onPress={onPress}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
-            activeOpacity={0.8}
+            activeOpacity={0.9}
         >
             <Animated.View style={[style, { transform: [{ scale: scaleValue }] }]}>
                 {children}
@@ -117,9 +185,7 @@ const MoodTracker = ({ value, onSelect, trendData }) => {
     const handleSubmitMood = () => {
         if (value) {
             setIsSubmitted(true);
-            // Add your mood submission logic here
             setTimeout(() => {
-                // Reset after 3 seconds for demo purposes
                 // setIsSubmitted(false);
             }, 3000);
         }
@@ -138,7 +204,7 @@ const MoodTracker = ({ value, onSelect, trendData }) => {
                         <>
                             <Text style={styles.greeting}>Mood Recorded!</Text>
                             <Text style={styles.greetingSubtext}>
-                                Thanks for sharing how you feel today 💜
+                                Thanks for sharing how you feel today
                             </Text>
                         </>
                     ) : (
@@ -151,7 +217,6 @@ const MoodTracker = ({ value, onSelect, trendData }) => {
             </View>
 
             {isSubmitted ? (
-                // Success State UI
                 <View style={styles.moodSubmittedContainer}>
                     <View style={styles.submittedMoodDisplay}>
                         <View style={[
@@ -174,7 +239,6 @@ const MoodTracker = ({ value, onSelect, trendData }) => {
                     </View>
                 </View>
             ) : (
-                // Mood Selection UI
                 <>
                     <View style={styles.moodRow}>
                         {moodIcons.map((moodItem, i) => {
@@ -213,7 +277,6 @@ const MoodTracker = ({ value, onSelect, trendData }) => {
                         })}
                     </View>
 
-                    {/* Submit Button */}
                     <View style={styles.submitButtonContainer}>
                         <TouchableOpacity
                             onPress={handleSubmitMood}
@@ -244,53 +307,31 @@ const MoodTracker = ({ value, onSelect, trendData }) => {
             <View style={styles.chartCard}>
                 <View style={styles.chartHeader}>
                     <Icon name="trending-up" size={20} color="#6C63FF" />
-                    <Text style={styles.chartTitle}>7-Day Mood Trend</Text>
+                    <Text style={styles.chartTitle}>30-Day Mood Trend</Text>
                 </View>
-                <SimpleChart data={trendData} />
+                <MoodChart data={trendData} />
             </View>
         </>
     );
 };
 
-/* ---------- QuickAccessTile Component ---------- */
+/* ---------- QuickAccessTile Component - Simplified ---------- */
 const QuickAccessTile = ({ label, color = "#F0F7FF", onPress, iconName }) => {
-    const scaleValue = new Animated.Value(1);
-
-    const handlePressIn = () => {
-        Animated.spring(scaleValue, {
-            toValue: 0.96,
-            useNativeDriver: true,
-        }).start();
-    };
-
-    const handlePressOut = () => {
-        Animated.spring(scaleValue, {
-            toValue: 1,
-            useNativeDriver: true,
-        }).start();
-    };
-
     return (
         <TouchableOpacity
             onPress={onPress}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
             activeOpacity={0.8}
+            style={[styles.tileCard, { backgroundColor: color }]}
         >
-            <Animated.View style={[
-                styles.tileCard,
-                { backgroundColor: color, transform: [{ scale: scaleValue }] }
-            ]}>
-                <View style={styles.tileIcon}>
-                    <Icon name={iconName} size={20} color="#6C63FF" />
-                </View>
-                <Text style={styles.tileLabel}>{label}</Text>
-            </Animated.View>
+            <View style={styles.tileIcon}>
+                <Icon name={iconName} size={20} color="#6C63FF" />
+            </View>
+            <Text style={styles.tileLabel}>{label}</Text>
         </TouchableOpacity>
     );
 };
 
-/* ---------- SuggestionsCard Component ---------- */
+/* ---------- SuggestionsCard Component - Simplified ---------- */
 const SuggestionsCard = () => {
     const suggestions = [
         {
@@ -306,23 +347,9 @@ const SuggestionsCard = () => {
     ];
 
     const [current, setCurrent] = useState(suggestions[0]);
-    const fadeAnim = new Animated.Value(1);
 
     useEffect(() => {
         const t = setInterval(() => {
-            Animated.sequence([
-                Animated.timing(fadeAnim, {
-                    toValue: 0,
-                    duration: 300,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(fadeAnim, {
-                    toValue: 1,
-                    duration: 300,
-                    useNativeDriver: true,
-                }),
-            ]).start();
-
             setCurrent((prev) => {
                 const next = suggestions[(suggestions.indexOf(prev) + 1) % suggestions.length];
                 return next;
@@ -332,15 +359,13 @@ const SuggestionsCard = () => {
     }, []);
 
     return (
-        <Animated.View style={{ opacity: fadeAnim }}>
-            <View style={[styles.sectionCard, { flexDirection: "row", alignItems: "center" }]}>
-                <Image source={{ uri: current.thumbnail }} style={styles.thumb} />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.cardTitle}>Suggested for you</Text>
-                    <Text style={styles.cardSubtitle}>{current.title}</Text>
-                </View>
+        <View style={[styles.sectionCard, { flexDirection: "row", alignItems: "center" }]}>
+            <Image source={{ uri: current.thumbnail }} style={styles.thumb} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.cardTitle}>Suggested for you</Text>
+                <Text style={styles.cardSubtitle}>{current.title}</Text>
             </View>
-        </Animated.View>
+        </View>
     );
 };
 
@@ -372,9 +397,27 @@ const Home = () => {
         return d.toLocaleString();
     });
 
+    // Generate last 30 days mood trend data
     const trendData = useMemo(() => {
-        const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-        return labels.map((l, i) => ({ x: l, y: Math.max(1, Math.min(5, 3 + Math.round(Math.sin(i) - Math.random()))) }));
+        const data = [];
+        const today = new Date();
+        
+        for (let i = 29; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(date.getDate() - i);
+            
+            // Format date as MM/DD for better readability
+            const label = `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
+            
+            // Generate random mood data with some pattern
+            const baseValue = 3;
+            const variation = Math.sin(i * 0.1) * 0.8 + (Math.random() - 0.5) * 1.2;
+            const mood = Math.max(1, Math.min(5, Math.round(baseValue + variation)));
+            
+            data.push({ x: label, y: mood });
+        }
+        
+        return data;
     }, []);
 
     const quickTiles = [
@@ -796,5 +839,25 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#4CAF50',
         marginLeft: 6,
+    },
+
+    // Enhanced Chart Styles
+    chartWrapper: {
+        alignItems: 'center',
+        paddingVertical: 10,
+        marginLeft: -12,
+        position: 'relative',
+    },
+    dataPointLabel: {
+        backgroundColor: '#6C63FF',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+        marginTop: -25,
+    },
+    dataPointLabelText: {
+        color: '#FFFFFF',
+        fontSize: 8,
+        fontWeight: '600',
     },
 });
