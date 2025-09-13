@@ -9,38 +9,13 @@ import {
     SafeAreaView,
     Dimensions,
     Animated,
+    Modal,
 } from "react-native";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { LineChart } from 'react-native-gifted-charts';
+import Header from "../components/Header";
 
 const { width } = Dimensions.get("window");
-
-const pastelColors = ["#E8F8F5", "#EEF7FF", "#F6F0FF", "#F3F7E8"];
-
-/* ---------- Header Component ---------- */
-const Header = () => {
-    return (
-        <View style={styles.header}>
-            <View style={styles.headerLeft}>
-                <View style={styles.appLogo}>
-                    <View style={styles.logoGradient}>
-                        <Icon name="psychology" size={26} color="#FFFFFF" />
-                    </View>
-                </View>
-                <View style={styles.appInfo}>
-                    <Text style={styles.appName}>MindCare</Text>
-                    <Text style={styles.appSubtitle}>Your Mental Wellness Companion</Text>
-                </View>
-            </View>
-            <TouchableOpacity style={styles.profileButton} activeOpacity={0.8}>
-                <View style={styles.profileIcon}>
-                    <Icon name="person" size={22} color="#6C63FF" />
-                    <View style={styles.notificationBadge} />
-                </View>
-            </TouchableOpacity>
-        </View>
-    );
-};
 
 /* ---------- Enhanced Chart Component with Gifted Charts ---------- */
 const MoodChart = ({ data }) => {
@@ -117,56 +92,6 @@ const MoodChart = ({ data }) => {
                 }}
             />
         </View>
-    );
-};
-
-/* ---------- AnimatedButton Component ---------- */
-const AnimatedButton = ({ children, onPress, style, isActive }) => {
-    const [scaleValue] = useState(new Animated.Value(1));
-
-    useEffect(() => {
-        if (isActive) {
-            Animated.spring(scaleValue, {
-                toValue: 1.05,
-                useNativeDriver: true,
-            }).start();
-        } else {
-            Animated.spring(scaleValue, {
-                toValue: 1,
-                useNativeDriver: true,
-            }).start();
-        }
-    }, [isActive, scaleValue]);
-
-    const handlePressIn = () => {
-        Animated.spring(scaleValue, {
-            toValue: 0.95,
-            useNativeDriver: true,
-            tension: 300,
-            friction: 10,
-        }).start();
-    };
-
-    const handlePressOut = () => {
-        Animated.spring(scaleValue, {
-            toValue: isActive ? 1.05 : 1,
-            useNativeDriver: true,
-            tension: 300,
-            friction: 10,
-        }).start();
-    };
-
-    return (
-        <TouchableOpacity
-            onPress={onPress}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
-            activeOpacity={0.9}
-        >
-            <Animated.View style={[style, { transform: [{ scale: scaleValue }] }]}>
-                {children}
-            </Animated.View>
-        </TouchableOpacity>
     );
 };
 
@@ -486,28 +411,285 @@ const SuggestionsCard = () => {
     );
 };
 
-/* ---------- BookingStatusCard Component ---------- */
+/* ---------- BookingStatusCard Component - Enhanced ---------- */
 const BookingStatusCard = ({ status, acceptedAt }) => {
-    const message =
-        status === "Pending"
-            ? "Your request is waiting for confirmation."
-            : status === "Accepted"
-                ? `Session confirmed on ${acceptedAt ?? "—"}.`
-                : "Your session is completed. Hope it went well!";
+    const [showBookingModal, setShowBookingModal] = useState(false);
+    
+    // Mock data - replace with actual data from your API
+    const bookingData = {
+        requestDate: "Dec 14, 2024",
+        requestTime: "2:30 PM",
+        problemType: "Anxiety & Stress Management",
+        counselorName: status === "Accepted" ? "Dr. Sarah Johnson" : status === "Completed" ? "Dr. Sarah Johnson" : null,
+        sessionType: "Video Call",
+        estimatedDuration: "45 minutes",
+        preferredDay: "Monday",
+        preferredTiming: "Afternoon",
+        // Fixed scheduling details for accepted status
+        scheduledDate: "Dec 18, 2024",
+        scheduledTime: "3:00 PM",
+        scheduledDay: "Wednesday"
+    };
+
+    const getStatusColor = () => {
+        switch (status) {
+            case "Pending":
+                return "#FF9800";
+            case "Accepted":
+                return "#4CAF50";
+            case "Completed":
+                return "#6C63FF";
+            default:
+                return "#9CA3AF";
+        }
+    };
+
+    const getStatusIcon = () => {
+        switch (status) {
+            case "Pending":
+                return "schedule";
+            case "Accepted":
+                return "check-circle";
+            case "Completed":
+                return "task-alt";
+            default:
+                return "help";
+        }
+    };
 
     return (
-        <View style={[styles.sectionCard, { backgroundColor: "#F6F9FF" }]}>
-            <Text style={styles.cardTitle}>Latest Booking</Text>
-            <Text style={styles.cardSubtitle}>{status}</Text>
-            <Text style={styles.cardDetail}>{message}</Text>
+        <View style={styles.bookingCard}>
+            {/* Status Header */}
+            <View style={styles.bookingHeader}>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor() + '15' }]}>
+                    <Icon name={getStatusIcon()} size={16} color={getStatusColor()} />
+                    <Text style={[styles.statusText, { color: getStatusColor() }]}>
+                        {status}
+                    </Text>
+                </View>
+                <Text style={styles.bookingTitle}>Counseling Session</Text>
+            </View>
+
+            {/* Booking Details */}
+            <View style={styles.bookingDetails}>
+                <View style={styles.detailRow}>
+                    <View style={styles.detailIcon}>
+                        <Icon name="calendar-today" size={16} color="#6C63FF" />
+                    </View>
+                    <View style={styles.detailContent}>
+                        <Text style={styles.detailLabel}>Requested On</Text>
+                        <Text style={styles.detailValue}>
+                            {bookingData.requestDate} at {bookingData.requestTime}
+                        </Text>
+                    </View>
+                </View>
+
+                {/* Show different content based on status */}
+                {status === "Accepted" || status === "Completed" ? (
+                    <View style={styles.detailRow}>
+                        <View style={styles.detailIcon}>
+                            <Icon name="event-available" size={16} color="#6C63FF" />
+                        </View>
+                        <View style={styles.detailContent}>
+                            <Text style={styles.detailLabel}>Scheduled For</Text>
+                            <Text style={styles.detailValue}>
+                                {bookingData.scheduledDay}, {bookingData.scheduledDate} at {bookingData.scheduledTime}
+                            </Text>
+                        </View>
+                    </View>
+                ) : (
+                    <View style={styles.detailRow}>
+                        <View style={styles.detailIcon}>
+                            <Icon name="schedule" size={16} color="#6C63FF" />
+                        </View>
+                        <View style={styles.detailContent}>
+                            <Text style={styles.detailLabel}>Preferred Day & Time</Text>
+                            <Text style={styles.detailValue}>
+                                {bookingData.preferredDay}, {bookingData.preferredTiming}
+                            </Text>
+                        </View>
+                    </View>
+                )}
+
+                <View style={styles.detailRow}>
+                    <View style={styles.detailIcon}>
+                        <Icon name="psychology" size={16} color="#6C63FF" />
+                    </View>
+                    <View style={styles.detailContent}>
+                        <Text style={styles.detailLabel}>Concern Type</Text>
+                        <Text style={styles.detailValue}>{bookingData.problemType}</Text>
+                    </View>
+                </View>
+
+                <View style={styles.detailRow}>
+                    <View style={styles.detailIcon}>
+                        <Icon name="videocam" size={16} color="#6C63FF" />
+                    </View>
+                    <View style={styles.detailContent}>
+                        <Text style={styles.detailLabel}>Session Type</Text>
+                        <Text style={styles.detailValue}>
+                            {bookingData.sessionType} • {bookingData.estimatedDuration}
+                        </Text>
+                    </View>
+                </View>
+
+                {(status === "Accepted" || status === "Completed") && bookingData.counselorName && (
+                    <View style={styles.detailRow}>
+                        <View style={styles.detailIcon}>
+                            <Icon name="person" size={16} color="#6C63FF" />
+                        </View>
+                        <View style={styles.detailContent}>
+                            <Text style={styles.detailLabel}>Counselor</Text>
+                            <Text style={styles.detailValue}>{bookingData.counselorName}</Text>
+                        </View>
+                    </View>
+                )}
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.actionButtons}>
+                {status === "Accepted" && (
+                    <>
+                        <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.8}>
+                            <Icon name="calendar-today" size={16} color="#6C63FF" />
+                            <Text style={styles.secondaryButtonText}>Reschedule</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.8}>
+                            <Icon name="videocam" size={16} color="#FFFFFF" />
+                            <Text style={styles.primaryButtonText}>Join Session</Text>
+                        </TouchableOpacity>
+                    </>
+                )}
+
+                {status === "Completed" && (
+                    <TouchableOpacity 
+                        style={styles.primaryButton} 
+                        activeOpacity={0.8}
+                        onPress={() => setShowBookingModal(true)}
+                    >
+                        <Icon name="add" size={16} color="#FFFFFF" />
+                        <Text style={styles.primaryButtonText}>Book Again</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+
+            {/* Booking Modal */}
+            <BookingModal 
+                visible={showBookingModal}
+                onClose={() => setShowBookingModal(false)}
+                counselorName={bookingData.counselorName}
+            />
         </View>
     );
 };
 
-/* ---------- HomeScreen (default export) ---------- */
+/* ---------- Booking Modal Component ---------- */
+const BookingModal = ({ visible, onClose, counselorName }) => {
+    const [selectedDay, setSelectedDay] = useState(null);
+    const [selectedTime, setSelectedTime] = useState(null);
+    const availableDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const timeSlots = ['Morning', 'Afternoon', 'Evening', 'Night'];
+
+    const handleBooking = () => {
+        if (selectedDay && selectedTime) {
+            // Handle booking logic here
+            console.log(`Booking for ${counselorName} on ${selectedDay} ${selectedTime}`);
+            onClose();
+            // Show success message or navigate to confirmation
+        }
+    };
+
+    return (
+        <Modal
+            visible={visible}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={onClose}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Book Appointment</Text>
+                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                            <Icon name="close" size={24} color="#6B7280" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.counselorInfo}>
+                        <Icon name="person" size={20} color="#6C63FF" />
+                        <Text style={styles.counselorName}>with {counselorName}</Text>
+                    </View>
+
+                    <Text style={styles.sectionLabel}>Select Preferred Day</Text>
+                    <View style={styles.optionsGrid}>
+                        {availableDays.map((day) => (
+                            <TouchableOpacity
+                                key={day}
+                                style={[
+                                    styles.optionButton,
+                                    selectedDay === day && styles.optionButtonSelected
+                                ]}
+                                onPress={() => setSelectedDay(day)}
+                            >
+                                <Text style={[
+                                    styles.optionText,
+                                    selectedDay === day && styles.optionTextSelected
+                                ]}>
+                                    {day}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    <Text style={styles.sectionLabel}>Select Time Preference</Text>
+                    <View style={styles.timeGrid}>
+                        {timeSlots.map((time) => (
+                            <TouchableOpacity
+                                key={time}
+                                style={[
+                                    styles.timeButton,
+                                    selectedTime === time && styles.timeButtonSelected
+                                ]}
+                                onPress={() => setSelectedTime(time)}
+                            >
+                                <Text style={[
+                                    styles.timeText,
+                                    selectedTime === time && styles.timeTextSelected
+                                ]}>
+                                    {time}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    <View style={styles.modalActions}>
+                        <TouchableOpacity 
+                            style={styles.cancelButton} 
+                            onPress={onClose}
+                        >
+                            <Text style={styles.cancelButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[
+                                styles.confirmButton,
+                                (!selectedDay || !selectedTime) && styles.confirmButtonDisabled
+                            ]}
+                            onPress={handleBooking}
+                            disabled={!selectedDay || !selectedTime}
+                        >
+                            <Text style={styles.confirmButtonText}>Book Appointment</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
+/* ---------- Updated HomeScreen with View All Button ---------- */
 const Home = () => {
     const [todayMood, setTodayMood] = useState(null);
-    const [bookingStatus, setBookingStatus] = useState("Pending");
+    const [bookingStatus, setBookingStatus] = useState("Completed"); // Changed to show accepted status
     const [acceptedAt] = useState(() => {
         const d = new Date();
         d.setDate(d.getDate() + 2);
@@ -523,10 +705,7 @@ const Home = () => {
             const date = new Date(today);
             date.setDate(date.getDate() - i);
 
-            // Format date as MM/DD for better readability
             const label = `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
-
-            // Generate random mood data with some pattern
             const baseValue = 3;
             const variation = Math.sin(i * 0.1) * 0.8 + (Math.random() - 0.5) * 1.2;
             const mood = Math.max(1, Math.min(5, Math.round(baseValue + variation)));
@@ -548,12 +727,7 @@ const Home = () => {
                         <MoodTracker value={todayMood} onSelect={setTodayMood} trendData={trendData} />
 
                         <View style={[styles.section, { marginTop: 12 }]}>
-                            <View style={styles.sectionHeaderContainer}>
-                                {/* <View style={styles.sectionHeaderIcon}>
-                                    <Icon name="dashboard" size={18} color="#6C63FF" />
-                                </View> */}
-                                <Text style={styles.sectionHeading}>Quick Access</Text>
-                            </View>
+                            <Text style={styles.sectionHeading}>Quick Access</Text>
                             <View style={styles.grid}>
                                 {quickTiles.map((t) => (
                                     <QuickAccessTile
@@ -573,7 +747,13 @@ const Home = () => {
                         </View>
 
                         <View style={[styles.section]}>
-                            <Text style={styles.sectionHeading}>Highlights</Text>
+                            <View style={styles.sectionWithButton}>
+                                <Text style={styles.sectionHeading}>Highlights</Text>
+                                <TouchableOpacity style={styles.viewAllButton} activeOpacity={0.8}>
+                                    <Text style={styles.viewAllText}>View All</Text>
+                                    <Icon name="arrow-forward" size={16} color="#6C63FF" />
+                                </TouchableOpacity>
+                            </View>
                             <BookingStatusCard status={bookingStatus} acceptedAt={bookingStatus === "Accepted" ? acceptedAt : undefined} />
                         </View>
                     </>
@@ -587,105 +767,9 @@ const Home = () => {
 
 export default Home;
 
+// Add these new styles to your existing StyleSheet
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#FFFFFF", marginBottom: 30 },
-
-    // Enhanced Header Styles
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 20,
-        backgroundColor: "#FFFFFF",
-        shadowColor: "#6C63FF",
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 8,
-        borderBottomLeftRadius: 15,
-        borderBottomRightRadius: 15,
-    },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    appLogo: {
-        marginRight: 16,
-    },
-    logoGradient: {
-        width: 48,
-        height: 48,
-        borderRadius: 16,
-        backgroundColor: "#6C63FF",
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: "#6C63FF",
-        shadowOffset: {
-            width: 0,
-            height: 6,
-        },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        elevation: 8,
-        borderWidth: 3,
-        borderColor: "#E8F0FF",
-    },
-    appInfo: {
-        flex: 1,
-    },
-    appName: {
-        fontSize: 22,
-        fontWeight: '800',
-        color: "#1F2153",
-        letterSpacing: 0.5,
-        marginBottom: 2,
-    },
-    appSubtitle: {
-        fontSize: 12,
-        fontWeight: '500',
-        color: "#6C63FF",
-        opacity: 0.8,
-        letterSpacing: 0.3,
-    },
-    profileButton: {
-        padding: 6,
-    },
-    profileIcon: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: "#F8FAFF",
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 2,
-        borderColor: "#E8F0FF",
-        shadowColor: "#6C63FF",
-        shadowOffset: {
-            width: 0,
-            height: 3,
-        },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 4,
-        position: 'relative',
-    },
-    notificationBadge: {
-        position: 'absolute',
-        top: 4,
-        right: 6,
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: "#FF6B6B",
-        borderWidth: 2,
-        borderColor: "#FFFFFF",
-    },
 
     // Existing styles
     section: { marginBottom: 12 },
@@ -1195,5 +1279,311 @@ const styles = StyleSheet.create({
         backgroundColor: '#F0F4FF',
         borderRadius: 4,
         width: '60%',
+    },
+
+    // Enhanced Booking Card Styles
+    bookingCard: {
+        backgroundColor: "#FFFFFF",
+        borderRadius: 20,
+        padding: 20,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#E8F0FF',
+        shadowColor: "#6C63FF",
+        shadowOffset: {
+            width: 0,
+            height: 3,
+        },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 4,
+    },
+    bookingHeader: {
+        marginBottom: 20,
+    },
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        marginBottom: 12,
+    },
+    statusText: {
+        fontSize: 12,
+        fontWeight: '700',
+        marginLeft: 6,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    bookingTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1F2153',
+        letterSpacing: 0.3,
+    },
+    bookingDetails: {
+        marginBottom: 20,
+    },
+    detailRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 16,
+    },
+    detailIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        backgroundColor: '#F0F4FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    detailContent: {
+        flex: 1,
+    },
+    detailLabel: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#6B7280',
+        marginBottom: 2,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    detailValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1F2153',
+        lineHeight: 20,
+    },
+    messageContainer: {
+        backgroundColor: '#F8FAFF',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 20,
+        borderLeftWidth: 3,
+        borderLeftColor: '#6C63FF',
+    },
+    statusMessage: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: '#4B5563',
+        lineHeight: 18,
+        letterSpacing: 0.2,
+    },
+    actionButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    primaryButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#6C63FF',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 12,
+        flex: 1,
+        shadowColor: '#6C63FF',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        elevation: 3,
+    },
+    primaryButtonText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginLeft: 6,
+        letterSpacing: 0.3,
+    },
+    secondaryButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F0F4FF',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 12,
+        flex: 1,
+        borderWidth: 1,
+        borderColor: '#E8F0FF',
+    },
+    secondaryButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6C63FF',
+        marginLeft: 6,
+        letterSpacing: 0.3,
+    },
+
+    // Section with View All Button
+    sectionWithButton: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    viewAllButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        backgroundColor: '#F0F4FF',
+    },
+    viewAllText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6C63FF',
+        marginRight: 4,
+    },
+
+    // Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 24,
+        maxHeight: '80%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#1F2153',
+        letterSpacing: 0.3,
+    },
+    closeButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    counselorInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F0F4FF',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 12,
+        marginBottom: 24,
+    },
+    counselorName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1F2153',
+        marginLeft: 8,
+    },
+    sectionLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1F2153',
+        marginBottom: 12,
+        marginTop: 8,
+    },
+    optionsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 20,
+    },
+    optionButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
+        backgroundColor: '#F8F9FA',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        minWidth: 100,
+        alignItems: 'center',
+    },
+    optionButtonSelected: {
+        backgroundColor: '#6C63FF',
+        borderColor: '#6C63FF',
+    },
+    optionText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    optionTextSelected: {
+        color: '#FFFFFF',
+    },
+    timeGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 32,
+    },
+    timeButton: {
+        flex: 1,
+        minWidth: '45%',
+        paddingVertical: 12,
+        borderRadius: 12,
+        backgroundColor: '#F8F9FA',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        alignItems: 'center',
+    },
+    timeButtonSelected: {
+        backgroundColor: '#6C63FF',
+        borderColor: '#6C63FF',
+    },
+    timeText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    timeTextSelected: {
+        color: '#FFFFFF',
+    },
+    modalActions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    cancelButton: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 12,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+    },
+    cancelButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    confirmButton: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 12,
+        backgroundColor: '#6C63FF',
+        alignItems: 'center',
+    },
+    confirmButtonDisabled: {
+        backgroundColor: '#D1D5DB',
+    },
+    confirmButtonText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
 });
