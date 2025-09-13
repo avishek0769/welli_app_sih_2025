@@ -23,13 +23,19 @@ const Header = () => {
         <View style={styles.header}>
             <View style={styles.headerLeft}>
                 <View style={styles.appLogo}>
-                    <Icon name="psychology" size={24} color="#6C63FF" />
+                    <View style={styles.logoGradient}>
+                        <Icon name="psychology" size={26} color="#FFFFFF" />
+                    </View>
                 </View>
-                <Text style={styles.appName}>MindCare</Text>
+                <View style={styles.appInfo}>
+                    <Text style={styles.appName}>MindCare</Text>
+                    <Text style={styles.appSubtitle}>Your Mental Wellness Companion</Text>
+                </View>
             </View>
-            <TouchableOpacity style={styles.profileButton}>
+            <TouchableOpacity style={styles.profileButton} activeOpacity={0.8}>
                 <View style={styles.profileIcon}>
-                    <Icon name="person" size={20} color="#6C63FF" />
+                    <Icon name="person" size={22} color="#6C63FF" />
+                    <View style={styles.notificationBadge} />
                 </View>
             </TouchableOpacity>
         </View>
@@ -98,34 +104,151 @@ const AnimatedButton = ({ children, onPress, style, isActive }) => {
 
 /* ---------- MoodTracker Component ---------- */
 const MoodTracker = ({ value, onSelect, trendData }) => {
-    return (
-        <View style={styles.section}>
-            <Text style={styles.greeting}>Good Evening 🌙, how was your mood today?</Text>
+    const [isSubmitted, setIsSubmitted] = useState(false);
+    
+    const moodIcons = [
+        { icon: 'sentiment-very-satisfied', color: '#4CAF50', label: 'Great' },
+        { icon: 'sentiment-satisfied', color: '#8BC34A', label: 'Good' },
+        { icon: 'sentiment-neutral', color: '#FF9800', label: 'Okay' },
+        { icon: 'sentiment-dissatisfied', color: '#FF5722', label: 'Bad' },
+        { icon: 'sentiment-very-dissatisfied', color: '#F44336', label: 'Awful' }
+    ];
 
-            <View style={styles.moodRow}>
-                {moodEmojis.map((emo, i) => {
-                    const idx = i + 1;
-                    return (
-                        <AnimatedButton
-                            key={emo}
-                            onPress={() => onSelect(idx)}
-                            isActive={value === idx}
+    const handleSubmitMood = () => {
+        if (value) {
+            setIsSubmitted(true);
+            // Add your mood submission logic here
+            setTimeout(() => {
+                // Reset after 3 seconds for demo purposes
+                // setIsSubmitted(false);
+            }, 3000);
+        }
+    };
+
+    const selectedMood = value ? moodIcons[value - 1] : null;
+
+    return (
+        <>
+            <View style={styles.greetingContainer}>
+                <View style={styles.greetingIconWrapper}>
+                    <Icon name="nightlight-round" size={24} color="#6C63FF" />
+                </View>
+                <View style={styles.greetingTextContainer}>
+                    {isSubmitted ? (
+                        <>
+                            <Text style={styles.greeting}>Mood Recorded!</Text>
+                            <Text style={styles.greetingSubtext}>
+                                Thanks for sharing how you feel today 💜
+                            </Text>
+                        </>
+                    ) : (
+                        <>
+                            <Text style={styles.greeting}>Good Evening</Text>
+                            <Text style={styles.greetingSubtext}>How was your mood today?</Text>
+                        </>
+                    )}
+                </View>
+            </View>
+
+            {isSubmitted ? (
+                // Success State UI
+                <View style={styles.moodSubmittedContainer}>
+                    <View style={styles.submittedMoodDisplay}>
+                        <View style={[
+                            styles.submittedMoodIcon,
+                            { backgroundColor: selectedMood.color + '20' }
+                        ]}>
+                            <Icon 
+                                name={selectedMood.icon} 
+                                size={32} 
+                                color={selectedMood.color} 
+                            />
+                        </View>
+                        <Text style={[styles.submittedMoodText, { color: selectedMood.color }]}>
+                            You're feeling {selectedMood.label} today
+                        </Text>
+                        <View style={styles.submittedSuccessIcon}>
+                            <Icon name="check-circle" size={20} color="#4CAF50" />
+                            <Text style={styles.submittedSuccessText}>Saved successfully</Text>
+                        </View>
+                    </View>
+                </View>
+            ) : (
+                // Mood Selection UI
+                <>
+                    <View style={styles.moodRow}>
+                        {moodIcons.map((moodItem, i) => {
+                            const idx = i + 1;
+                            const isSelected = value === idx;
+                            return (
+                                <TouchableOpacity
+                                    key={i}
+                                    onPress={() => onSelect(idx)}
+                                    activeOpacity={0.8}
+                                    style={[
+                                        styles.moodButton,
+                                        isSelected && [styles.moodButtonActive, { borderColor: moodItem.color }]
+                                    ]}
+                                >
+                                    <View style={styles.moodButtonContent}>
+                                        <View style={[
+                                            styles.moodIconWrapper,
+                                            isSelected && { backgroundColor: moodItem.color + '15' }
+                                        ]}>
+                                            <Icon 
+                                                name={moodItem.icon} 
+                                                size={24} 
+                                                color={isSelected ? moodItem.color : '#9CA3AF'} 
+                                            />
+                                        </View>
+                                        <Text style={[
+                                            styles.moodLabel,
+                                            isSelected && { color: moodItem.color, fontWeight: '700' }
+                                        ]}>
+                                            {moodItem.label}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+
+                    {/* Submit Button */}
+                    <View style={styles.submitButtonContainer}>
+                        <TouchableOpacity
+                            onPress={handleSubmitMood}
+                            activeOpacity={0.8}
+                            disabled={!value}
                             style={[
-                                styles.moodButton,
-                                value === idx ? styles.moodButtonActive : undefined,
+                                styles.submitButton,
+                                !value && styles.submitButtonDisabled
                             ]}
                         >
-                            <Text style={styles.moodEmoji}>{emo}</Text>
-                        </AnimatedButton>
-                    );
-                })}
-            </View>
+                            <Icon 
+                                name="send" 
+                                size={18} 
+                                color={value ? "#FFFFFF" : "#B0B0B0"} 
+                                style={{ marginRight: 8 }}
+                            />
+                            <Text style={[
+                                styles.submitButtonText,
+                                !value && styles.submitButtonTextDisabled
+                            ]}>
+                                Submit Mood
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </>
+            )}
 
             <View style={styles.chartCard}>
-                <Text style={styles.chartTitle}>7-Day Mood Trend</Text>
+                <View style={styles.chartHeader}>
+                    <Icon name="trending-up" size={20} color="#6C63FF" />
+                    <Text style={styles.chartTitle}>7-Day Mood Trend</Text>
+                </View>
                 <SimpleChart data={trendData} />
             </View>
-        </View>
+        </>
     );
 };
 
@@ -309,86 +432,105 @@ export default Home;
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#FFFFFF", marginBottom: 30 },
     
-    // Header Styles
+    // Enhanced Header Styles
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        paddingBottom: 20,
         backgroundColor: "#FFFFFF",
-        borderBottomWidth: 1,
-        borderBottomColor: "#F0F0F0",
+        shadowColor: "#6C63FF",
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 8,
+        borderBottomLeftRadius: 15,
+        borderBottomRightRadius: 15,
     },
     headerLeft: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
     },
     appLogo: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: "#F0F7FF",
+        marginRight: 16,
+    },
+    logoGradient: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        backgroundColor: "#6C63FF",
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 12,
+        shadowColor: "#6C63FF",
+        shadowOffset: {
+            width: 0,
+            height: 6,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 8,
+        borderWidth: 3,
+        borderColor: "#E8F0FF",
+    },
+    appInfo: {
+        flex: 1,
     },
     appName: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 22,
+        fontWeight: '800',
         color: "#1F2153",
+        letterSpacing: 0.5,
+        marginBottom: 2,
+    },
+    appSubtitle: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: "#6C63FF",
+        opacity: 0.8,
+        letterSpacing: 0.3,
     },
     profileButton: {
-        padding: 4,
+        padding: 6,
     },
     profileIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: "#F0F7FF",
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: "#F8FAFF",
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: "#E8F0FF",
+        shadowColor: "#6C63FF",
+        shadowOffset: {
+            width: 0,
+            height: 3,
+        },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 4,
+        position: 'relative',
+    },
+    notificationBadge: {
+        position: 'absolute',
+        top: 4,
+        right: 6,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: "#FF6B6B",
+        borderWidth: 2,
+        borderColor: "#FFFFFF",
     },
     
     // Existing styles
     section: { marginBottom: 12 },
-    greeting: { fontSize: 20, fontWeight: "700", color: "#1F2153", marginBottom: 12 },
-    moodRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
-    moodButton: {
-        width: (width - 64) / 5,
-        height: 52,
-        borderRadius: 14,
-        backgroundColor: "#fff",
-        alignItems: "center",
-        justifyContent: "center",
-        shadowColor: "#000",
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    moodButtonActive: {
-        backgroundColor: "#EEF7FF",
-        borderWidth: 1,
-        borderColor: "#CDE9FF",
-    },
-    moodEmoji: { fontSize: 22 },
-    chartCard: {
-        marginTop: 6,
-        borderRadius: 18,
-        padding: 16,
-        backgroundColor: "#FFFFFF",
-        shadowColor: "#000",
-        shadowOpacity: 0.04,
-        shadowRadius: 16,
-        elevation: 2,
-    },
-    chartTitle: {
-        fontSize: 14,
-        fontWeight: "600",
-        color: "#2E3057",
-        marginBottom: 12,
-        textAlign: "center",
-    },
     simpleChart: {
         alignItems: "center",
     },
@@ -452,4 +594,207 @@ const styles = StyleSheet.create({
     cardTitle: { fontSize: 13, fontWeight: "700", color: "#2E3057" },
     cardSubtitle: { fontSize: 15, marginTop: 6, color: "#424257", fontWeight: "600" },
     cardDetail: { fontSize: 13, marginTop: 8, color: "#7B7B8A" },
+
+    // Enhanced MoodTracker Styles
+    moodSection: { 
+        marginBottom: 20,
+        backgroundColor: '#FAFBFF',
+        borderRadius: 24,
+        padding: 20,
+        // marginHorizontal: 4,
+        shadowColor: "#6C63FF",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    greetingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 24,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E8F0FF',
+    },
+    greetingIconWrapper: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        backgroundColor: '#E8F0FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    greetingTextContainer: {
+        flex: 1,
+    },
+    greeting: { 
+        fontSize: 22, 
+        fontWeight: "800", 
+        color: "#1F2153", 
+        marginBottom: 4,
+        letterSpacing: 0.3,
+    },
+    greetingSubtext: {
+        fontSize: 14,
+        fontWeight: "500",
+        color: "#6C63FF",
+        opacity: 0.8,
+    },
+    moodRow: { 
+        flexDirection: "row", 
+        justifyContent: "space-between", 
+        marginBottom: 24,
+        paddingHorizontal: 8,
+    },
+    moodButton: {
+        width: (width - 80) / 5,
+        paddingVertical: 12,
+        borderRadius: 16,
+        backgroundColor: "#FFFFFF",
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: 2,
+        borderColor: "transparent",
+        shadowColor: "#000",
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    moodButtonActive: {
+        backgroundColor: "#FFFFFF",
+        borderWidth: 2,
+        shadowColor: "#6C63FF",
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 6,
+        transform: [{ scale: 1.05 }],
+    },
+    moodButtonContent: {
+        alignItems: 'center',
+    },
+    moodIconWrapper: {
+        width: 36,
+        height: 36,
+        borderRadius: 12,
+        backgroundColor: '#F8F9FA',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+    },
+    moodLabel: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#6B7280',
+        textAlign: 'center',
+        letterSpacing: 0.2,
+    },
+    chartCard: {
+        borderRadius: 20,
+        padding: 20,
+        backgroundColor: "#FFFFFF",
+        shadowColor: "#6C63FF",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#E8F0FF',
+    },
+    chartHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+    },
+    chartTitle: {
+        fontSize: 16,
+        fontWeight: "700",
+        color: "#1F2153",
+        marginLeft: 8,
+        letterSpacing: 0.3,
+    },
+
+    // Submit Button Styles
+    submitButtonContainer: {
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    submitButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#6C63FF',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 16,
+        shadowColor: '#6C63FF',
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    submitButtonDisabled: {
+        backgroundColor: '#F0F0F0',
+        shadowOpacity: 0,
+        elevation: 0,
+    },
+    submitButtonText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        letterSpacing: 0.5,
+    },
+    submitButtonTextDisabled: {
+        color: '#B0B0B0',
+    },
+
+    // Submitted State Styles
+    moodSubmittedContainer: {
+        marginBottom: 24,
+    },
+    submittedMoodDisplay: {
+        alignItems: 'center',
+        backgroundColor: '#F8FAFF',
+        borderRadius: 20,
+        padding: 24,
+        borderWidth: 1,
+        borderColor: '#E8F0FF',
+    },
+    submittedMoodIcon: {
+        width: 64,
+        height: 64,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+    },
+    submittedMoodText: {
+        fontSize: 16,
+        fontWeight: '700',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    submittedSuccessIcon: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#4CAF50' + '15',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+    },
+    submittedSuccessText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#4CAF50',
+        marginLeft: 6,
+    },
 });
