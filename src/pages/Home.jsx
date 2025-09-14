@@ -121,9 +121,9 @@ const MoodTracker = ({ value, onSelect, trendData }) => {
     return (
         <>
             <View style={styles.greetingContainer}>
-                <View style={styles.greetingIconWrapper}>
-                    <Icon name="nightlight-round" size={24} color="#6C63FF" />
-                </View>
+                {/* <View style={styles.greetingIconWrapper}>
+                    <Icon name="mood" size={24} color="#6C63FF" />
+                </View> */}
                 <View style={styles.greetingTextContainer}>
                     {isSubmitted ? (
                         <>
@@ -134,8 +134,10 @@ const MoodTracker = ({ value, onSelect, trendData }) => {
                         </>
                     ) : (
                         <>
-                            <Text style={styles.greeting}>Good Evening</Text>
-                            <Text style={styles.greetingSubtext}>How was your mood today?</Text>
+                            <Text style={styles.greeting}>Track Your Mood</Text>
+                            <Text style={styles.greetingSubtext}>
+                                Submit your mood for tracking and relevant content suggestion. Don't worry, your data won't be shared with anyone.
+                            </Text>
                         </>
                     )}
                 </View>
@@ -296,21 +298,21 @@ const SuggestionsCard = () => {
         {
             id: "1",
             title: "5-Minute Breathing Exercise for Anxiety Relief",
-            thumbnail: "https://i.ytimg-nocookie.com/vi/tybOi4hjZFQ/maxresdefault.jpg",
+            thumbnail: "https://i.ytimg.com/vi/8TTABLdGCKI/hq720.jpg?sqp=-oaymwEnCNAFEJQDSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLD2tma1ukT7GGtJWNSSuBv-Pf5NVw",
             duration: "5:32",
             category: "Breathing"
         },
         {
             id: "2", 
             title: "Mindful Body Scan Meditation for Stress",
-            thumbnail: "https://i.ytimg-nocookie.com/vi/15q-N-_kkrU/maxresdefault.jpg",
+            thumbnail: "https://i.ytimg.com/vi/6iDKF-TrAfE/hq720.jpg?sqp=-oaymwEnCNAFEJQDSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLDgxjIdhXxKtHEAgTmU1jN-eKdiNw",
             duration: "7:45",
             category: "Meditation"
         },
         {
             id: "3",
             title: "Quick Progressive Muscle Relaxation",
-            thumbnail: "https://i.ytimg-nocookie.com/vi/86HUcX8ZtAk/maxresdefault.jpg", 
+            thumbnail: "https://i.ytimg.com/vi/kdLTOurs2lA/hq720.jpg?sqp=-oaymwEnCNAFEJQDSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLA7_XCfZuuTHK_mm_9T1IM_tmBEZg", 
             duration: "4:28",
             category: "Relaxation"
         }
@@ -689,7 +691,7 @@ const BookingModal = ({ visible, onClose, counselorName }) => {
 /* ---------- Updated HomeScreen with View All Button ---------- */
 const Home = () => {
     const [todayMood, setTodayMood] = useState(null);
-    const [bookingStatus, setBookingStatus] = useState("Completed"); // Changed to show accepted status
+    const [bookingStatus, setBookingStatus] = useState("Pending"); // Changed to show accepted status
     const [acceptedAt] = useState(() => {
         const d = new Date();
         d.setDate(d.getDate() + 2);
@@ -706,7 +708,7 @@ const Home = () => {
             date.setDate(date.getDate() - i);
 
             const label = `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
-            const baseValue = 3;
+            const baseValue = 1 + Math.random() * 4; // Base mood between 1 and 5
             const variation = Math.sin(i * 0.1) * 0.8 + (Math.random() - 0.5) * 1.2;
             const mood = Math.max(1, Math.min(5, Math.round(baseValue + variation)));
 
@@ -827,6 +829,7 @@ const styles = StyleSheet.create({
         flexWrap: "wrap",
         justifyContent: "space-between",
         gap: 12,
+        paddingTop: 15
     },
     tileCard: {
         width: (width - 56) / 2,
