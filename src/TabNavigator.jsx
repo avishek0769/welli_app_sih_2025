@@ -1,16 +1,11 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import Home from './pages/Home';
+import Home from './screens/Home';
 import { View, Text } from 'react-native';
-import Chatbot from './pages/Chatbot';
+import Chatbot from './screens/Chatbot';
+import PeerSupport from './screens/PeerSupport';
 
 // Placeholder components for other tabs
-const PeerSupportScreen = () => (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Peer Support Screen</Text>
-    </View>
-);
-
 const ResourcesScreen = () => (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>Resources Screen</Text>
@@ -81,7 +76,7 @@ export default function TabNavigator() {
             />
             <Tab.Screen
                 name="PeerSupport"
-                component={PeerSupportScreen}
+                component={PeerSupport}
                 options={{
                     tabBarLabel: 'Peer Support',
                     tabBarIcon: ({ color, size }) => (
