@@ -2,14 +2,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Home from './pages/Home';
 import { View, Text } from 'react-native';
+import Chatbot from './pages/Chatbot';
 
 // Placeholder components for other tabs
-const ChatScreen = () => (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Chat Screen</Text>
-    </View>
-);
-
 const PeerSupportScreen = () => (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>Peer Support Screen</Text>
@@ -76,7 +71,7 @@ export default function TabNavigator() {
             />
             <Tab.Screen
                 name="Chat"
-                component={ChatScreen}
+                component={Chatbot}
                 options={{
                     tabBarLabel: 'Chatbot',
                     tabBarIcon: ({ color, size }) => (
