@@ -10,6 +10,7 @@ import {
     Dimensions,
     Animated,
     Modal,
+    Linking,
 } from "react-native";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { LineChart } from 'react-native-gifted-charts';
@@ -300,21 +301,24 @@ const SuggestionsCard = () => {
             title: "5-Minute Breathing Exercise for Anxiety Relief",
             thumbnail: "https://i.ytimg.com/vi/8TTABLdGCKI/hq720.jpg?sqp=-oaymwEnCNAFEJQDSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLD2tma1ukT7GGtJWNSSuBv-Pf5NVw",
             duration: "5:32",
-            category: "Breathing"
+            category: "Breathing",
+            videoUrl: "https://youtu.be/8TTABLdGCKI?si=OQDnfZXzrpwnHEFY"
         },
         {
             id: "2", 
             title: "Mindful Body Scan Meditation for Stress",
             thumbnail: "https://i.ytimg.com/vi/6iDKF-TrAfE/hq720.jpg?sqp=-oaymwEnCNAFEJQDSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLDgxjIdhXxKtHEAgTmU1jN-eKdiNw",
             duration: "7:45",
-            category: "Meditation"
+            category: "Meditation",
+            videoUrl: "https://www.youtube.com/watch?v=inpok4MKVLM"
         },
         {
             id: "3",
             title: "Quick Progressive Muscle Relaxation",
             thumbnail: "https://i.ytimg.com/vi/kdLTOurs2lA/hq720.jpg?sqp=-oaymwEnCNAFEJQDSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLA7_XCfZuuTHK_mm_9T1IM_tmBEZg", 
             duration: "4:28",
-            category: "Relaxation"
+            category: "Relaxation",
+            videoUrl: "https://www.youtube.com/watch?v=kdLTOurs2lA"
         }
     ]);
 
@@ -343,14 +347,20 @@ const SuggestionsCard = () => {
         fetchSuggestions();
     }, []);
 
+    // Function to handle YouTube video opening
+    const handleVideoPress = async (videoUrl) => {
+        try {
+            await Linking.openURL(videoUrl);
+        } catch (error) {
+            console.error('Error opening video:', error);
+        }
+    };
+
     const renderSuggestionItem = ({ item, index }) => (
         <TouchableOpacity 
             style={[styles.suggestionCard, { marginRight: index === suggestions.length - 1 ? 16 : 12 }]}
             activeOpacity={0.8}
-            onPress={() => {
-                // Handle video play/navigation
-                console.log('Play video:', item.title);
-            }}
+            onPress={() => handleVideoPress(item.videoUrl)}
         >
             <View style={styles.thumbnailContainer}>
                 <Image source={{ uri: item.thumbnail }} style={styles.suggestionThumbnail} />
@@ -369,8 +379,8 @@ const SuggestionsCard = () => {
                     {item.title}
                 </Text>
                 <View style={styles.suggestionFooter}>
-                    <Icon name="thumb-up" size={14} color="#6C63FF" />
-                    <Text style={styles.footerText}>Recommended</Text>
+                    <Icon name="open-in-new" size={14} color="#6C63FF" />
+                    <Text style={styles.footerText}>Watch on YouTube</Text>
                 </View>
             </View>
         </TouchableOpacity>
@@ -381,7 +391,6 @@ const SuggestionsCard = () => {
             <View style={styles.loadingContainer}>
                 <View style={styles.loadingCard}>
                     <View style={styles.loadingThumbnail} />
-                    {/* <Text>Vertical: 10</Text> */}
                     <View style={styles.loadingText} />
                     <View style={styles.loadingTextSmall} />
                 </View>
@@ -1588,5 +1597,23 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
         color: '#FFFFFF',
+    },
+
+    // Add these new styles for YouTube integration
+    youtubeBadge: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        borderRadius: 8,
+        padding: 4,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 1,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        elevation: 2,
     },
 });
