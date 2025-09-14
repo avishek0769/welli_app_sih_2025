@@ -4,14 +4,9 @@ import Home from './screens/Home';
 import { View, Text } from 'react-native';
 import Chatbot from './screens/Chatbot';
 import PeerSupport from './screens/PeerSupport';
+import Resources from './screens/Resources';
 
 // Placeholder components for other tabs
-const ResourcesScreen = () => (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Resources Screen</Text>
-    </View>
-);
-
 const BookingScreen = () => (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>Book Counseling Screen</Text>
@@ -96,7 +91,7 @@ export default function TabNavigator() {
             />
             <Tab.Screen
                 name="Resources"
-                component={ResourcesScreen}
+                component={Resources}
                 options={{
                     tabBarLabel: 'Resources',
                     tabBarIcon: ({ color, size }) => (

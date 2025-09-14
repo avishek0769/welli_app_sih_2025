@@ -8,6 +8,10 @@ import TabNavigator from './src/TabNavigator';
 import { NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import ChatScreen from './src/screens/ChatScreen';
+import CalmingSounds from './src/screens/CalmingSounds';
+import BreathingExercise from './src/screens/BreathingExercise';
+import RelevantContent from './src/screens/RelevantContent';
+import BubblePopGame from './src/screens/BubblePopGame';
 
 function App() {
     const Stack = createNativeStackNavigator()
@@ -22,6 +26,10 @@ function App() {
                         <Stack.Navigator initialRouteName="TabNavigator" screenOptions={{ headerShown: false }} >
                             <Stack.Screen name="TabNavigator" component={TabNavigator} />
                             <Stack.Screen name="ChatScreen" component={ChatScreen} />
+                            <Stack.Screen name="CalmingSounds" component={CalmingSounds} />
+                            <Stack.Screen name="BreathingExercise" component={BreathingExercise} />
+                            <Stack.Screen name="RelevantContent" component={RelevantContent} />
+                            <Stack.Screen name="BubblePopGame" component={BubblePopGame} />
                         </Stack.Navigator>
                     </NavigationContainer>
 
