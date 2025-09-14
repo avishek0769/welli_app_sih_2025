@@ -16,7 +16,7 @@ function App() {
         <GestureHandlerRootView>
             <SafeAreaProvider>
                 <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={[]}>
-                    <StatusBar translucent backgroundColor="transparent" style="dark" />
+                    <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
                     <NavigationContainer>
                         <Stack.Navigator initialRouteName="TabNavigator" screenOptions={{ headerShown: false }} >

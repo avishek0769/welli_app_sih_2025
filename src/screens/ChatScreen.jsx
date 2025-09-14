@@ -7,7 +7,10 @@ import {
     FlatList, 
     TextInput,
     KeyboardAvoidingView,
-    Platform 
+    Platform,
+    Modal,
+    ScrollView,
+    Alert
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -42,16 +45,16 @@ const getCartoonAvatar = (seed) => {
 
 // Pre-generate peer data with static avatars
 const peerData = [
-    { name: 'Mindful_Soul_23', avatar: getCartoonAvatar(1) },
-    { name: 'Peaceful_Heart_89', avatar: getCartoonAvatar(2) },
-    { name: 'Strong_Mind_45', avatar: getCartoonAvatar(3) },
-    { name: 'Calm_Spirit_67', avatar: getCartoonAvatar(4) },
-    { name: 'Brave_Journey_12', avatar: getCartoonAvatar(5) },
-    { name: 'Hope_Walker_34', avatar: getCartoonAvatar(6) },
-    { name: 'Gentle_Wind_78', avatar: getCartoonAvatar(7) },
-    { name: 'Rising_Phoenix_56', avatar: getCartoonAvatar(8) },
-    { name: 'Quiet_Strength_91', avatar: getCartoonAvatar(9) },
-    { name: 'Inner_Light_25', avatar: getCartoonAvatar(10) },
+    { name: 'Mindful_Soul_23', avatar: getCartoonAvatar(1), isOnline: true, lastSeen: 'Online' },
+    { name: 'Peaceful_Heart_89', avatar: getCartoonAvatar(2), isOnline: false, lastSeen: '5 mins ago' },
+    { name: 'Strong_Mind_45', avatar: getCartoonAvatar(3), isOnline: true, lastSeen: 'Online' },
+    { name: 'Calm_Spirit_67', avatar: getCartoonAvatar(4), isOnline: false, lastSeen: '1 hour ago' },
+    { name: 'Brave_Journey_12', avatar: getCartoonAvatar(5), isOnline: true, lastSeen: 'Online' },
+    { name: 'Hope_Walker_34', avatar: getCartoonAvatar(6), isOnline: true, lastSeen: 'Online' },
+    { name: 'Gentle_Wind_78', avatar: getCartoonAvatar(7), isOnline: false, lastSeen: '2 hours ago' },
+    { name: 'Rising_Phoenix_56', avatar: getCartoonAvatar(8), isOnline: true, lastSeen: 'Online' },
+    { name: 'Quiet_Strength_91', avatar: getCartoonAvatar(9), isOnline: false, lastSeen: '30 mins ago' },
+    { name: 'Inner_Light_25', avatar: getCartoonAvatar(10), isOnline: true, lastSeen: 'Online' },
 ];
 
 // Memoize MessageBubble outside component
@@ -85,9 +88,139 @@ const MessageBubble = React.memo(({ message, chatType }) => {
     );
 });
 
+// Group Info Modal Component
+const GroupInfoModal = ({ visible, onClose, chat }) => {
+    const navigation = useNavigation();
+
+    const handleLeaveGroup = () => {
+        Alert.alert(
+            'Leave Group',
+            'Are you sure you want to leave this group?',
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+                {
+                    text: 'Leave',
+                    style: 'destructive',
+                    onPress: () => {
+                        onClose();
+                        navigation.goBack();
+                    },
+                },
+            ]
+        );
+    };
+
+    const ParticipantItem = ({ participant }) => (
+        <View style={styles.participantItem}>
+            <View style={styles.participantAvatar}>
+                <SvgUri
+                    uri={participant.avatar}
+                    width={40}
+                    height={40}
+                />
+            </View>
+            <View style={styles.participantInfo}>
+                <Text style={styles.participantName}>{participant.name}</Text>
+                <View style={styles.statusContainer}>
+                    <View style={[
+                        styles.statusDot, 
+                        { backgroundColor: participant.isOnline ? '#4CAF50' : '#9CA3AF' }
+                    ]} />
+                    <Text style={styles.participantStatus}>
+                        {participant.isOnline ? 'Online' : `Last seen ${participant.lastSeen}`}
+                    </Text>
+                </View>
+            </View>
+        </View>
+    );
+
+    if (!chat || chat.type !== 'group') return null;
+
+    return (
+        <Modal
+            visible={visible}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={onClose}
+        >
+            <SafeAreaView style={styles.modalContainer}>
+                {/* Modal Header */}
+                <View style={styles.modalHeader}>
+                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                        <Icon name="close" size={24} color="#6C63FF" />
+                    </TouchableOpacity>
+                    <Text style={styles.modalTitle}>Group Info</Text>
+                    <View style={styles.placeholder} />
+                </View>
+
+                <ScrollView style={styles.modalContent}>
+                    {/* Group Details */}
+                    <View style={styles.groupSection}>
+                        <View style={styles.groupHeader}>
+                            <View style={styles.groupAvatarLarge}>
+                                <Icon name="group" size={40} color="#6C63FF" />
+                            </View>
+                            <View style={styles.groupInfo}>
+                                <Text style={styles.groupName}>{chat.name}</Text>
+                                <Text style={styles.groupId}>Group ID: {chat.id}</Text>
+                                <Text style={styles.participantCount}>
+                                    {chat.participants || peerData.length} participants
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Participants List */}
+                    <View style={styles.participantsSection}>
+                        <Text style={styles.sectionTitle}>
+                            Participants ({peerData.length})
+                        </Text>
+                        
+                        {/* You (current user) */}
+                        <View style={styles.participantItem}>
+                            <View style={styles.participantAvatar}>
+                                <View style={styles.userAvatarPlaceholder}>
+                                    <Text style={styles.userAvatarText}>You</Text>
+                                </View>
+                            </View>
+                            <View style={styles.participantInfo}>
+                                <Text style={styles.participantName}>You</Text>
+                                <View style={styles.statusContainer}>
+                                    <View style={[styles.statusDot, { backgroundColor: '#4CAF50' }]} />
+                                    <Text style={styles.participantStatus}>Online</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Other participants */}
+                        {peerData.map((participant, index) => (
+                            <ParticipantItem key={index} participant={participant} />
+                        ))}
+                    </View>
+
+                    {/* Leave Group Button */}
+                    <View style={styles.actionSection}>
+                        <TouchableOpacity 
+                            style={styles.leaveButton}
+                            onPress={handleLeaveGroup}
+                        >
+                            <Icon name="exit-to-app" size={20} color="#FF4444" />
+                            <Text style={styles.leaveButtonText}>Leave Group</Text>
+                        </TouchableOpacity>
+                    </View>
+                </ScrollView>
+            </SafeAreaView>
+        </Modal>
+    );
+};
+
 const ChatScreen = () => {
     const [inputText, setInputText] = useState('');
     const [messages, setMessages] = useState([]);
+    const [showGroupInfo, setShowGroupInfo] = useState(false);
     const route = useRoute();
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
@@ -157,6 +290,12 @@ const ChatScreen = () => {
         }
     };
 
+    const handleHeaderPress = () => {
+        if (chat.type === 'group') {
+            setShowGroupInfo(true);
+        }
+    };
+
     // Memoize header avatar to prevent re-renders
     const HeaderAvatar = useMemo(() => {
         if (chat.type === 'group') {
@@ -188,7 +327,11 @@ const ChatScreen = () => {
                     <Icon name="arrow-back" size={24} color="#6C63FF" />
                 </TouchableOpacity>
 
-                <View style={styles.chatHeaderInfo}>
+                <TouchableOpacity 
+                    style={styles.chatHeaderInfo}
+                    onPress={handleHeaderPress}
+                    activeOpacity={chat.type === 'group' ? 0.7 : 1}
+                >
                     <View style={styles.chatHeaderAvatar}>
                         {HeaderAvatar}
                     </View>
@@ -196,15 +339,14 @@ const ChatScreen = () => {
                         <Text style={styles.chatHeaderName}>{chat.name || 'Chat'}</Text>
                         <Text style={styles.chatHeaderStatus}>
                             {chat.type === 'group' ?
-                                `${chat.participants || 0} participants` :
+                                `${chat.participants || peerData.length} participants` :
                                 chat.isOnline ? 'Online' : 'Last seen recently'
                             }
                         </Text>
                     </View>
-                </View>
-
-                <TouchableOpacity style={styles.moreButton}>
-                    <Icon name="more-vert" size={24} color="#6C63FF" />
+                    {chat.type === 'group' && (
+                        <Icon name="info" size={20} color="#9CA3AF" style={styles.infoIcon} />
+                    )}
                 </TouchableOpacity>
             </View>
 
@@ -248,6 +390,13 @@ const ChatScreen = () => {
                     </View>
                 </View>
             </KeyboardAvoidingView>
+
+            {/* Group Info Modal */}
+            <GroupInfoModal 
+                visible={showGroupInfo}
+                onClose={() => setShowGroupInfo(false)}
+                chat={chat}
+            />
         </SafeAreaView>
     );
 };
@@ -310,13 +459,8 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         marginTop: 2,
     },
-    moreButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#F0F4FF',
-        alignItems: 'center',
-        justifyContent: 'center',
+    infoIcon: {
+        marginLeft: 8,
     },
     messagesList: {
         flex: 1,
@@ -459,5 +603,167 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+
+    // Modal Styles
+    modalContainer: {
+        flex: 1,
+        backgroundColor: '#F8FAFF',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F4FF',
+    },
+    closeButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#F0F4FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#1F2153',
+    },
+    placeholder: {
+        width: 40,
+    },
+    modalContent: {
+        flex: 1,
+        paddingHorizontal: 16,
+    },
+    groupSection: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 20,
+        marginTop: 16,
+        marginBottom: 16,
+    },
+    groupHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    groupAvatarLarge: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#F0F4FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    groupInfo: {
+        flex: 1,
+    },
+    groupName: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#1F2153',
+        marginBottom: 4,
+    },
+    groupId: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        marginBottom: 2,
+    },
+    participantCount: {
+        fontSize: 14,
+        color: '#6B7280',
+    },
+    participantsSection: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1F2153',
+        marginBottom: 16,
+    },
+    participantItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F8FAFF',
+    },
+    participantAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#F0F4FF',
+        overflow: 'hidden',
+        marginRight: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    userAvatarPlaceholder: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#6C63FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    userAvatarText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    participantInfo: {
+        flex: 1,
+    },
+    participantName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1F2153',
+        marginBottom: 2,
+    },
+    statusContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        marginRight: 6,
+    },
+    participantStatus: {
+        fontSize: 12,
+        color: '#6B7280',
+    },
+    actionSection: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 32,
+    },
+    leaveButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        backgroundColor: '#FFF5F5',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#FED7D7',
+    },
+    leaveButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FF4444',
+        marginLeft: 8,
     },
 });

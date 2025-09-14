@@ -6,6 +6,9 @@ import {
     TouchableOpacity,
     FlatList,
     SafeAreaView,
+    Modal,
+    TextInput,
+    ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { SvgUri } from 'react-native-svg';
@@ -59,9 +62,184 @@ const ChatListItem = ({ chat, onPress }) => {
     );
 };
 
+/* ---------- Join Group Modal Component ---------- */
+const JoinGroupModal = ({ visible, onClose, onJoinGroup }) => {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filteredGroups, setFilteredGroups] = useState([]);
+
+    // Available groups to join
+    const availableGroups = [
+        {
+            id: 'GRP001',
+            name: 'Mindfulness & Meditation',
+            description: 'Daily meditation practices and mindfulness techniques',
+            participants: 24,
+            category: 'Meditation',
+            isPublic: true,
+        },
+        {
+            id: 'GRP002',
+            name: 'Student Mental Health',
+            description: 'Support for students dealing with academic stress',
+            participants: 18,
+            category: 'Academic',
+            isPublic: true,
+        },
+        {
+            id: 'GRP003',
+            name: 'Workplace Wellness',
+            description: 'Managing work-life balance and professional stress',
+            participants: 32,
+            category: 'Professional',
+            isPublic: true,
+        },
+        {
+            id: 'GRP004',
+            name: 'Sleep & Recovery Support',
+            description: 'Tips and support for better sleep and recovery',
+            participants: 15,
+            category: 'Wellness',
+            isPublic: true,
+        },
+        {
+            id: 'GRP005',
+            name: 'Creative Expression Therapy',
+            description: 'Art, music, and creative outlets for mental wellness',
+            participants: 21,
+            category: 'Creative',
+            isPublic: true,
+        },
+        {
+            id: 'GRP006',
+            name: 'Parent Support Network',
+            description: 'Support for parents dealing with stress and challenges',
+            participants: 28,
+            category: 'Family',
+            isPublic: true,
+        },
+        {
+            id: 'GRP007',
+            name: 'Grief & Loss Support',
+            description: 'Compassionate support for those dealing with loss',
+            participants: 12,
+            category: 'Support',
+            isPublic: true,
+        },
+    ];
+
+    React.useEffect(() => {
+        if (searchQuery.trim() === '') {
+            setFilteredGroups(availableGroups);
+        } else {
+            const filtered = availableGroups.filter(group =>
+                group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                group.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                group.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                group.description.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+            setFilteredGroups(filtered);
+        }
+    }, [searchQuery]);
+
+    React.useEffect(() => {
+        if (visible) {
+            setFilteredGroups(availableGroups);
+            setSearchQuery('');
+        }
+    }, [visible]);
+
+    const GroupItem = ({ group }) => (
+        <View style={styles.groupItem}>
+            <View style={styles.groupItemHeader}>
+                <View style={styles.groupIconContainer}>
+                    <Icon name="group" size={20} color="#6C63FF" />
+                </View>
+                <View style={styles.groupItemInfo}>
+                    <Text style={styles.groupItemName}>{group.name}</Text>
+                    <Text style={styles.groupItemId}>ID: {group.id}</Text>
+                    <Text style={styles.groupItemDescription}>{group.description}</Text>
+                    <View style={styles.groupItemMeta}>
+                        <View style={styles.categoryTag}>
+                            <Text style={styles.categoryText}>{group.category}</Text>
+                        </View>
+                        <Text style={styles.participantCount}>
+                            {group.participants} members
+                        </Text>
+                    </View>
+                </View>
+            </View>
+            <TouchableOpacity
+                style={styles.joinButton}
+                onPress={() => onJoinGroup(group)}
+            >
+                <Text style={styles.joinButtonText}>Join</Text>
+            </TouchableOpacity>
+        </View>
+    );
+
+    return (
+        <Modal
+            visible={visible}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={onClose}
+        >
+            <SafeAreaView style={styles.modalContainer}>
+                {/* Modal Header */}
+                <View style={styles.modalHeader}>
+                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                        <Icon name="close" size={24} color="#6C63FF" />
+                    </TouchableOpacity>
+                    <Text style={styles.modalTitle}>Join Support Groups</Text>
+                    <View style={styles.placeholder} />
+                </View>
+
+                {/* Search Bar */}
+                <View style={styles.searchContainer}>
+                    <View style={styles.searchBar}>
+                        <Icon name="search" size={20} color="#9CA3AF" />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search by name, ID, or category..."
+                            placeholderTextColor="#9CA3AF"
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                        />
+                        {searchQuery.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <Icon name="clear" size={20} color="#9CA3AF" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
+
+                {/* Groups List */}
+                <FlatList
+                    data={filteredGroups}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => <GroupItem group={item} />}
+                    style={styles.groupsList}
+                    contentContainerStyle={styles.groupsListContent}
+                    showsVerticalScrollIndicator={false}
+                    ListEmptyComponent={() => (
+                        <View style={styles.emptyState}>
+                            <Icon name="search-off" size={48} color="#9CA3AF" />
+                            <Text style={styles.emptyStateText}>No groups found</Text>
+                            <Text style={styles.emptyStateSubtext}>
+                                Try searching with different keywords
+                            </Text>
+                        </View>
+                    )}
+                />
+            </SafeAreaView>
+        </Modal>
+    );
+};
+
 /* ---------- Main Peer Support Component ---------- */
 const PeerSupport = () => {
     const navigation = useNavigation();
+    const [showJoinModal, setShowJoinModal] = useState(false);
 
     // Generate cartoon SVG avatars for anonymity
     const getCartoonAvatar = (seed) => {
@@ -99,20 +277,6 @@ const PeerSupport = () => {
         ];
         return cartoonAvatars[seed % cartoonAvatars.length];
     };
-
-    // Anonymous names for privacy
-    const anonymousNames = [
-        'Mindful_Soul_23',
-        'Peaceful_Heart_89',
-        'Strong_Mind_45',
-        'Calm_Spirit_67',
-        'Brave_Journey_12',
-        'Hope_Walker_34',
-        'Gentle_Wind_78',
-        'Rising_Phoenix_56',
-        'Quiet_Strength_91',
-        'Inner_Light_25'
-    ];
 
     // Mock chat data with random but static anonymous names and cartoon avatars
     const chats = [
@@ -280,14 +444,53 @@ const PeerSupport = () => {
         });
     };
 
+    const handleJoinGroup = (group) => {
+        // Close modal
+        setShowJoinModal(false);
+
+        // Navigate to the new group chat
+        const newGroupChat = {
+            id: group.id,
+            name: group.name,
+            type: 'group',
+            participants: group.participants + 1, // Add user to count
+            lastMessage: 'Welcome to the group!',
+            lastMessageSender: 'System',
+            lastMessageTime: 'now',
+            unreadCount: 1,
+            isOnline: true,
+        };
+
+        // Mock initial messages for new group
+        const initialMessages = [
+            {
+                id: '1',
+                text: `Welcome to ${group.name}! We're glad to have you here.`,
+                sender: 'peer',
+                senderName: 'Group_Admin',
+                time: 'now',
+                avatar: getCartoonAvatar(1)
+            }
+        ];
+
+        navigation.navigate('ChatScreen', {
+            chat: newGroupChat,
+            messages: initialMessages,
+        });
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <Header />
 
             <View style={styles.chatListHeader}>
                 <Text style={styles.screenTitle}>Messages</Text>
-                <TouchableOpacity style={styles.newChatButton}>
-                    <Icon name="edit" size={20} color="#6C63FF" />
+                <TouchableOpacity
+                    style={styles.joinGroupButton}
+                    onPress={() => setShowJoinModal(true)}
+                >
+                    <Text style={styles.joinGroupButtonText}>Group</Text>
+                    <Icon name="group-add" size={18} color="#6C63FF" />
                 </TouchableOpacity>
             </View>
 
@@ -305,6 +508,13 @@ const PeerSupport = () => {
                 ListFooterComponent={() => (
                     <View style={{ height: 70 }} />
                 )}
+            />
+
+            {/* Join Group Modal */}
+            <JoinGroupModal
+                visible={showJoinModal}
+                onClose={() => setShowJoinModal(false)}
+                onJoinGroup={handleJoinGroup}
             />
         </SafeAreaView>
     );
@@ -332,13 +542,19 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#1F2153',
     },
-    newChatButton: {
-        width: 40,
-        height: 40,
+    joinGroupButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
         borderRadius: 20,
         backgroundColor: '#F0F4FF',
-        alignItems: 'center',
-        justifyContent: 'center',
+        gap: 6,
+    },
+    joinGroupButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6C63FF',
     },
     chatList: {
         flex: 1,
@@ -426,6 +642,156 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+
+    // Modal Styles
+    modalContainer: {
+        flex: 1,
+        backgroundColor: '#F8FAFF',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F4FF',
+    },
+    closeButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#F0F4FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#1F2153',
+    },
+    placeholder: {
+        width: 40,
+    },
+    searchContainer: {
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        backgroundColor: '#FFFFFF',
+    },
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFF',
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderWidth: 1,
+        borderColor: '#E8F0FF',
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 14,
+        color: '#1F2153',
+        marginLeft: 12,
+    },
+    groupsList: {
+        flex: 1,
+    },
+    groupsListContent: {
+        paddingHorizontal: 16,
+    },
+    groupItem: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#F0F4FF',
+    },
+    groupItemHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 12,
+    },
+    groupIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#F0F4FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    groupItemInfo: {
+        flex: 1,
+    },
+    groupItemName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1F2153',
+        marginBottom: 2,
+    },
+    groupItemId: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        marginBottom: 4,
+    },
+    groupItemDescription: {
+        fontSize: 14,
+        color: '#6B7280',
+        lineHeight: 20,
+        marginBottom: 8,
+    },
+    groupItemMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    categoryTag: {
+        backgroundColor: '#E8F0FF',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    categoryText: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#6C63FF',
+    },
+    participantCount: {
+        fontSize: 12,
+        color: '#9CA3AF',
+    },
+    joinButton: {
+        backgroundColor: '#6C63FF',
+        paddingHorizontal: 24,
+        paddingVertical: 8,
+        borderRadius: 20,
+        alignSelf: 'flex-end',
+    },
+    joinButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+    },
+    emptyStateText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#9CA3AF',
+        marginTop: 16,
+    },
+    emptyStateSubtext: {
+        fontSize: 14,
+        color: '#9CA3AF',
+        marginTop: 4,
+        textAlign: 'center',
     },
 });
 
