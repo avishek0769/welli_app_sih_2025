@@ -5,14 +5,9 @@ import { View, Text } from 'react-native';
 import Chatbot from './screens/Chatbot';
 import PeerSupport from './screens/PeerSupport';
 import Resources from './screens/Resources';
+import Counselling from './screens/Counselling';
 
 // Placeholder components for other tabs
-const BookingScreen = () => (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Book Counseling Screen</Text>
-    </View>
-);
-
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
@@ -81,7 +76,7 @@ export default function TabNavigator() {
             />
             <Tab.Screen
                 name="Booking"
-                component={BookingScreen}
+                component={Counselling}
                 options={{
                     tabBarLabel: 'Counseling',
                     tabBarIcon: ({ color, size }) => (
