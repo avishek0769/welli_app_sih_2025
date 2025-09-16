@@ -12,6 +12,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import Header from '../components/Header';
 import PostCard from '../components/PostCard';
 import CreatePost from '../components/CreatePost';
+import CommentsModal from '../components/CommentsModal';
 
 const ForumScreen = () => {
     const [posts, setPosts] = useState([
@@ -24,7 +25,33 @@ const ForumScreen = () => {
             comments: 3,
             likedByUser: false,
             timestamp: '2 hours ago',
-            category: 'Mindfulness'
+            category: 'Mindfulness',
+            commentsData: [
+                {
+                    id: 'c1',
+                    username: 'ZenMaster_99',
+                    content: 'Yes! The 4-7-8 breathing technique really helped me with anxiety.',
+                    timestamp: '1 hour ago',
+                    likes: 5,
+                    likedByUser: true
+                },
+                {
+                    id: 'c2',
+                    username: 'CalmSeeker_34',
+                    content: 'I love the guided sessions. They make it easier to stay focused.',
+                    timestamp: '45 minutes ago',
+                    likes: 3,
+                    likedByUser: false
+                },
+                {
+                    id: 'c3',
+                    username: 'PeacefulMind_77',
+                    content: 'Great progress! Keep it up. Consistency is key with meditation.',
+                    timestamp: '30 minutes ago',
+                    likes: 2,
+                    likedByUser: false
+                }
+            ]
         },
         {
             id: '2',
@@ -35,7 +62,25 @@ const ForumScreen = () => {
             comments: 8,
             likedByUser: true,
             timestamp: '4 hours ago',
-            category: 'Progress'
+            category: 'Progress',
+            commentsData: [
+                {
+                    id: 'c4',
+                    username: 'ProudSupporter_11',
+                    content: 'That\'s amazing! You should be proud of yourself. Every step counts!',
+                    timestamp: '3 hours ago',
+                    likes: 8,
+                    likedByUser: true
+                },
+                {
+                    id: 'c5',
+                    username: 'ProgressTracker_56',
+                    content: 'You\'re inspiring! I\'m working on similar goals.',
+                    timestamp: '2 hours ago',
+                    likes: 4,
+                    likedByUser: false
+                }
+            ]
         },
         {
             id: '3',
@@ -46,7 +91,25 @@ const ForumScreen = () => {
             comments: 12,
             likedByUser: false,
             timestamp: '6 hours ago',
-            category: 'Academic Stress'
+            category: 'Academic Stress',
+            commentsData: [
+                {
+                    id: 'c6',
+                    username: 'StudyBuddy_88',
+                    content: 'Try the Pomodoro technique! 25 minutes study, 5 minute break.',
+                    timestamp: '5 hours ago',
+                    likes: 6,
+                    likedByUser: true
+                },
+                {
+                    id: 'c7',
+                    username: 'SleepExpert_22',
+                    content: 'For sleep: no screens 1 hour before bed, try chamomile tea.',
+                    timestamp: '4 hours ago',
+                    likes: 4,
+                    likedByUser: false
+                }
+            ]
         },
         {
             id: '4',
@@ -57,7 +120,17 @@ const ForumScreen = () => {
             comments: 5,
             likedByUser: true,
             timestamp: '8 hours ago',
-            category: 'Nature Therapy'
+            category: 'Nature Therapy',
+            commentsData: [
+                {
+                    id: 'c8',
+                    username: 'NatureLover_66',
+                    content: 'Beautiful! Nature walks are my favorite form of therapy too.',
+                    timestamp: '7 hours ago',
+                    likes: 3,
+                    likedByUser: false
+                }
+            ]
         },
         {
             id: '5',
@@ -68,11 +141,31 @@ const ForumScreen = () => {
             comments: 15,
             likedByUser: false,
             timestamp: '12 hours ago',
-            category: 'Sleep Issues'
+            category: 'Sleep Issues',
+            commentsData: [
+                {
+                    id: 'c9',
+                    username: 'SleepHelper_33',
+                    content: 'Insight Timer has great sleep meditations. Also try keeping a consistent bedtime.',
+                    timestamp: '11 hours ago',
+                    likes: 7,
+                    likedByUser: true
+                },
+                {
+                    id: 'c10',
+                    username: 'InsomniacSupport_44',
+                    content: 'I feel you. Progressive muscle relaxation helped me a lot.',
+                    timestamp: '10 hours ago',
+                    likes: 5,
+                    likedByUser: false
+                }
+            ]
         }
     ]);
 
     const [showCreatePost, setShowCreatePost] = useState(false);
+    const [selectedPost, setSelectedPost] = useState(null);
+    const [showCommentsModal, setShowCommentsModal] = useState(false);
 
     const handleLike = (postId) => {
         setPosts(prevPosts => 
@@ -89,18 +182,13 @@ const ForumScreen = () => {
     };
 
     const handleComment = (postId) => {
-        // For now, just increment comment count
-        // In a real app, this would open a comment modal
-        setPosts(prevPosts => 
-            prevPosts.map(post => 
-                post.id === postId 
-                    ? { ...post, comments: post.comments + 1 }
-                    : post
-            )
-        );
+        const post = posts.find(p => p.id === postId);
+        setSelectedPost(post);
+        setShowCommentsModal(true);
     };
 
     const handleCreatePost = (newPost) => {
+        console.log('Creating post:', newPost);
         const post = {
             id: Date.now().toString(),
             username: 'You',
@@ -110,11 +198,79 @@ const ForumScreen = () => {
             comments: 0,
             likedByUser: false,
             timestamp: 'Just now',
-            category: newPost.category || 'General'
+            category: newPost.category || 'General',
+            commentsData: []
         };
         
         setPosts(prevPosts => [post, ...prevPosts]);
         setShowCreatePost(false);
+    };
+
+    const handleAddComment = (postId, commentText) => {
+        const newComment = {
+            id: `c${Date.now()}`,
+            username: 'You',
+            content: commentText,
+            timestamp: 'Just now',
+            likes: 0,
+            likedByUser: false
+        };
+
+        setPosts(prevPosts => 
+            prevPosts.map(post => 
+                post.id === postId 
+                    ? { 
+                        ...post, 
+                        comments: post.comments + 1,
+                        commentsData: [newComment, ...(post.commentsData || [])]
+                    }
+                    : post
+            )
+        );
+
+        // Update selected post for modal
+        setSelectedPost(prevPost => ({
+            ...prevPost,
+            comments: prevPost.comments + 1,
+            commentsData: [newComment, ...(prevPost.commentsData || [])]
+        }));
+    };
+
+    const handleLikeComment = (postId, commentId) => {
+        setPosts(prevPosts => 
+            prevPosts.map(post => 
+                post.id === postId 
+                    ? {
+                        ...post,
+                        commentsData: post.commentsData.map(comment =>
+                            comment.id === commentId
+                                ? {
+                                    ...comment,
+                                    likes: comment.likedByUser ? comment.likes - 1 : comment.likes + 1,
+                                    likedByUser: !comment.likedByUser
+                                }
+                                : comment
+                        )
+                    }
+                    : post
+            )
+        );
+
+        // Update selected post for modal
+        if (selectedPost && selectedPost.id === postId) {
+            setSelectedPost(prevPost => ({
+                ...prevPost,
+                commentsData: prevPost.commentsData.map(comment =>
+                    comment.id === commentId
+                        ? {
+                            ...comment,
+                            likes: comment.likedByUser ? comment.likes - 1 : comment.likes + 1,
+                            likedByUser: !comment.likedByUser
+                        }
+                        : comment
+                )
+            }));
+        }
     };
 
     const renderPost = ({ item }) => (
@@ -134,7 +290,10 @@ const ForumScreen = () => {
                 <Text style={styles.screenTitle}>Community Forums</Text>
                 <TouchableOpacity
                     style={styles.createPostButton}
-                    onPress={() => setShowCreatePost(true)}
+                    onPress={() => {
+                        console.log('Button pressed, setting showCreatePost to true');
+                        setShowCreatePost(true);
+                    }}
                 >
                     <Icon name="add" size={18} color="#6C63FF" />
                     <Text style={styles.createPostButtonText}>New Post</Text>
@@ -165,6 +324,18 @@ const ForumScreen = () => {
                     onCancel={() => setShowCreatePost(false)}
                 />
             </Modal>
+
+            {/* Comments Modal */}
+            <CommentsModal
+                visible={showCommentsModal}
+                post={selectedPost}
+                onClose={() => {
+                    setShowCommentsModal(false);
+                    setSelectedPost(null);
+                }}
+                onAddComment={handleAddComment}
+                onLikeComment={handleLikeComment}
+            />
         </SafeAreaView>
     );
 };

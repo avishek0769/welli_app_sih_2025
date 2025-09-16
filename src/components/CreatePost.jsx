@@ -11,8 +11,10 @@ import {
     ScrollView,
     KeyboardAvoidingView,
     Platform,
+    PermissionsAndroid,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 
 const CreatePost = ({ onCreatePost, onCancel }) => {
     const [content, setContent] = useState('');
@@ -33,30 +35,100 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
         'Self Care'
     ];
 
+    // Request camera permission for Android
+    const requestCameraPermission = async () => {
+        if (Platform.OS === 'android') {
+            try {
+                const granted = await PermissionsAndroid.request(
+                    PermissionsAndroid.PERMISSIONS.CAMERA,
+                    {
+                        title: 'Camera Permission',
+                        message: 'This app needs access to your camera to take photos.',
+                        buttonNeutral: 'Ask Me Later',
+                        buttonNegative: 'Cancel',
+                        buttonPositive: 'OK',
+                    },
+                );
+                return granted === PermissionsAndroid.RESULTS.GRANTED;
+            } catch (err) {
+                console.warn(err);
+                return false;
+            }
+        }
+        return true;
+    };
+
     const handleImagePicker = () => {
-        // Mock image selection - in real app, use react-native-image-picker
-        const mockImages = [
-            'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop',
-            'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=300&fit=crop',
-            'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=300&fit=crop',
-            'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop'
-        ];
-        
+        const options = {
+            mediaType: 'photo',
+            includeBase64: false,
+            maxHeight: 2000,
+            maxWidth: 2000,
+            quality: 0.8,
+        };
+
         Alert.alert(
-            'Add Image',
-            'Choose an option',
+            'Select Image',
+            'Choose an option to add an image',
             [
-                { text: 'Cancel', style: 'cancel' },
                 { 
-                    text: 'Mock Image', 
-                    onPress: () => {
-                        const randomImage = mockImages[Math.floor(Math.random() * mockImages.length)];
-                        setSelectedImage(randomImage);
+                    text: 'Cancel', 
+                    style: 'cancel' 
+                },
+                {
+                    text: 'Camera',
+                    onPress: async () => {
+                        const hasPermission = await requestCameraPermission();
+                        if (hasPermission) {
+                            launchCamera(options, handleImageResponse);
+                        } else {
+                            Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
+                        }
                     }
                 },
-                { text: 'Remove Image', onPress: () => setSelectedImage(null) }
+                {
+                    text: 'Gallery',
+                    onPress: () => {
+                        launchImageLibrary(options, handleImageResponse);
+                    }
+                },
+                ...(selectedImage ? [{
+                    text: 'Remove Image',
+                    onPress: () => setSelectedImage(null),
+                    style: 'destructive'
+                }] : [])
             ]
         );
+    };
+
+    const handleImageResponse = (response) => {
+        if (response.didCancel || response.error) {
+            console.log('Image picker cancelled or error:', response.error);
+            return;
+        }
+
+        if (response.assets && response.assets.length > 0) {
+            const asset = response.assets[0];
+            
+            // Check file size (limit to 5MB)
+            if (asset.fileSize > 5 * 1024 * 1024) {
+                Alert.alert(
+                    'File Too Large', 
+                    'Please select an image smaller than 5MB.',
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+
+            setSelectedImage({
+                uri: asset.uri,
+                fileName: asset.fileName || 'image.jpg',
+                type: asset.type || 'image/jpeg',
+                fileSize: asset.fileSize,
+                width: asset.width,
+                height: asset.height,
+            });
+        }
     };
 
     const handlePost = async () => {
@@ -72,8 +144,14 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
             onCreatePost({
                 content: content.trim(),
                 category: selectedCategory,
-                image: selectedImage,
+                image: selectedImage?.uri || null, // Pass the URI for display
+                imageData: selectedImage, // Pass full image data if needed for upload
             });
+            
+            // Reset form
+            setContent('');
+            setSelectedCategory('General');
+            setSelectedImage(null);
             setIsPosting(false);
         }, 1000);
     };
@@ -157,11 +235,11 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
                         </Text>
                     </View>
 
-                    {/* Selected Image */}
+                    {/* Selected Image Preview */}
                     {selectedImage && (
                         <View style={styles.imagePreview}>
                             <Image 
-                                source={{ uri: selectedImage }} 
+                                source={{ uri: selectedImage.uri }} 
                                 style={styles.previewImage}
                                 resizeMode="cover"
                             />
@@ -171,6 +249,16 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
                             >
                                 <Icon name="close" size={20} color="#FFFFFF" />
                             </TouchableOpacity>
+                            
+                            {/* Image Info */}
+                            <View style={styles.imageInfo}>
+                                <Text style={styles.imageInfoText}>
+                                    {selectedImage.fileName} • {(selectedImage.fileSize / (1024 * 1024)).toFixed(1)}MB
+                                </Text>
+                                <Text style={styles.imageInfoText}>
+                                    {selectedImage.width} × {selectedImage.height}
+                                </Text>
+                            </View>
                         </View>
                     )}
 
@@ -201,7 +289,11 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
                             onPress={handleImagePicker}
                             activeOpacity={0.7}
                         >
-                            <Icon name="image" size={20} color="#6C63FF" />
+                            <Icon 
+                                name={selectedImage ? "edit" : "image"} 
+                                size={20} 
+                                color="#6C63FF" 
+                            />
                             <Text style={styles.actionButtonText}>
                                 {selectedImage ? 'Change Image' : 'Add Image'}
                             </Text>
@@ -215,7 +307,8 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
                             • Be respectful and supportive of others{'\n'}
                             • Share constructive thoughts and experiences{'\n'}
                             • Keep content relevant to mental wellness{'\n'}
-                            • No personal information or contact details
+                            • No personal information or contact details{'\n'}
+                            • Images should be appropriate and under 5MB
                         </Text>
                     </View>
                 </ScrollView>
@@ -327,6 +420,9 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         overflow: 'hidden',
         marginBottom: 16,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E8F0FF',
     },
     previewImage: {
         width: '100%',
@@ -335,14 +431,23 @@ const styles = StyleSheet.create({
     },
     removeImageButton: {
         position: 'absolute',
-        top: 8,
-        right: 8,
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        top: 12,
+        right: 12,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    imageInfo: {
+        padding: 12,
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    },
+    imageInfoText: {
+        fontSize: 11,
+        color: '#6B7280',
+        textAlign: 'center',
     },
     categorySection: {
         marginBottom: 16,
