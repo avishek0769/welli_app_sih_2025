@@ -75,10 +75,14 @@ const SignUp = ({ navigation }) => {
         age: '',
         gender: '',
         institution: '',
+        password: '',
+        confirmPassword: '',
     });
     const [isLoading, setIsLoading] = useState(false);
     const [otpTimer, setOtpTimer] = useState(60);
     const [canResend, setCanResend] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Alert State
     const [alertVisible, setAlertVisible] = useState(false);
@@ -124,6 +128,17 @@ const SignUp = ({ navigation }) => {
         const randomNumber = Math.floor(Math.random() * 999) + 1;
         const generatedName = `${randomName}${randomNumber}`;
         setProfileData({ ...profileData, anonymousName: generatedName });
+    };
+
+    // Password validation
+    const validatePassword = (password) => {
+        if (password.length < 8) {
+            return 'Password must be at least 8 characters long';
+        }
+        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+            return 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
+        }
+        return null;
     };
 
     // OTP Timer Effect
@@ -256,7 +271,7 @@ const SignUp = ({ navigation }) => {
     };
 
     const handleProfileSubmit = async () => {
-        if (!profileData.anonymousName || !profileData.age || !profileData.gender) {
+        if (!profileData.anonymousName || !profileData.age || !profileData.gender || !profileData.password || !profileData.confirmPassword) {
             showAlert({
                 title: 'Missing Information',
                 message: 'Please fill in all required fields before proceeding',
@@ -276,6 +291,29 @@ const SignUp = ({ navigation }) => {
             return;
         }
 
+        // Validate password
+        const passwordError = validatePassword(profileData.password);
+        if (passwordError) {
+            showAlert({
+                title: 'Weak Password',
+                message: passwordError,
+                type: 'error',
+                buttonText: 'Fix Password'
+            });
+            return;
+        }
+
+        // Check if passwords match
+        if (profileData.password !== profileData.confirmPassword) {
+            showAlert({
+                title: 'Password Mismatch',
+                message: 'Passwords do not match. Please check and try again.',
+                type: 'error',
+                buttonText: 'Fix Passwords'
+            });
+            return;
+        }
+
         setIsLoading(true);
         try {
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -286,6 +324,9 @@ const SignUp = ({ navigation }) => {
                 isAnonymous: true,
                 createdAt: new Date().toISOString(),
             };
+            
+            // Remove confirmPassword from userData before saving
+            delete userData.confirmPassword;
             
             console.log('Account created:', userData);
             
@@ -382,6 +423,19 @@ const SignUp = ({ navigation }) => {
                     {isLoading ? 'Sending OTP...' : 'Send Verification Code'}
                 </Text>
             </TouchableOpacity>
+
+            {/* Login Button */}
+            <View style={styles.loginPromptContainer}>
+                <Text style={styles.loginPromptText}>Already have an account?</Text>
+                <TouchableOpacity
+                    style={styles.loginLinkButton}
+                    onPress={() => navigation.navigate('Login')}
+                    activeOpacity={0.7}
+                >
+                    <Icon name="login" size={16} color="#6C63FF" />
+                    <Text style={styles.loginLinkText}>Sign In</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 
@@ -513,6 +567,64 @@ const SignUp = ({ navigation }) => {
                 </View>
 
                 <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Password *</Text>
+                    <View style={styles.passwordInputContainer}>
+                        <TextInput
+                            style={styles.passwordInput}
+                            placeholder="Create a secure password"
+                            placeholderTextColor="#9CA3AF"
+                            value={profileData.password}
+                            onChangeText={(text) => setProfileData({...profileData, password: text})}
+                            secureTextEntry={!showPassword}
+                            maxLength={50}
+                        />
+                        <TouchableOpacity
+                            style={styles.eyeButton}
+                            onPress={() => setShowPassword(!showPassword)}
+                            activeOpacity={0.7}
+                        >
+                            <Icon 
+                                name={showPassword ? 'visibility-off' : 'visibility'} 
+                                size={24} 
+                                color="#6B7280" 
+                            />
+                        </TouchableOpacity>
+                    </View>
+                    <Text style={styles.passwordHint}>
+                        At least 8 characters with uppercase, lowercase, and numbers
+                    </Text>
+                </View>
+
+                <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Confirm Password *</Text>
+                    <View style={styles.passwordInputContainer}>
+                        <TextInput
+                            style={styles.passwordInput}
+                            placeholder="Re-enter your password"
+                            placeholderTextColor="#9CA3AF"
+                            value={profileData.confirmPassword}
+                            onChangeText={(text) => setProfileData({...profileData, confirmPassword: text})}
+                            secureTextEntry={!showConfirmPassword}
+                            maxLength={50}
+                        />
+                        <TouchableOpacity
+                            style={styles.eyeButton}
+                            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                            activeOpacity={0.7}
+                        >
+                            <Icon 
+                                name={showConfirmPassword ? 'visibility-off' : 'visibility'} 
+                                size={24} 
+                                color="#6B7280" 
+                            />
+                        </TouchableOpacity>
+                    </View>
+                    {profileData.confirmPassword && profileData.password !== profileData.confirmPassword && (
+                        <Text style={styles.errorText}>Passwords do not match</Text>
+                    )}
+                </View>
+
+                <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Institution (Optional)</Text>
                     <TextInput
                         style={styles.textInput}
@@ -526,9 +638,9 @@ const SignUp = ({ navigation }) => {
             </View>
 
             <TouchableOpacity
-                style={[styles.primaryButton, (!profileData.anonymousName || !profileData.age || !profileData.gender || isLoading) && styles.buttonDisabled]}
+                style={[styles.primaryButton, (!profileData.anonymousName || !profileData.age || !profileData.gender || !profileData.password || !profileData.confirmPassword || isLoading) && styles.buttonDisabled]}
                 onPress={handleProfileSubmit}
-                disabled={!profileData.anonymousName || !profileData.age || !profileData.gender || isLoading}
+                disabled={!profileData.anonymousName || !profileData.age || !profileData.gender || !profileData.password || !profileData.confirmPassword || isLoading}
                 activeOpacity={0.8}
             >
                 <Text style={styles.primaryButtonText}>
@@ -729,6 +841,29 @@ const styles = StyleSheet.create({
         borderLeftWidth: 0,
         color: '#1F2153',
     },
+    loginPromptContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 24,
+        gap: 8,
+    },
+    loginPromptText: {
+        fontSize: 14,
+        color: '#6B7280',
+    },
+    loginLinkButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+    },
+    loginLinkText: {
+        fontSize: 14,
+        color: '#6C63FF',
+        fontWeight: '600',
+    },
     otpContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -807,6 +942,37 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         fontSize: 16,
         color: '#1F2153',
+    },
+    passwordInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 2,
+        borderColor: '#E8F0FF',
+        borderRadius: 12,
+    },
+    passwordInput: {
+        flex: 1,
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        fontSize: 16,
+        color: '#1F2153',
+    },
+    eyeButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+    },
+    passwordHint: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 4,
+        fontStyle: 'italic',
+    },
+    errorText: {
+        fontSize: 12,
+        color: '#EF4444',
+        marginTop: 4,
+        fontWeight: '500',
     },
     genderContainer: {
         flexDirection: 'row',

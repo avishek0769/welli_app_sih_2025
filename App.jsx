@@ -13,6 +13,7 @@ import BreathingExercise from './src/screens/BreathingExercise';
 import RelevantContent from './src/screens/RelevantContent';
 import BubblePopGame from './src/screens/BubblePopGame';
 import SignUp from './src/screens/SignUp';
+import Login from './src/screens/login';
 
 function App() {
     const Stack = createNativeStackNavigator()
@@ -33,6 +34,7 @@ function App() {
                             <Stack.Screen name="BubblePopGame" component={BubblePopGame} />
 
                             <Stack.Screen name="SignUp" component={SignUp} />
+                            <Stack.Screen name="Login" component={Login} />
                         </Stack.Navigator>
                     </NavigationContainer>
 
