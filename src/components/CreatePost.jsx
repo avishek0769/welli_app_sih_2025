@@ -6,21 +6,157 @@ import {
     TouchableOpacity,
     TextInput,
     SafeAreaView,
-    Alert,
     Image,
     ScrollView,
     KeyboardAvoidingView,
     Platform,
     PermissionsAndroid,
+    Modal,
+    Animated,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+
+// Custom Popup Component
+const CustomPopup = ({ visible, title, message, buttons, onClose }) => {
+    const [fadeAnim] = useState(new Animated.Value(0));
+
+    React.useEffect(() => {
+        if (visible) {
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 200,
+                useNativeDriver: true,
+            }).start();
+        } else {
+            Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [visible, fadeAnim]);
+
+    return (
+        <Modal
+            visible={visible}
+            transparent={true}
+            animationType="none"
+            onRequestClose={onClose}
+        >
+            <Animated.View style={[styles.popupOverlay, { opacity: fadeAnim }]}>
+                <Animated.View style={[
+                    styles.popupContainer,
+                    {
+                        transform: [{
+                            scale: fadeAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0.8, 1],
+                            })
+                        }]
+                    }
+                ]}>
+                    <View style={styles.popupHeader}>
+                        <Text style={styles.popupTitle}>{title}</Text>
+                    </View>
+                    
+                    {message && (
+                        <View style={styles.popupBody}>
+                            <Text style={styles.popupMessage}>{message}</Text>
+                        </View>
+                    )}
+                    
+                    <View style={styles.popupButtons}>
+                        {buttons.map((button, index) => (
+                            <TouchableOpacity
+                                key={index}
+                                style={[
+                                    styles.popupButton,
+                                    button.style === 'cancel' && styles.popupButtonCancel,
+                                    button.style === 'destructive' && styles.popupButtonDestructive,
+                                    index === buttons.length - 1 && styles.popupButtonLast
+                                ]}
+                                onPress={() => {
+                                    button.onPress && button.onPress();
+                                    onClose();
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[
+                                    styles.popupButtonText,
+                                    button.style === 'cancel' && styles.popupButtonTextCancel,
+                                    button.style === 'destructive' && styles.popupButtonTextDestructive,
+                                ]}>
+                                    {button.text}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </Animated.View>
+            </Animated.View>
+        </Modal>
+    );
+};
+
+// Custom Toast Component
+const CustomToast = ({ visible, message, type = 'error', onHide }) => {
+    const [slideAnim] = useState(new Animated.Value(-100));
+
+    React.useEffect(() => {
+        if (visible) {
+            Animated.sequence([
+                Animated.timing(slideAnim, {
+                    toValue: 0,
+                    duration: 300,
+                    useNativeDriver: true,
+                }),
+                Animated.delay(2500),
+                Animated.timing(slideAnim, {
+                    toValue: -100,
+                    duration: 300,
+                    useNativeDriver: true,
+                })
+            ]).start(() => {
+                onHide();
+            });
+        }
+    }, [visible, slideAnim, onHide]);
+
+    if (!visible) return null;
+
+    return (
+        <Animated.View style={[
+            styles.toastContainer,
+            type === 'error' && styles.toastError,
+            type === 'success' && styles.toastSuccess,
+            { transform: [{ translateY: slideAnim }] }
+        ]}>
+            <Icon 
+                name={type === 'error' ? 'error' : 'check-circle'} 
+                size={20} 
+                color="#FFFFFF" 
+            />
+            <Text style={styles.toastText}>{message}</Text>
+        </Animated.View>
+    );
+};
 
 const CreatePost = ({ onCreatePost, onCancel }) => {
     const [content, setContent] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('General');
     const [selectedImage, setSelectedImage] = useState(null);
     const [isPosting, setIsPosting] = useState(false);
+    
+    // Popup states
+    const [showImagePicker, setShowImagePicker] = useState(false);
+    const [showPermissionDenied, setShowPermissionDenied] = useState(false);
+    const [showFileTooLarge, setShowFileTooLarge] = useState(false);
+    const [showEmptyContent, setShowEmptyContent] = useState(false);
+    
+    // Toast states
+    const [showToast, setShowToast] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const [toastType, setToastType] = useState('error');
 
     const categories = [
         'General',
@@ -34,6 +170,12 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
         'Social Support',
         'Self Care'
     ];
+
+    const showToastMessage = (message, type = 'error') => {
+        setToastMessage(message);
+        setToastType(type);
+        setShowToast(true);
+    };
 
     // Request camera permission for Android
     const requestCameraPermission = async () => {
@@ -59,46 +201,7 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
     };
 
     const handleImagePicker = () => {
-        const options = {
-            mediaType: 'photo',
-            includeBase64: false,
-            maxHeight: 2000,
-            maxWidth: 2000,
-            quality: 0.8,
-        };
-
-        Alert.alert(
-            'Select Image',
-            'Choose an option to add an image',
-            [
-                { 
-                    text: 'Cancel', 
-                    style: 'cancel' 
-                },
-                {
-                    text: 'Camera',
-                    onPress: async () => {
-                        const hasPermission = await requestCameraPermission();
-                        if (hasPermission) {
-                            launchCamera(options, handleImageResponse);
-                        } else {
-                            Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
-                        }
-                    }
-                },
-                {
-                    text: 'Gallery',
-                    onPress: () => {
-                        launchImageLibrary(options, handleImageResponse);
-                    }
-                },
-                ...(selectedImage ? [{
-                    text: 'Remove Image',
-                    onPress: () => setSelectedImage(null),
-                    style: 'destructive'
-                }] : [])
-            ]
-        );
+        setShowImagePicker(true);
     };
 
     const handleImageResponse = (response) => {
@@ -112,11 +215,7 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
             
             // Check file size (limit to 5MB)
             if (asset.fileSize > 5 * 1024 * 1024) {
-                Alert.alert(
-                    'File Too Large', 
-                    'Please select an image smaller than 5MB.',
-                    [{ text: 'OK' }]
-                );
+                setShowFileTooLarge(true);
                 return;
             }
 
@@ -128,12 +227,46 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
                 width: asset.width,
                 height: asset.height,
             });
+
+            showToastMessage('Image selected successfully!', 'success');
         }
+    };
+
+    const openCamera = async () => {
+        const hasPermission = await requestCameraPermission();
+        if (hasPermission) {
+            const options = {
+                mediaType: 'photo',
+                includeBase64: false,
+                maxHeight: 2000,
+                maxWidth: 2000,
+                quality: 0.8,
+            };
+            launchCamera(options, handleImageResponse);
+        } else {
+            setShowPermissionDenied(true);
+        }
+    };
+
+    const openGallery = () => {
+        const options = {
+            mediaType: 'photo',
+            includeBase64: false,
+            maxHeight: 2000,
+            maxWidth: 2000,
+            quality: 0.8,
+        };
+        launchImageLibrary(options, handleImageResponse);
+    };
+
+    const removeImage = () => {
+        setSelectedImage(null);
+        showToastMessage('Image removed', 'success');
     };
 
     const handlePost = async () => {
         if (!content.trim()) {
-            Alert.alert('Error', 'Please write something to share with the community.');
+            setShowEmptyContent(true);
             return;
         }
 
@@ -144,8 +277,8 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
             onCreatePost({
                 content: content.trim(),
                 category: selectedCategory,
-                image: selectedImage?.uri || null, // Pass the URI for display
-                imageData: selectedImage, // Pass full image data if needed for upload
+                image: selectedImage?.uri || null,
+                imageData: selectedImage,
             });
             
             // Reset form
@@ -153,6 +286,8 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
             setSelectedCategory('General');
             setSelectedImage(null);
             setIsPosting(false);
+            
+            showToastMessage('Post created successfully!', 'success');
         }, 1000);
     };
 
@@ -245,7 +380,7 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
                             />
                             <TouchableOpacity
                                 style={styles.removeImageButton}
-                                onPress={() => setSelectedImage(null)}
+                                onPress={removeImage}
                             >
                                 <Icon name="close" size={20} color="#FFFFFF" />
                             </TouchableOpacity>
@@ -313,6 +448,58 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Custom Popups */}
+            <CustomPopup
+                visible={showImagePicker}
+                title="Select Image"
+                message="Choose an option to add an image"
+                buttons={[
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Camera', onPress: openCamera },
+                    { text: 'Gallery', onPress: openGallery },
+                    ...(selectedImage ? [{ text: 'Remove Image', onPress: removeImage, style: 'destructive' }] : [])
+                ]}
+                onClose={() => setShowImagePicker(false)}
+            />
+
+            <CustomPopup
+                visible={showPermissionDenied}
+                title="Permission Denied"
+                message="Camera permission is required to take photos."
+                buttons={[
+                    { text: 'OK', style: 'cancel' }
+                ]}
+                onClose={() => setShowPermissionDenied(false)}
+            />
+
+            <CustomPopup
+                visible={showFileTooLarge}
+                title="File Too Large"
+                message="Please select an image smaller than 5MB."
+                buttons={[
+                    { text: 'OK', style: 'cancel' }
+                ]}
+                onClose={() => setShowFileTooLarge(false)}
+            />
+
+            <CustomPopup
+                visible={showEmptyContent}
+                title="Empty Post"
+                message="Please write something to share with the community."
+                buttons={[
+                    { text: 'OK', style: 'cancel' }
+                ]}
+                onClose={() => setShowEmptyContent(false)}
+            />
+
+            {/* Custom Toast */}
+            <CustomToast
+                visible={showToast}
+                message={toastMessage}
+                type={toastType}
+                onHide={() => setShowToast(false)}
+            />
         </SafeAreaView>
     );
 };
@@ -522,6 +709,108 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#92400E',
         lineHeight: 18,
+    },
+    
+    // Popup Styles
+    popupOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+    },
+    popupContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        minWidth: 280,
+        maxWidth: '90%',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 10,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    popupHeader: {
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 12,
+    },
+    popupTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#1F2153',
+        textAlign: 'center',
+    },
+    popupBody: {
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+    },
+    popupMessage: {
+        fontSize: 14,
+        color: '#6B7280',
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+    popupButtons: {
+        borderTopWidth: 1,
+        borderTopColor: '#E8F0FF',
+    },
+    popupButton: {
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E8F0FF',
+        alignItems: 'center',
+    },
+    popupButtonLast: {
+        borderBottomWidth: 0,
+    },
+    popupButtonCancel: {
+        backgroundColor: '#F8FAFF',
+    },
+    popupButtonDestructive: {
+        backgroundColor: '#FEF2F2',
+    },
+    popupButtonText: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#6C63FF',
+    },
+    popupButtonTextCancel: {
+        color: '#6B7280',
+    },
+    popupButtonTextDestructive: {
+        color: '#DC2626',
+    },
+    
+    // Toast Styles
+    toastContainer: {
+        position: 'absolute',
+        top: 60,
+        left: 20,
+        right: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 12,
+        gap: 8,
+        zIndex: 1000,
+    },
+    toastError: {
+        backgroundColor: '#DC2626',
+    },
+    toastSuccess: {
+        backgroundColor: '#059669',
+    },
+    toastText: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#FFFFFF',
     },
 });
 
