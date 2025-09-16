@@ -50,12 +50,12 @@ const Resources = () => {
         },
         {
             id: 3,
-            title: 'Relevant to You',
-            description: 'Personalized content based on your preferences',
+            title: 'Recommended for You',
+            description: 'AI-powered suggestions tailored to your mental wellness needs',
             icon: 'person',
             color: '#96CEB4',
             component: 'RelevantContent',
-        },
+        }
     ];
 
     const handleActivityPress = (activity) => {
@@ -83,7 +83,7 @@ const Resources = () => {
     return (
         <SafeAreaView style={styles.container}>
             <Header />
-            
+
             <View style={styles.content}>
                 <View style={styles.headerSection}>
                     <Text style={styles.title}>Stress Relief Resources</Text>
@@ -125,7 +125,7 @@ const Resources = () => {
                 </View>
 
                 {/* Activities List */}
-                <ScrollView 
+                <ScrollView
                     style={styles.activitiesContainer}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.activitiesContent}
@@ -139,7 +139,7 @@ const Resources = () => {
                     <View style={styles.tipSection}>
                         <Text style={styles.tipTitle}>💡 Quick Tip</Text>
                         <Text style={styles.tipText}>
-                            {activeSection === 'games' 
+                            {activeSection === 'games'
                                 ? 'Playing stress-relief games for just 5 minutes can help reset your mind and reduce anxiety levels.'
                                 : 'Regular practice of relaxation techniques can significantly improve your overall mental well-being and stress management.'
                             }

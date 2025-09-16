@@ -55,7 +55,7 @@ export default function TabNavigator() {
                 }}
             />
             <Tab.Screen
-                name="Chat"
+                name="Chatbot"
                 component={Chatbot}
                 options={{
                     tabBarLabel: 'Chatbot',
@@ -75,7 +75,7 @@ export default function TabNavigator() {
                 }}
             />
             <Tab.Screen
-                name="Booking"
+                name="Counseling"
                 component={Counselling}
                 options={{
                     tabBarLabel: 'Counseling',

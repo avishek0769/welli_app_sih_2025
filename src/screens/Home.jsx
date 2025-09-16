@@ -15,6 +15,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { LineChart } from 'react-native-gifted-charts';
 import Header from "../components/Header";
+import { useNavigation } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
@@ -271,25 +272,29 @@ const quickTiles = [
         id: "ai", 
         label: "AI Chat Support", 
         icon: "chat", 
-        description: "Get instant mental health support and guidance from our AI assistant available 24/7"
+        description: "Get instant mental health support and guidance from our AI assistant available 24/7",
+        screen: "Chatbot"
     },
     { 
         id: "book", 
         label: "Book a Counselor", 
         icon: "calendar-today", 
-        description: "Schedule professional counseling sessions with licensed therapists and mental health experts"
+        description: "Schedule professional counseling sessions with licensed therapists and mental health experts",
+        screen: "Counseling"
     },
     { 
         id: "well", 
         label: "Wellness Hub", 
         icon: "spa", 
-        description: "Access curated content including meditation, breathing exercises, and relaxation techniques"
+        description: "Access curated content including meditation, breathing exercises, and relaxation techniques",
+        screen: "Resources"
     },
     { 
         id: "peer", 
         label: "Peer Support", 
         icon: "group", 
-        description: "Connect with others facing similar challenges in a safe, supportive community environment"
+        description: "Connect with others facing similar challenges in a safe, supportive community environment",
+        screen: "PeerSupport"
     },
 ];
 
@@ -701,6 +706,8 @@ const BookingModal = ({ visible, onClose, counselorName }) => {
 const Home = () => {
     const [todayMood, setTodayMood] = useState(null);
     const [bookingStatus, setBookingStatus] = useState("Pending"); // Changed to show accepted status
+    const navigation = useNavigation();
+
     const [acceptedAt] = useState(() => {
         const d = new Date();
         d.setDate(d.getDate() + 2);
@@ -746,7 +753,7 @@ const Home = () => {
                                         label={t.label}
                                         iconName={t.icon}
                                         description={t.description}
-                                        onPress={() => { }}
+                                        onPress={() => navigation.navigate(t.screen)}
                                     />
                                 ))}
                             </View>

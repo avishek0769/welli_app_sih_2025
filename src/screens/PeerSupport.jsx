@@ -15,46 +15,65 @@ import { SvgUri } from 'react-native-svg';
 import Header from '../components/Header';
 import { useNavigation } from '@react-navigation/native';
 
-/* ---------- Chat List Item Component ---------- */
-const ChatListItem = ({ chat, onPress }) => {
+/* ---------- Chat/Forum List Item Component ---------- */
+const ChatListItem = ({ item, onPress }) => {
     return (
         <TouchableOpacity style={styles.chatItem} onPress={onPress} activeOpacity={0.7}>
             <View style={styles.avatarContainer}>
-                {chat.type === 'group' ? (
-                    <View style={styles.groupAvatar}>
-                        <Icon name="group" size={24} color="#6C63FF" />
+                {item.type === 'forum' ? (
+                    <View style={styles.forumAvatar}>
+                        <Icon name="forum" size={24} color="#6C63FF" />
                     </View>
                 ) : (
                     <View style={styles.svgAvatarContainer}>
                         <SvgUri
-                            uri={chat.avatar}
+                            uri={item.avatar}
                             width={50}
                             height={50}
                         />
                     </View>
                 )}
-                {chat.isOnline && <View style={styles.onlineIndicator} />}
+                {item.isOnline && <View style={styles.onlineIndicator} />}
             </View>
 
             <View style={styles.chatContent}>
                 <View style={styles.chatHeader}>
-                    <Text style={styles.chatName} numberOfLines={1}>{chat.name}</Text>
-                    <Text style={styles.chatTime}>{chat.lastMessageTime}</Text>
+                    <Text style={styles.chatName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.chatTime}>
+                        {item.type === 'forum' ? `${item.activeMembers} active` : item.lastMessageTime}
+                    </Text>
                 </View>
 
                 <View style={styles.chatPreview}>
-                    <Text style={styles.lastMessage} numberOfLines={1}>
-                        {chat.type === 'group' && chat.lastMessageSender ?
-                            `${chat.lastMessageSender}: ${chat.lastMessage}` :
-                            chat.lastMessage
-                        }
-                    </Text>
-                    {chat.unreadCount > 0 && (
-                        <View style={styles.unreadBadge}>
-                            <Text style={styles.unreadText}>
-                                {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+                    {item.type === 'forum' ? (
+                        <View style={styles.forumPreview}>
+                            <Text style={styles.forumDescription} numberOfLines={1}>
+                                {item.description}
                             </Text>
+                            <View style={styles.forumStats}>
+                                <View style={styles.forumStat}>
+                                    <Icon name="people" size={12} color="#6B7280" />
+                                    <Text style={styles.forumStatText}>{item.members}</Text>
+                                </View>
+                                <View style={styles.forumStat}>
+                                    <Icon name="article" size={12} color="#6B7280" />
+                                    <Text style={styles.forumStatText}>{item.posts}</Text>
+                                </View>
+                            </View>
                         </View>
+                    ) : (
+                        <>
+                            <Text style={styles.lastMessage} numberOfLines={1}>
+                                {item.lastMessage}
+                            </Text>
+                            {item.unreadCount > 0 && (
+                                <View style={styles.unreadBadge}>
+                                    <Text style={styles.unreadText}>
+                                        {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </>
                     )}
                 </View>
             </View>
@@ -62,66 +81,80 @@ const ChatListItem = ({ chat, onPress }) => {
     );
 };
 
-/* ---------- Join Group Modal Component ---------- */
-const JoinGroupModal = ({ visible, onClose, onJoinGroup }) => {
+/* ---------- Join Forum Modal Component ---------- */
+const JoinForumModal = ({ visible, onClose, onJoinForum }) => {
     const [searchQuery, setSearchQuery] = useState('');
-    const [filteredGroups, setFilteredGroups] = useState([]);
+    const [filteredForums, setFilteredForums] = useState([]);
 
-    // Available groups to join
-    const availableGroups = [
+    // Available forums to join
+    const availableForums = [
         {
-            id: 'GRP001',
+            id: 'FORUM001',
             name: 'Mindfulness & Meditation',
             description: 'Daily meditation practices and mindfulness techniques',
-            participants: 24,
+            members: 245,
+            posts: 1120,
+            activeMembers: 24,
             category: 'Meditation',
             isPublic: true,
         },
         {
-            id: 'GRP002',
+            id: 'FORUM002',
             name: 'Student Mental Health',
             description: 'Support for students dealing with academic stress',
-            participants: 18,
+            members: 186,
+            posts: 890,
+            activeMembers: 18,
             category: 'Academic',
             isPublic: true,
         },
         {
-            id: 'GRP003',
+            id: 'FORUM003',
             name: 'Workplace Wellness',
             description: 'Managing work-life balance and professional stress',
-            participants: 32,
+            members: 320,
+            posts: 1450,
+            activeMembers: 32,
             category: 'Professional',
             isPublic: true,
         },
         {
-            id: 'GRP004',
+            id: 'FORUM004',
             name: 'Sleep & Recovery Support',
             description: 'Tips and support for better sleep and recovery',
-            participants: 15,
+            members: 150,
+            posts: 670,
+            activeMembers: 15,
             category: 'Wellness',
             isPublic: true,
         },
         {
-            id: 'GRP005',
+            id: 'FORUM005',
             name: 'Creative Expression Therapy',
             description: 'Art, music, and creative outlets for mental wellness',
-            participants: 21,
+            members: 210,
+            posts: 980,
+            activeMembers: 21,
             category: 'Creative',
             isPublic: true,
         },
         {
-            id: 'GRP006',
+            id: 'FORUM006',
             name: 'Parent Support Network',
             description: 'Support for parents dealing with stress and challenges',
-            participants: 28,
+            members: 280,
+            posts: 1340,
+            activeMembers: 28,
             category: 'Family',
             isPublic: true,
         },
         {
-            id: 'GRP007',
+            id: 'FORUM007',
             name: 'Grief & Loss Support',
             description: 'Compassionate support for those dealing with loss',
-            participants: 12,
+            members: 120,
+            posts: 560,
+            activeMembers: 12,
             category: 'Support',
             isPublic: true,
         },
@@ -129,48 +162,53 @@ const JoinGroupModal = ({ visible, onClose, onJoinGroup }) => {
 
     React.useEffect(() => {
         if (searchQuery.trim() === '') {
-            setFilteredGroups(availableGroups);
+            setFilteredForums(availableForums);
         } else {
-            const filtered = availableGroups.filter(group =>
-                group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                group.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                group.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                group.description.toLowerCase().includes(searchQuery.toLowerCase())
+            const filtered = availableForums.filter(forum =>
+                forum.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                forum.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                forum.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                forum.description.toLowerCase().includes(searchQuery.toLowerCase())
             );
-            setFilteredGroups(filtered);
+            setFilteredForums(filtered);
         }
     }, [searchQuery]);
 
     React.useEffect(() => {
         if (visible) {
-            setFilteredGroups(availableGroups);
+            setFilteredForums(availableForums);
             setSearchQuery('');
         }
     }, [visible]);
 
-    const GroupItem = ({ group }) => (
-        <View style={styles.groupItem}>
-            <View style={styles.groupItemHeader}>
-                <View style={styles.groupIconContainer}>
-                    <Icon name="group" size={20} color="#6C63FF" />
+    const ForumItem = ({ forum }) => (
+        <View style={styles.forumItem}>
+            <View style={styles.forumItemHeader}>
+                <View style={styles.forumIconContainer}>
+                    <Icon name="forum" size={20} color="#6C63FF" />
                 </View>
-                <View style={styles.groupItemInfo}>
-                    <Text style={styles.groupItemName}>{group.name}</Text>
-                    <Text style={styles.groupItemId}>ID: {group.id}</Text>
-                    <Text style={styles.groupItemDescription}>{group.description}</Text>
-                    <View style={styles.groupItemMeta}>
+                <View style={styles.forumItemInfo}>
+                    <Text style={styles.forumItemName}>{forum.name}</Text>
+                    <Text style={styles.forumItemId}>ID: {forum.id}</Text>
+                    <Text style={styles.forumItemDescription}>{forum.description}</Text>
+                    <View style={styles.forumItemMeta}>
                         <View style={styles.categoryTag}>
-                            <Text style={styles.categoryText}>{group.category}</Text>
+                            <Text style={styles.categoryText}>{forum.category}</Text>
                         </View>
-                        <Text style={styles.participantCount}>
-                            {group.participants} members
-                        </Text>
+                        <View style={styles.forumItemStats}>
+                            <Text style={styles.participantCount}>
+                                {forum.members} members
+                            </Text>
+                            <Text style={styles.participantCount}>
+                                {forum.posts} posts
+                            </Text>
+                        </View>
                     </View>
                 </View>
             </View>
             <TouchableOpacity
                 style={styles.joinButton}
-                onPress={() => onJoinGroup(group)}
+                onPress={() => onJoinForum(forum)}
             >
                 <Text style={styles.joinButtonText}>Join</Text>
             </TouchableOpacity>
@@ -190,7 +228,7 @@ const JoinGroupModal = ({ visible, onClose, onJoinGroup }) => {
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                         <Icon name="close" size={24} color="#6C63FF" />
                     </TouchableOpacity>
-                    <Text style={styles.modalTitle}>Join Support Groups</Text>
+                    <Text style={styles.modalTitle}>Join Forums</Text>
                     <View style={styles.placeholder} />
                 </View>
 
@@ -213,18 +251,18 @@ const JoinGroupModal = ({ visible, onClose, onJoinGroup }) => {
                     </View>
                 </View>
 
-                {/* Groups List */}
+                {/* Forums List */}
                 <FlatList
-                    data={filteredGroups}
+                    data={filteredForums}
                     keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => <GroupItem group={item} />}
-                    style={styles.groupsList}
-                    contentContainerStyle={styles.groupsListContent}
+                    renderItem={({ item }) => <ForumItem forum={item} />}
+                    style={styles.forumsList}
+                    contentContainerStyle={styles.forumsListContent}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={() => (
                         <View style={styles.emptyState}>
                             <Icon name="search-off" size={48} color="#9CA3AF" />
-                            <Text style={styles.emptyStateText}>No groups found</Text>
+                            <Text style={styles.emptyStateText}>No forums found</Text>
                             <Text style={styles.emptyStateSubtext}>
                                 Try searching with different keywords
                             </Text>
@@ -278,19 +316,40 @@ const PeerSupport = () => {
         return cartoonAvatars[seed % cartoonAvatars.length];
     };
 
-    // Mock chat data with random but static anonymous names and cartoon avatars
-    const chats = [
+    // Mixed data with forums and individual chats
+    const chatsAndForums = [
+        // Forums
         {
-            id: '1',
-            name: 'Anxiety Support Group',
-            type: 'group',
-            participants: 15,
-            lastMessage: 'Thanks for sharing your experience',
-            lastMessageSender: 'Mindful_Soul_23',
-            lastMessageTime: '2:30 PM',
-            unreadCount: 3,
-            isOnline: true,
+            id: 'FORUM001',
+            name: 'Anxiety Support Forum',
+            type: 'forum',
+            description: 'A safe space to share experiences and support each other',
+            members: 245,
+            posts: 1120,
+            activeMembers: 24,
+            category: 'Mental Health',
         },
+        {
+            id: 'FORUM002',
+            name: 'Student Wellness Hub',
+            type: 'forum',
+            description: 'Academic stress, study tips, and student life support',
+            members: 186,
+            posts: 890,
+            activeMembers: 18,
+            category: 'Academic',
+        },
+        {
+            id: 'FORUM003',
+            name: 'Mindfulness Corner',
+            type: 'forum',
+            description: 'Meditation practices, breathing exercises, and mindful living',
+            members: 320,
+            posts: 1450,
+            activeMembers: 32,
+            category: 'Meditation',
+        },
+        // Individual Chats
         {
             id: '2',
             name: 'Peaceful_Heart_89',
@@ -302,17 +361,6 @@ const PeerSupport = () => {
             isOnline: true,
         },
         {
-            id: '3',
-            name: 'College Stress Support',
-            type: 'group',
-            participants: 8,
-            lastMessage: 'I can totally relate to that',
-            lastMessageSender: 'Strong_Mind_45',
-            lastMessageTime: '12:20 PM',
-            unreadCount: 0,
-            isOnline: false,
-        },
-        {
             id: '4',
             name: 'Calm_Spirit_67',
             type: 'individual',
@@ -322,17 +370,18 @@ const PeerSupport = () => {
             unreadCount: 0,
             isOnline: false,
         },
+        // More Forums
         {
-            id: '5',
-            name: 'Depression Support Circle',
-            type: 'group',
-            participants: 12,
-            lastMessage: 'Remember, you\'re not alone in this',
-            lastMessageSender: 'Brave_Journey_12',
-            lastMessageTime: '10:15 AM',
-            unreadCount: 5,
-            isOnline: true,
+            id: 'FORUM004',
+            name: 'Sleep & Recovery',
+            type: 'forum',
+            description: 'Better sleep habits and recovery techniques',
+            members: 150,
+            posts: 670,
+            activeMembers: 15,
+            category: 'Wellness',
         },
+        // More Individual Chats
         {
             id: '6',
             name: 'Hope_Walker_34',
@@ -385,30 +434,16 @@ const PeerSupport = () => {
         },
     ];
 
-    // Mock messages with anonymous names and cartoon avatars
+    // Mock messages for individual chats
     const getMockMessages = (chatId) => {
         const messagesByChat = {
-            '1': [
-                { id: '1', text: 'Hi everyone! How is everyone doing today?', sender: 'peer', senderName: 'Mindful_Soul_23', time: '2:20 PM', avatar: getCartoonAvatar(1) },
-                { id: '2', text: 'I\'m doing better than yesterday, thanks for asking!', sender: 'peer', senderName: 'Quiet_Strength_91', time: '2:22 PM', avatar: getCartoonAvatar(9) },
-                { id: '3', text: 'That\'s great to hear! 😊', sender: 'user', senderName: 'You', time: '2:25 PM' },
-                { id: '4', text: 'Thanks for sharing your experience', sender: 'peer', senderName: 'Mindful_Soul_23', time: '2:30 PM', avatar: getCartoonAvatar(1) },
-            ],
             '2': [
                 { id: '1', text: 'Hello! I hope you\'re having a good day.', sender: 'other', senderName: 'Peaceful_Heart_89', time: '1:40 PM', avatar: getCartoonAvatar(2) },
                 { id: '2', text: 'How are you feeling today?', sender: 'other', senderName: 'Peaceful_Heart_89', time: '1:45 PM', avatar: getCartoonAvatar(2) },
             ],
-            '3': [
-                { id: '1', text: 'Welcome to the college stress support group!', sender: 'peer', senderName: 'Strong_Mind_45', time: '12:15 PM', avatar: getCartoonAvatar(3) },
-                { id: '2', text: 'I can totally relate to that', sender: 'peer', senderName: 'Strong_Mind_45', time: '12:20 PM', avatar: getCartoonAvatar(3) },
-            ],
             '4': [
                 { id: '1', text: 'Hey! How\'s your meditation practice going?', sender: 'other', senderName: 'Calm_Spirit_67', time: '11:25 AM', avatar: getCartoonAvatar(4) },
                 { id: '2', text: 'That meditation app really helped!', sender: 'other', senderName: 'Calm_Spirit_67', time: '11:30 AM', avatar: getCartoonAvatar(4) },
-            ],
-            '5': [
-                { id: '1', text: 'Good morning everyone. How are we all feeling today?', sender: 'peer', senderName: 'Brave_Journey_12', time: '10:10 AM', avatar: getCartoonAvatar(5) },
-                { id: '2', text: 'Remember, you\'re not alone in this', sender: 'peer', senderName: 'Brave_Journey_12', time: '10:15 AM', avatar: getCartoonAvatar(5) },
             ],
             '6': [
                 { id: '1', text: 'Hi! Just checking in on you.', sender: 'other', senderName: 'Hope_Walker_34', time: 'Yesterday', avatar: getCartoonAvatar(6) },
@@ -434,48 +469,36 @@ const PeerSupport = () => {
         return messagesByChat[chatId] || [];
     };
 
-    const handleChatPress = (chatId) => {
-        const selectedChat = chats.find(chat => chat.id === chatId);
-        const messages = getMockMessages(chatId);
-
-        navigation.navigate('ChatScreen', {
-            chat: selectedChat,
-            messages: messages,
-        });
+    const handleItemPress = (item) => {
+        if (item.type === 'forum') {
+            // Navigate to Forum Screen for forums
+            navigation.navigate('ForumScreen', {
+                forumId: item.id,
+                forumName: item.name,
+                forumData: item,
+            });
+        } else {
+            // Navigate to Chat Screen for individual chats
+            const messages = getMockMessages(item.id);
+            navigation.navigate('ChatScreen', {
+                chat: item,
+                messages: messages,
+            });
+        }
     };
 
-    const handleJoinGroup = (group) => {
+    const handleJoinForum = (forum) => {
         // Close modal
         setShowJoinModal(false);
 
-        // Navigate to the new group chat
-        const newGroupChat = {
-            id: group.id,
-            name: group.name,
-            type: 'group',
-            participants: group.participants + 1, // Add user to count
-            lastMessage: 'Welcome to the group!',
-            lastMessageSender: 'System',
-            lastMessageTime: 'now',
-            unreadCount: 1,
-            isOnline: true,
-        };
-
-        // Mock initial messages for new group
-        const initialMessages = [
-            {
-                id: '1',
-                text: `Welcome to ${group.name}! We're glad to have you here.`,
-                sender: 'peer',
-                senderName: 'Group_Admin',
-                time: 'now',
-                avatar: getCartoonAvatar(1)
-            }
-        ];
-
-        navigation.navigate('ChatScreen', {
-            chat: newGroupChat,
-            messages: initialMessages,
+        // Navigate to the new forum
+        navigation.navigate('ForumScreen', {
+            forumId: forum.id,
+            forumName: forum.name,
+            forumData: {
+                ...forum,
+                members: forum.members + 1, // Add user to count
+            },
         });
     };
 
@@ -484,23 +507,23 @@ const PeerSupport = () => {
             <Header />
 
             <View style={styles.chatListHeader}>
-                <Text style={styles.screenTitle}>Messages</Text>
+                <Text style={styles.screenTitle}>Community</Text>
                 <TouchableOpacity
-                    style={styles.joinGroupButton}
+                    style={styles.joinForumButton}
                     onPress={() => setShowJoinModal(true)}
                 >
-                    <Text style={styles.joinGroupButtonText}>Group</Text>
-                    <Icon name="group-add" size={18} color="#6C63FF" />
+                    <Text style={styles.joinForumButtonText}>Forum</Text>
+                    <Icon name="add" size={18} color="#6C63FF" />
                 </TouchableOpacity>
             </View>
 
             <FlatList
-                data={chats}
+                data={chatsAndForums}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                     <ChatListItem
-                        chat={item}
-                        onPress={() => handleChatPress(item.id)}
+                        item={item}
+                        onPress={() => handleItemPress(item)}
                     />
                 )}
                 style={styles.chatList}
@@ -510,11 +533,11 @@ const PeerSupport = () => {
                 )}
             />
 
-            {/* Join Group Modal */}
-            <JoinGroupModal
+            {/* Join Forum Modal */}
+            <JoinForumModal
                 visible={showJoinModal}
                 onClose={() => setShowJoinModal(false)}
-                onJoinGroup={handleJoinGroup}
+                onJoinForum={handleJoinForum}
             />
         </SafeAreaView>
     );
@@ -542,7 +565,7 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#1F2153',
     },
-    joinGroupButton: {
+    joinForumButton: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 12,
@@ -551,7 +574,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#F0F4FF',
         gap: 6,
     },
-    joinGroupButtonText: {
+    joinForumButtonText: {
         fontSize: 14,
         fontWeight: '600',
         color: '#6C63FF',
@@ -571,7 +594,7 @@ const styles = StyleSheet.create({
         position: 'relative',
         marginRight: 12,
     },
-    groupAvatar: {
+    forumAvatar: {
         width: 50,
         height: 50,
         borderRadius: 25,
@@ -622,6 +645,28 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+    },
+    forumPreview: {
+        flex: 1,
+    },
+    forumDescription: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginBottom: 6,
+    },
+    forumStats: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    forumStat: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    forumStatText: {
+        fontSize: 12,
+        color: '#6B7280',
+        fontWeight: '500',
     },
     lastMessage: {
         fontSize: 14,
@@ -696,13 +741,13 @@ const styles = StyleSheet.create({
         color: '#1F2153',
         marginLeft: 12,
     },
-    groupsList: {
+    forumsList: {
         flex: 1,
     },
-    groupsListContent: {
+    forumsListContent: {
         paddingHorizontal: 16,
     },
-    groupItem: {
+    forumItem: {
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
         padding: 16,
@@ -710,12 +755,12 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#F0F4FF',
     },
-    groupItemHeader: {
+    forumItemHeader: {
         flexDirection: 'row',
         alignItems: 'flex-start',
         marginBottom: 12,
     },
-    groupIconContainer: {
+    forumIconContainer: {
         width: 40,
         height: 40,
         borderRadius: 20,
@@ -724,27 +769,27 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginRight: 12,
     },
-    groupItemInfo: {
+    forumItemInfo: {
         flex: 1,
     },
-    groupItemName: {
+    forumItemName: {
         fontSize: 16,
         fontWeight: '600',
         color: '#1F2153',
         marginBottom: 2,
     },
-    groupItemId: {
+    forumItemId: {
         fontSize: 12,
         color: '#9CA3AF',
         marginBottom: 4,
     },
-    groupItemDescription: {
+    forumItemDescription: {
         fontSize: 14,
         color: '#6B7280',
         lineHeight: 20,
         marginBottom: 8,
     },
-    groupItemMeta: {
+    forumItemMeta: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -759,6 +804,9 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '500',
         color: '#6C63FF',
+    },
+    forumItemStats: {
+        alignItems: 'flex-end',
     },
     participantCount: {
         fontSize: 12,
