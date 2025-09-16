@@ -12,9 +12,12 @@ import {
     Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import UserProfileModal from './UserProfileModal';
 
 const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment }) => {
     const [commentText, setCommentText] = useState('');
+    const [showUserProfile, setShowUserProfile] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
 
     if (!post) return null;
 
@@ -23,6 +26,13 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment }) 
             onAddComment(post.id, commentText.trim());
             setCommentText('');
         }
+    };
+
+    const handleUserPress = (user) => {
+        // Don't show profile for current user
+        if (user.username === 'You') return;
+        setSelectedUser(user);
+        setShowUserProfile(true);
     };
 
     const formatLikes = (count) => {
@@ -35,7 +45,17 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment }) 
     const CommentItem = ({ comment }) => (
         <View style={styles.commentItem}>
             <View style={styles.commentHeader}>
-                <View style={styles.commentUserInfo}>
+                <TouchableOpacity 
+                    style={styles.commentUserInfo}
+                    onPress={() => handleUserPress({
+                        username: comment.username,
+                        joinDate: 'Joined 2 months ago',
+                        postsCount: Math.floor(Math.random() * 30) + 5,
+                        supportGiven: Math.floor(Math.random() * 150) + 20,
+                        category: 'Support Member',
+                    })}
+                    activeOpacity={comment.username === 'You' ? 1 : 0.7}
+                >
                     <View style={styles.commentAvatar}>
                         <Text style={styles.commentAvatarText}>
                             {comment.username.charAt(0).toUpperCase()}
@@ -45,7 +65,7 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment }) 
                         <Text style={styles.commentUsername}>{comment.username}</Text>
                         <Text style={styles.commentTimestamp}>{comment.timestamp}</Text>
                     </View>
-                </View>
+                </TouchableOpacity>
             </View>
             
             <Text style={styles.commentContent}>{comment.content}</Text>
@@ -104,7 +124,17 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment }) 
                     {/* Original Post Preview */}
                     <View style={styles.postPreview}>
                         <View style={styles.postHeader}>
-                            <View style={styles.userInfo}>
+                            <TouchableOpacity 
+                                style={styles.userInfo}
+                                onPress={() => handleUserPress({
+                                    username: post.username,
+                                    joinDate: 'Joined 3 months ago',
+                                    postsCount: Math.floor(Math.random() * 50) + 10,
+                                    supportGiven: Math.floor(Math.random() * 200) + 50,
+                                    category: post.category,
+                                })}
+                                activeOpacity={post.username === 'You' ? 1 : 0.7}
+                            >
                                 <View style={styles.avatar}>
                                     <Text style={styles.avatarText}>
                                         {post.username.charAt(0).toUpperCase()}
@@ -114,7 +144,7 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment }) 
                                     <Text style={styles.username}>{post.username}</Text>
                                     <Text style={styles.timestamp}>{post.timestamp}</Text>
                                 </View>
-                            </View>
+                            </TouchableOpacity>
                             <View style={styles.categoryTag}>
                                 <Text style={styles.categoryText}>{post.category}</Text>
                             </View>
@@ -186,6 +216,16 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment }) 
                     </View>
                 </KeyboardAvoidingView>
             </SafeAreaView>
+
+            {/* User Profile Modal */}
+            <UserProfileModal
+                visible={showUserProfile}
+                user={selectedUser}
+                onClose={() => {
+                    setShowUserProfile(false);
+                    setSelectedUser(null);
+                }}
+            />
         </Modal>
     );
 };

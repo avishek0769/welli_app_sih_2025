@@ -9,6 +9,7 @@ import {
     Modal,
     TextInput,
     ScrollView,
+    Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { SvgUri } from 'react-native-svg';
@@ -24,6 +25,17 @@ const ChatListItem = ({ item, onPress }) => {
                     <View style={styles.forumAvatar}>
                         <Icon name="forum" size={24} color="#6C63FF" />
                     </View>
+                ) : item.type === 'volunteer' ? (
+                    <View style={styles.volunteerAvatarContainer}>
+                        <Image
+                            source={{ uri: item.avatar }}
+                            style={styles.volunteerAvatar}
+                            defaultSource={require('../assets/default-avatar.jpg')}
+                        />
+                        <View style={styles.volunteerBadge}>
+                            <Icon name="verified" size={12} color="#059669" />
+                        </View>
+                    </View>
                 ) : (
                     <View style={styles.svgAvatarContainer}>
                         <SvgUri
@@ -38,7 +50,14 @@ const ChatListItem = ({ item, onPress }) => {
 
             <View style={styles.chatContent}>
                 <View style={styles.chatHeader}>
-                    <Text style={styles.chatName} numberOfLines={1}>{item.name}</Text>
+                    <View style={styles.nameContainer}>
+                        <Text style={styles.chatName} numberOfLines={1}>{item.name}</Text>
+                        {item.type === 'volunteer' && (
+                            <View style={styles.volunteerTag}>
+                                <Text style={styles.volunteerTagText}>Volunteer</Text>
+                            </View>
+                        )}
+                    </View>
                     <Text style={styles.chatTime}>
                         {item.type === 'forum' ? `${item.activeMembers} active` : item.lastMessageTime}
                     </Text>
@@ -61,6 +80,19 @@ const ChatListItem = ({ item, onPress }) => {
                                 </View>
                             </View>
                         </View>
+                    ) : item.type === 'volunteer' ? (
+                        <>
+                            <Text style={styles.volunteerSpecialty} numberOfLines={1}>
+                                {item.specialty}
+                            </Text>
+                            {item.unreadCount > 0 && (
+                                <View style={styles.unreadBadge}>
+                                    <Text style={styles.unreadText}>
+                                        {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </>
                     ) : (
                         <>
                             <Text style={styles.lastMessage} numberOfLines={1}>
@@ -78,6 +110,169 @@ const ChatListItem = ({ item, onPress }) => {
                 </View>
             </View>
         </TouchableOpacity>
+    );
+};
+
+/* ---------- Volunteers Modal Component ---------- */
+const VolunteersModal = ({ visible, onClose, onStartChat }) => {
+    const volunteers = [
+        {
+            id: 'vol_1',
+            name: 'Dr. Sarah Johnson',
+            specialty: 'Anxiety & Stress Management',
+            experience: '8 years',
+            rating: 4.9,
+            avatar: 'https://images.unsplash.com/photo-1594824575670-8a0e6e8c21b6?w=150&h=150&fit=crop&crop=face',
+            isOnline: true,
+            description: 'Licensed therapist specializing in cognitive behavioral therapy and mindfulness techniques.',
+        },
+        {
+            id: 'vol_2',
+            name: 'Michael Chen',
+            specialty: 'Student Support & Academic Stress',
+            experience: '5 years',
+            rating: 4.8,
+            avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face',
+            isOnline: true,
+            description: 'Educational psychologist with expertise in study habits and academic pressure management.',
+        },
+        {
+            id: 'vol_3',
+            name: 'Dr. Emily Rodriguez',
+            specialty: 'Depression & Mood Disorders',
+            experience: '12 years',
+            rating: 4.9,
+            avatar: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=150&h=150&fit=crop&crop=face',
+            isOnline: false,
+            description: 'Clinical psychologist specializing in depression treatment and emotional wellness.',
+        },
+        {
+            id: 'vol_4',
+            name: 'James Wilson',
+            specialty: 'Workplace Wellness & Burnout',
+            experience: '7 years',
+            rating: 4.7,
+            avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&h=150&fit=crop&crop=face',
+            isOnline: true,
+            description: 'Occupational therapist focused on work-life balance and preventing professional burnout.',
+        },
+        {
+            id: 'vol_5',
+            name: 'Dr. Lisa Thompson',
+            specialty: 'Sleep & Recovery Therapy',
+            experience: '9 years',
+            rating: 4.8,
+            avatar: 'https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?w=150&h=150&fit=crop&crop=face',
+            isOnline: true,
+            description: 'Sleep specialist and wellness coach helping with insomnia and recovery techniques.',
+        },
+    ];
+
+    const VolunteerItem = ({ volunteer }) => (
+        <View style={styles.volunteerItem}>
+            <View style={styles.volunteerHeader}>
+                <View style={styles.volunteerAvatarSection}>
+                    <Image
+                        source={{ uri: volunteer.avatar }}
+                        style={styles.volunteerModalAvatar}
+                        defaultSource={require('../assets/default-avatar.jpg')}
+                    />
+                    {volunteer.isOnline && <View style={styles.volunteerOnlineIndicator} />}
+                </View>
+                
+                <View style={styles.volunteerInfo}>
+                    <View style={styles.volunteerNameRow}>
+                        <Text style={styles.volunteerName}>{volunteer.name}</Text>
+                        <View style={styles.ratingContainer}>
+                            <Icon name="star" size={14} color="#FFC107" />
+                            <Text style={styles.ratingText}>{volunteer.rating}</Text>
+                        </View>
+                    </View>
+                    
+                    <Text style={styles.volunteerSpecialtyModal}>{volunteer.specialty}</Text>
+                    <Text style={styles.volunteerExperience}>{volunteer.experience} experience</Text>
+                    <Text style={styles.volunteerDescription} numberOfLines={2}>
+                        {volunteer.description}
+                    </Text>
+                </View>
+            </View>
+            
+            <View style={styles.volunteerActions}>
+                <View style={styles.statusContainer}>
+                    <View style={[
+                        styles.statusBadge, 
+                        volunteer.isOnline ? styles.statusOnline : styles.statusOffline
+                    ]}>
+                        <Text style={[
+                            styles.statusText,
+                            volunteer.isOnline ? styles.statusTextOnline : styles.statusTextOffline
+                        ]}>
+                            {volunteer.isOnline ? 'Available' : 'Offline'}
+                        </Text>
+                    </View>
+                </View>
+                
+                <TouchableOpacity
+                    style={[
+                        styles.chatVolunteerButton,
+                        !volunteer.isOnline && styles.chatVolunteerButtonDisabled
+                    ]}
+                    onPress={() => onStartChat(volunteer)}
+                    disabled={!volunteer.isOnline}
+                >
+                    <Icon 
+                        name="chat" 
+                        size={16} 
+                        color={volunteer.isOnline ? "#FFFFFF" : "#9CA3AF"} 
+                    />
+                    <Text style={[
+                        styles.chatVolunteerButtonText,
+                        !volunteer.isOnline && styles.chatVolunteerButtonTextDisabled
+                    ]}>
+                        Start Chat
+                    </Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+
+    return (
+        <Modal
+            visible={visible}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={onClose}
+        >
+            <SafeAreaView style={styles.modalContainer}>
+                {/* Modal Header */}
+                <View style={styles.modalHeader}>
+                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                        <Icon name="close" size={24} color="#6C63FF" />
+                    </TouchableOpacity>
+                    <Text style={styles.modalTitle}>Trained Volunteers</Text>
+                    <View style={styles.placeholder} />
+                </View>
+
+                {/* Info Banner */}
+                <View style={styles.infoBanner}>
+                    <Icon name="info" size={20} color="#059669" />
+                    <Text style={styles.infoBannerText}>
+                        Connect with certified mental health volunteers for professional support
+                    </Text>
+                </View>
+
+                {/* Volunteers List */}
+                <FlatList
+                    data={volunteers}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => <VolunteerItem volunteer={item} />}
+                    style={styles.volunteersList}
+                    contentContainerStyle={styles.volunteersListContent}
+                    showsVerticalScrollIndicator={false}
+                    ItemSeparatorComponent={() => <View style={styles.volunteerSeparator} />}
+                />
+            </SafeAreaView>
+        </Modal>
     );
 };
 
@@ -278,6 +473,8 @@ const JoinForumModal = ({ visible, onClose, onJoinForum }) => {
 const PeerSupport = () => {
     const navigation = useNavigation();
     const [showJoinModal, setShowJoinModal] = useState(false);
+    const [showVolunteersModal, setShowVolunteersModal] = useState(false);
+    const [volunteerChats, setVolunteerChats] = useState([]);
 
     // Generate cartoon SVG avatars for anonymity
     const getCartoonAvatar = (seed) => {
@@ -318,6 +515,8 @@ const PeerSupport = () => {
 
     // Mixed data with forums and individual chats
     const chatsAndForums = [
+        // Volunteer chats (at the top)
+        ...volunteerChats,
         // Forums
         {
             id: 'FORUM001',
@@ -445,26 +644,15 @@ const PeerSupport = () => {
                 { id: '1', text: 'Hey! How\'s your meditation practice going?', sender: 'other', senderName: 'Calm_Spirit_67', time: '11:25 AM', avatar: getCartoonAvatar(4) },
                 { id: '2', text: 'That meditation app really helped!', sender: 'other', senderName: 'Calm_Spirit_67', time: '11:30 AM', avatar: getCartoonAvatar(4) },
             ],
-            '6': [
-                { id: '1', text: 'Hi! Just checking in on you.', sender: 'other', senderName: 'Hope_Walker_34', time: 'Yesterday', avatar: getCartoonAvatar(6) },
-                { id: '2', text: 'Hope you\'re doing well today', sender: 'other', senderName: 'Hope_Walker_34', time: 'Yesterday', avatar: getCartoonAvatar(6) },
+            // Add volunteer messages
+            'vol_1': [
+                { id: '1', text: 'Hello! I\'m Dr. Sarah Johnson. I\'m here to help you with any anxiety or stress concerns you might have.', sender: 'other', senderName: 'Dr. Sarah Johnson', time: 'Just now', avatar: 'https://images.unsplash.com/photo-1594824575670-8a0e6e8c21b6?w=150&h=150&fit=crop&crop=face' },
+                { id: '2', text: 'Feel free to share what\'s on your mind. This is a safe space.', sender: 'other', senderName: 'Dr. Sarah Johnson', time: 'Just now', avatar: 'https://images.unsplash.com/photo-1594824575670-8a0e6e8c21b6?w=150&h=150&fit=crop&crop=face' },
             ],
-            '7': [
-                { id: '1', text: 'The breathing exercises you suggested are amazing!', sender: 'other', senderName: 'Gentle_Wind_78', time: 'Yesterday', avatar: getCartoonAvatar(7) },
-                { id: '2', text: 'The breathing exercises helped me a lot', sender: 'other', senderName: 'Gentle_Wind_78', time: 'Yesterday', avatar: getCartoonAvatar(7) },
+            'vol_2': [
+                { id: '1', text: 'Hi there! I\'m Michael Chen, and I specialize in helping students manage academic stress and study pressures.', sender: 'other', senderName: 'Michael Chen', time: 'Just now', avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face' },
             ],
-            '8': [
-                { id: '1', text: 'I really appreciate this community', sender: 'other', senderName: 'Rising_Phoenix_56', time: '2 days ago', avatar: getCartoonAvatar(8) },
-                { id: '2', text: 'Thank you for listening', sender: 'other', senderName: 'Rising_Phoenix_56', time: '2 days ago', avatar: getCartoonAvatar(8) },
-            ],
-            '9': [
-                { id: '1', text: 'I\'ve been practicing the techniques we discussed', sender: 'other', senderName: 'Quiet_Strength_91', time: '2 days ago', avatar: getCartoonAvatar(9) },
-                { id: '2', text: 'Your advice really helped me', sender: 'other', senderName: 'Quiet_Strength_91', time: '2 days ago', avatar: getCartoonAvatar(9) },
-            ],
-            '10': [
-                { id: '1', text: 'Starting my day with gratitude today!', sender: 'other', senderName: 'Inner_Light_25', time: '3 days ago', avatar: getCartoonAvatar(10) },
-                { id: '2', text: 'Good morning! Ready for today?', sender: 'other', senderName: 'Inner_Light_25', time: '3 days ago', avatar: getCartoonAvatar(10) },
-            ],
+            // Add more volunteer message patterns...
         };
         return messagesByChat[chatId] || [];
     };
@@ -478,7 +666,7 @@ const PeerSupport = () => {
                 forumData: item,
             });
         } else {
-            // Navigate to Chat Screen for individual chats
+            // Navigate to Chat Screen for individual chats or volunteers
             const messages = getMockMessages(item.id);
             navigation.navigate('ChatScreen', {
                 chat: item,
@@ -502,19 +690,62 @@ const PeerSupport = () => {
         });
     };
 
+    const handleStartVolunteerChat = (volunteer) => {
+        // Close modal
+        setShowVolunteersModal(false);
+
+        // Create volunteer chat item
+        const volunteerChat = {
+            id: volunteer.id,
+            name: volunteer.name,
+            type: 'volunteer',
+            specialty: volunteer.specialty,
+            avatar: volunteer.avatar,
+            lastMessage: 'Started conversation',
+            lastMessageTime: 'Just now',
+            unreadCount: 0,
+            isOnline: volunteer.isOnline,
+        };
+
+        // Add to volunteer chats if not already present
+        setVolunteerChats(prev => {
+            const exists = prev.find(chat => chat.id === volunteer.id);
+            if (!exists) {
+                return [volunteerChat, ...prev];
+            }
+            return prev;
+        });
+
+        // Navigate to chat
+        const messages = getMockMessages(volunteer.id);
+        navigation.navigate('ChatScreen', {
+            chat: volunteerChat,
+            messages: messages,
+        });
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <Header />
 
             <View style={styles.chatListHeader}>
                 <Text style={styles.screenTitle}>Community</Text>
-                <TouchableOpacity
-                    style={styles.joinForumButton}
-                    onPress={() => setShowJoinModal(true)}
-                >
-                    <Text style={styles.joinForumButtonText}>Forum</Text>
-                    <Icon name="add" size={18} color="#6C63FF" />
-                </TouchableOpacity>
+                <View style={styles.headerButtons}>
+                    <TouchableOpacity
+                        style={styles.volunteersButton}
+                        onPress={() => setShowVolunteersModal(true)}
+                    >
+                        <Icon name="psychology" size={16} color="#059669" />
+                        <Text style={styles.volunteersButtonText}>Volunteers</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.joinForumButton}
+                        onPress={() => setShowJoinModal(true)}
+                    >
+                        <Text style={styles.joinForumButtonText}>Forum</Text>
+                        <Icon name="add" size={18} color="#6C63FF" />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <FlatList
@@ -531,6 +762,13 @@ const PeerSupport = () => {
                 ListFooterComponent={() => (
                     <View style={{ height: 70 }} />
                 )}
+            />
+
+            {/* Volunteers Modal */}
+            <VolunteersModal
+                visible={showVolunteersModal}
+                onClose={() => setShowVolunteersModal(false)}
+                onStartChat={handleStartVolunteerChat}
             />
 
             {/* Join Forum Modal */}
@@ -564,6 +802,26 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: '700',
         color: '#1F2153',
+    },
+    headerButtons: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    volunteersButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#ECFDF5',
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
+        gap: 6,
+    },
+    volunteersButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#059669',
     },
     joinForumButton: {
         flexDirection: 'row',
@@ -602,6 +860,30 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    volunteerAvatarContainer: {
+        position: 'relative',
+        width: 50,
+        height: 50,
+    },
+    volunteerAvatar: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: '#F0F4FF',
+    },
+    volunteerBadge: {
+        position: 'absolute',
+        bottom: -2,
+        right: -2,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: '#ECFDF5',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     svgAvatarContainer: {
         width: 50,
         height: 50,
@@ -631,11 +913,30 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 4,
     },
+    nameContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        gap: 8,
+    },
     chatName: {
         fontSize: 16,
         fontWeight: '600',
         color: '#1F2153',
         flex: 1,
+    },
+    volunteerTag: {
+        backgroundColor: '#ECFDF5',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
+    },
+    volunteerTagText: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#059669',
     },
     chatTime: {
         fontSize: 12,
@@ -668,6 +969,12 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         fontWeight: '500',
     },
+    volunteerSpecialty: {
+        fontSize: 14,
+        color: '#059669',
+        fontWeight: '500',
+        flex: 1,
+    },
     lastMessage: {
         fontSize: 14,
         color: '#6B7280',
@@ -687,6 +994,162 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+
+    // Volunteers Modal Styles
+    volunteersList: {
+        flex: 1,
+    },
+    volunteersListContent: {
+        paddingVertical: 8,
+    },
+    volunteerSeparator: {
+        height: 1,
+        backgroundColor: '#F0F4FF',
+        marginHorizontal: 16,
+    },
+    infoBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ECFDF5',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
+        marginHorizontal: 16,
+        marginVertical: 8,
+        borderRadius: 8,
+        gap: 8,
+    },
+    infoBannerText: {
+        fontSize: 12,
+        color: '#059669',
+        flex: 1,
+        lineHeight: 18,
+    },
+    volunteerItem: {
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+    },
+    volunteerHeader: {
+        flexDirection: 'row',
+        marginBottom: 12,
+    },
+    volunteerAvatarSection: {
+        position: 'relative',
+        marginRight: 12,
+    },
+    volunteerModalAvatar: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#F0F4FF',
+    },
+    volunteerOnlineIndicator: {
+        position: 'absolute',
+        bottom: 2,
+        right: 2,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: '#4CAF50',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    volunteerInfo: {
+        flex: 1,
+    },
+    volunteerNameRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    volunteerName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1F2153',
+        flex: 1,
+    },
+    ratingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
+    },
+    ratingText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    volunteerSpecialtyModal: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#059669',
+        marginBottom: 2,
+    },
+    volunteerExperience: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        marginBottom: 6,
+    },
+    volunteerDescription: {
+        fontSize: 12,
+        color: '#6B7280',
+        lineHeight: 18,
+    },
+    volunteerActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    statusContainer: {
+        flex: 1,
+    },
+    statusBadge: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    statusOnline: {
+        backgroundColor: '#ECFDF5',
+        borderColor: '#A7F3D0',
+    },
+    statusOffline: {
+        backgroundColor: '#F9FAFB',
+        borderColor: '#E5E7EB',
+    },
+    statusText: {
+        fontSize: 11,
+        fontWeight: '500',
+    },
+    statusTextOnline: {
+        color: '#059669',
+    },
+    statusTextOffline: {
+        color: '#6B7280',
+    },
+    chatVolunteerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#6C63FF',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        gap: 6,
+    },
+    chatVolunteerButtonDisabled: {
+        backgroundColor: '#F3F4F6',
+    },
+    chatVolunteerButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    chatVolunteerButtonTextDisabled: {
+        color: '#9CA3AF',
     },
 
     // Modal Styles

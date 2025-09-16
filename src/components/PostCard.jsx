@@ -8,11 +8,13 @@ import {
     Dimensions,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import UserProfileModal from './UserProfileModal';
 
 const { width } = Dimensions.get('window');
 
 const PostCard = ({ post, onLike, onComment }) => {
     const [imageError, setImageError] = useState(false);
+    const [showUserProfile, setShowUserProfile] = useState(false);
 
     const formatLikes = (count) => {
         if (count >= 1000) {
@@ -28,11 +30,21 @@ const PostCard = ({ post, onLike, onComment }) => {
         return count.toString();
     };
 
+    const handleUserPress = () => {
+        // Don't show profile for current user's posts
+        if (post.username === 'You') return;
+        setShowUserProfile(true);
+    };
+
     return (
         <View style={styles.postCard}>
             {/* Post Header */}
             <View style={styles.postHeader}>
-                <View style={styles.userInfo}>
+                <TouchableOpacity 
+                    style={styles.userInfo}
+                    onPress={handleUserPress}
+                    activeOpacity={post.username === 'You' ? 1 : 0.7}
+                >
                     <View style={styles.avatar}>
                         <Text style={styles.avatarText}>
                             {post.username.charAt(0).toUpperCase()}
@@ -42,7 +54,7 @@ const PostCard = ({ post, onLike, onComment }) => {
                         <Text style={styles.username}>{post.username}</Text>
                         <Text style={styles.timestamp}>{post.timestamp}</Text>
                     </View>
-                </View>
+                </TouchableOpacity>
                 <View style={styles.categoryTag}>
                     <Text style={styles.categoryText}>{post.category}</Text>
                 </View>
@@ -111,6 +123,19 @@ const PostCard = ({ post, onLike, onComment }) => {
                     <Icon name="more-horiz" size={18} color="#6B7280" />
                 </TouchableOpacity>
             </View>
+
+            {/* User Profile Modal */}
+            <UserProfileModal
+                visible={showUserProfile}
+                user={{
+                    username: post.username,
+                    joinDate: 'Joined 3 months ago',
+                    postsCount: Math.floor(Math.random() * 50) + 10,
+                    supportGiven: Math.floor(Math.random() * 200) + 50,
+                    category: post.category,
+                }}
+                onClose={() => setShowUserProfile(false)}
+            />
         </View>
     );
 };

@@ -12,7 +12,7 @@ const Header = () => {
                     </View>
                 </View>
                 <View style={styles.appInfo}>
-                    <Text style={styles.appName}>MindCare</Text>
+                    <Text style={styles.appName}>Welli</Text>
                     <Text style={styles.appSubtitle}>Your Mental Wellness Companion</Text>
                 </View>
             </View>
