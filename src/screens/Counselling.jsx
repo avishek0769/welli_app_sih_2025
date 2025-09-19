@@ -11,6 +11,7 @@ import {
     Modal,
     FlatList,
     Image,
+    ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Header from '../components/Header';
@@ -31,6 +32,9 @@ const Counselling = ({ navigation }) => {
     const [showDoctorModal, setShowDoctorModal] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [showValidationModal, setShowValidationModal] = useState(false);
+    const [showDoctorSelection, setShowDoctorSelection] = useState(false);
+    const [isAIRecommended, setIsAIRecommended] = useState(false);
+    const [isAILoading, setIsAILoading] = useState(false);
 
     const problemTypes = [
         { id: 'stress', label: 'Stress', icon: 'psychology' },
@@ -59,7 +63,8 @@ const Counselling = ({ navigation }) => {
             availability: 'Available',
             image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&h=150&fit=crop&crop=face',
             consultationFee: '$75',
-            nextSlot: 'Today 3:00 PM'
+            nextSlot: 'Today 3:00 PM',
+            matchScore: 95
         },
         {
             id: 2,
@@ -70,7 +75,8 @@ const Counselling = ({ navigation }) => {
             availability: 'Available',
             image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face',
             consultationFee: '$85',
-            nextSlot: 'Tomorrow 10:00 AM'
+            nextSlot: 'Tomorrow 10:00 AM',
+            matchScore: 88
         },
         {
             id: 3,
@@ -81,7 +87,8 @@ const Counselling = ({ navigation }) => {
             availability: 'Busy',
             image: 'https://images.unsplash.com/photo-1594824388853-d0d28c0c2e07?w=150&h=150&fit=crop&crop=face',
             consultationFee: '$70',
-            nextSlot: 'Friday 2:00 PM'
+            nextSlot: 'Friday 2:00 PM',
+            matchScore: 92
         },
         {
             id: 4,
@@ -92,7 +99,8 @@ const Counselling = ({ navigation }) => {
             availability: 'Available',
             image: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=150&h=150&fit=crop&crop=face',
             consultationFee: '$80',
-            nextSlot: 'Today 5:00 PM'
+            nextSlot: 'Today 5:00 PM',
+            matchScore: 85
         },
         {
             id: 5,
@@ -103,32 +111,100 @@ const Counselling = ({ navigation }) => {
             availability: 'Available',
             image: 'https://images.unsplash.com/photo-1551601651-2a8555f1a136?w=150&h=150&fit=crop&crop=face',
             consultationFee: '$75',
-            nextSlot: 'Tomorrow 11:00 AM'
+            nextSlot: 'Tomorrow 11:00 AM',
+            matchScore: 90
         }
     ];
 
-    const handleSubmit = (isAIAssign = true) => {
+    // AI Logic to select best doctor based on form data
+    const getAIRecommendedDoctor = () => {
+        let bestDoctor = doctors[0];
+        let highestScore = 0;
+
+        doctors.forEach(doctor => {
+            let score = doctor.matchScore;
+
+            // Boost score based on problem type match
+            if (formData.problemType === 'anxiety' && doctor.specialization.includes('Anxiety')) {
+                score += 15;
+            }
+            if (formData.problemType === 'depression' && doctor.specialization.includes('Depression')) {
+                score += 15;
+            }
+            if (formData.problemType === 'academic' && doctor.specialization.includes('Academic')) {
+                score += 15;
+            }
+            if (formData.problemType === 'sleep' && doctor.specialization.includes('Sleep')) {
+                score += 15;
+            }
+            if (formData.problemType === 'relationship' && doctor.specialization.includes('Relationship')) {
+                score += 15;
+            }
+
+            // Boost score for availability
+            if (doctor.availability === 'Available') {
+                score += 10;
+            }
+
+            // Boost score for urgency match
+            if (formData.urgencyLevel === 'urgent' && doctor.nextSlot.includes('Today')) {
+                score += 20;
+            }
+
+            if (score > highestScore) {
+                highestScore = score;
+                bestDoctor = doctor;
+            }
+        });
+
+        return bestDoctor;
+    };
+
+    const handleAIAssign = async () => {
         // Validate required fields
         if (!formData.problemType || !formData.counsellingMode || !formData.urgencyLevel || !formData.timeSlot) {
             setShowValidationModal(true);
             return;
         }
 
-        if (isAIAssign) {
+        // Show loading state
+        setIsAILoading(true);
+
+        // Simulate AI processing delay
+        setTimeout(() => {
             // AI assigns best doctor automatically
-            const bestDoctor = doctors[0]; // You can implement AI logic here
-            setFormData({ ...formData, selectedDoctor: bestDoctor });
-            setShowSuccessModal(true);
-        } else {
-            // Show doctor selection modal
-            setShowDoctorModal(true);
+            const aiRecommendedDoctor = getAIRecommendedDoctor();
+            setFormData({ ...formData, selectedDoctor: aiRecommendedDoctor });
+            setIsAIRecommended(true);
+            setShowDoctorSelection(true);
+            setIsAILoading(false);
+        }, 2000); // 2 second loading
+    };
+
+    const handleManualSelection = () => {
+        // Validate required fields
+        if (!formData.problemType || !formData.counsellingMode || !formData.urgencyLevel || !formData.timeSlot) {
+            setShowValidationModal(true);
+            return;
         }
+
+        // Show doctor selection modal
+        setShowDoctorModal(true);
     };
 
     const handleDoctorSelection = (doctor) => {
         setFormData({ ...formData, selectedDoctor: doctor });
         setShowDoctorModal(false);
+        setIsAIRecommended(false); // Manual selection, not AI recommended
+        setShowDoctorSelection(true);
+    };
+
+    const handleSubmitBooking = () => {
         setShowSuccessModal(true);
+    };
+
+    const handleChangeDoctor = () => {
+        setShowDoctorModal(true);
     };
 
     const resetForm = () => {
@@ -141,6 +217,9 @@ const Counselling = ({ navigation }) => {
             selectedDoctor: null,
         });
         setShowSuccessModal(false);
+        setShowDoctorSelection(false);
+        setIsAIRecommended(false);
+        setIsAILoading(false);
     };
 
     const handleProblemTypeSelect = (typeId) => {
@@ -165,10 +244,10 @@ const Counselling = ({ navigation }) => {
                         activeOpacity={0.7}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                        <Icon 
-                            name={type.icon} 
-                            size={20} 
-                            color={formData.problemType === type.id ? '#6C63FF' : '#6B7280'} 
+                        <Icon
+                            name={type.icon}
+                            size={20}
+                            color={formData.problemType === type.id ? '#6C63FF' : '#6B7280'}
                         />
                         <Text style={[
                             styles.chipText,
@@ -216,6 +295,133 @@ const Counselling = ({ navigation }) => {
         );
     };
 
+    const renderSelectedDoctor = () => {
+        if (!showDoctorSelection || !formData.selectedDoctor) return null;
+
+        return (
+            <View style={styles.selectedDoctorSection}>
+                <Text style={styles.sectionTitle}>Selected Counsellor</Text>
+
+                <View style={styles.selectedDoctorCard}>
+                    {/* Only show AI recommended badge if it was AI selected */}
+                    {isAIRecommended && (
+                        <View style={styles.aiRecommendationBadge}>
+                            <Icon name="psychology" size={16} color="#10B981" />
+                            <Text style={styles.aiRecommendationText}>AI Recommended</Text>
+                        </View>
+                    )}
+
+                    <View style={styles.selectedDoctorHeader}>
+                        <View style={styles.selectedDoctorImageContainer}>
+                            <Image
+                                source={{ uri: formData.selectedDoctor.image }}
+                                style={styles.selectedDoctorImage}
+                            />
+                            <View style={[
+                                styles.selectedAvailabilityBadge,
+                                { backgroundColor: formData.selectedDoctor.availability === 'Available' ? '#10B981' : '#F59E0B' }
+                            ]}>
+                                <Text style={styles.selectedAvailabilityText}>
+                                    {formData.selectedDoctor.availability}
+                                </Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.selectedDoctorInfo}>
+                            <Text style={styles.selectedDoctorName}>
+                                {formData.selectedDoctor.name}
+                            </Text>
+                            <Text style={styles.selectedDoctorSpecialization}>
+                                {formData.selectedDoctor.specialization}
+                            </Text>
+
+                            <View style={styles.selectedDoctorMeta}>
+                                <View style={styles.selectedMetaItem}>
+                                    <Icon name="work" size={14} color="#6B7280" />
+                                    <Text style={styles.selectedMetaText}>
+                                        {formData.selectedDoctor.experience}
+                                    </Text>
+                                </View>
+                                <View style={styles.selectedMetaItem}>
+                                    <Icon name="star" size={14} color="#FCD34D" />
+                                    <Text style={styles.selectedMetaText}>
+                                        {formData.selectedDoctor.rating}
+                                    </Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        <TouchableOpacity
+                            style={styles.changeDoctorButton}
+                            onPress={handleChangeDoctor}
+                            activeOpacity={0.7}
+                        >
+                            <Icon name="swap-horiz" size={20} color="#6C63FF" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.selectedDoctorFooter}>
+                        <View style={styles.selectedFeeContainer}>
+                            <Text style={styles.selectedFeeLabel}>Consultation Fee:</Text>
+                            <Text style={styles.selectedFeeAmount}>
+                                {formData.selectedDoctor.consultationFee}
+                            </Text>
+                        </View>
+                        <Text style={styles.selectedNextSlot}>
+                            Next Available: {formData.selectedDoctor.nextSlot}
+                        </Text>
+                    </View>
+                </View>
+
+                {/* Keep buttons visible even after selection */}
+                <View style={styles.buttonsContainer}>
+                    <TouchableOpacity
+                        style={styles.primaryButton}
+                        onPress={handleAIAssign}
+                        activeOpacity={0.8}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        disabled={isAILoading}
+                    >
+                        <View style={styles.buttonIconContainer}>
+                            {isAILoading ? (
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                                <Icon name="psychology" size={24} color="#FFFFFF" />
+                            )}
+                        </View>
+                        <View style={styles.buttonTextContainer}>
+                            <Text style={styles.primaryButtonText}>
+                                {isAILoading ? 'Finding Best Match...' : 'AI Assign Counsellor'}
+                            </Text>
+                            <Text style={styles.primaryButtonSubtext}>
+                                {isAILoading ? 'Analyzing your needs' : 'Let AI find the best match'}
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.secondaryButton}
+                        onPress={handleManualSelection}
+                        activeOpacity={0.8}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Icon name="people" size={20} color="#6C63FF" />
+                        <Text style={styles.secondaryButtonText}>Choose Doctor Manually</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.submitButton}
+                        onPress={handleSubmitBooking}
+                        activeOpacity={0.8}
+                    >
+                        <Icon name="check-circle" size={24} color="#FFFFFF" />
+                        <Text style={styles.submitButtonText}>Submit Booking Request</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    };
+
     const renderDoctorCard = ({ item }) => (
         <TouchableOpacity
             style={styles.doctorCard}
@@ -231,11 +437,11 @@ const Counselling = ({ navigation }) => {
                     <Text style={styles.availabilityText}>{item.availability}</Text>
                 </View>
             </View>
-            
+
             <View style={styles.doctorInfo}>
                 <Text style={styles.doctorName}>{item.name}</Text>
                 <Text style={styles.doctorSpecialization}>{item.specialization}</Text>
-                
+
                 <View style={styles.doctorMeta}>
                     <View style={styles.metaItem}>
                         <Icon name="work" size={14} color="#6B7280" />
@@ -246,7 +452,7 @@ const Counselling = ({ navigation }) => {
                         <Text style={styles.metaText}>{item.rating}</Text>
                     </View>
                 </View>
-                
+
                 <View style={styles.doctorFooter}>
                     <View style={styles.feeContainer}>
                         <Text style={styles.feeLabel}>Fee:</Text>
@@ -255,7 +461,7 @@ const Counselling = ({ navigation }) => {
                     <Text style={styles.nextSlot}>{item.nextSlot}</Text>
                 </View>
             </View>
-            
+
             <View style={styles.selectButton}>
                 <Icon name="chevron-right" size={24} color="#6C63FF" />
             </View>
@@ -265,9 +471,9 @@ const Counselling = ({ navigation }) => {
     return (
         <SafeAreaView style={styles.container}>
             <Header title="Book Counselling" showBack={false} />
-            
-            <ScrollView 
-                style={styles.content} 
+
+            <ScrollView
+                style={styles.content}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
@@ -333,18 +539,18 @@ const Counselling = ({ navigation }) => {
                             styles.dropdownText,
                             !formData.timeSlot && styles.dropdownPlaceholder
                         ]}>
-                            {formData.timeSlot 
+                            {formData.timeSlot
                                 ? timeSlots.find(slot => slot.id === formData.timeSlot)?.label
                                 : 'Select preferred time'
                             }
                         </Text>
-                        <Icon 
-                            name={showTimeDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} 
-                            size={24} 
-                            color="#6B7280" 
+                        <Icon
+                            name={showTimeDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                            size={24}
+                            color="#6B7280"
                         />
                     </TouchableOpacity>
-                    
+
                     {showTimeDropdown && (
                         <View style={styles.dropdownMenu}>
                             {timeSlots.map((slot) => (
@@ -393,33 +599,57 @@ const Counselling = ({ navigation }) => {
                     />
                 </View>
 
-                {/* Action Buttons */}
-                <View style={styles.buttonsContainer}>
-                    <TouchableOpacity
-                        style={styles.primaryButton}
-                        onPress={() => handleSubmit(true)}
-                        activeOpacity={0.8}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                        <View style={styles.buttonIconContainer}>
-                            <Icon name="psychology" size={24} color="#FFFFFF" />
+                {/* AI Loading State */}
+                {isAILoading && (
+                    <View style={styles.aiLoadingContainer}>
+                        <View style={styles.aiLoadingCard}>
+                            <ActivityIndicator size="large" color="#6C63FF" />
+                            <Text style={styles.aiLoadingTitle}>Finding Your Perfect Match</Text>
+                            <Text style={styles.aiLoadingDescription}>
+                                Our AI is analyzing your needs and matching you with the best counsellor...
+                            </Text>
+                            <View style={styles.loadingSteps}>
+                                <Text style={styles.loadingStep}>• Analyzing your problem type</Text>
+                                <Text style={styles.loadingStep}>• Checking counsellor availability</Text>
+                                <Text style={styles.loadingStep}>• Matching specializations</Text>
+                                <Text style={styles.loadingStep}>• Optimizing for your schedule</Text>
+                            </View>
                         </View>
-                        <View style={styles.buttonTextContainer}>
-                            <Text style={styles.primaryButtonText}>AI Assign Counsellor</Text>
-                            <Text style={styles.primaryButtonSubtext}>Let AI find the best match</Text>
-                        </View>
-                    </TouchableOpacity>
+                    </View>
+                )}
 
-                    <TouchableOpacity
-                        style={styles.secondaryButton}
-                        onPress={() => handleSubmit(false)}
-                        activeOpacity={0.8}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                        <Icon name="people" size={20} color="#6C63FF" />
-                        <Text style={styles.secondaryButtonText}>Choose Doctor Manually</Text>
-                    </TouchableOpacity>
-                </View>
+                {/* Selected Doctor Section */}
+                {renderSelectedDoctor()}
+
+                {/* Action Buttons - Only show if doctor not selected */}
+                {!showDoctorSelection && !isAILoading && (
+                    <View style={styles.buttonsContainer}>
+                        <TouchableOpacity
+                            style={styles.primaryButton}
+                            onPress={handleAIAssign}
+                            activeOpacity={0.8}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <View style={styles.buttonIconContainer}>
+                                <Icon name="psychology" size={24} color="#FFFFFF" />
+                            </View>
+                            <View style={styles.buttonTextContainer}>
+                                <Text style={styles.primaryButtonText}>AI Assign Counsellor</Text>
+                                <Text style={styles.primaryButtonSubtext}>Let AI find the best match</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.secondaryButton}
+                            onPress={handleManualSelection}
+                            activeOpacity={0.8}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <Icon name="people" size={20} color="#6C63FF" />
+                            <Text style={styles.secondaryButtonText}>Choose Doctor Manually</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
             </ScrollView>
 
             {/* Validation Modal */}
@@ -440,7 +670,7 @@ const Counselling = ({ navigation }) => {
                                 Please fill in all required fields before proceeding.
                             </Text>
                         </View>
-                        
+
                         <TouchableOpacity
                             style={styles.modalButton}
                             onPress={() => setShowValidationModal(false)}
@@ -471,11 +701,11 @@ const Counselling = ({ navigation }) => {
                                 <Icon name="close" size={24} color="#6B7280" />
                             </TouchableOpacity>
                         </View>
-                        
+
                         <Text style={styles.doctorModalSubtitle}>
                             Select a counsellor that matches your needs
                         </Text>
-                        
+
                         <FlatList
                             data={doctors}
                             renderItem={renderDoctorCard}
@@ -502,23 +732,26 @@ const Counselling = ({ navigation }) => {
                             </View>
                             <Text style={styles.modalTitle}>Booking Submitted!</Text>
                             <Text style={styles.modalSubtitle}>
-                                {formData.selectedDoctor 
-                                    ? `Your session with ${formData.selectedDoctor.name} has been requested. You'll receive a confirmation shortly.`
-                                    : `Our AI has analyzed your requirements and assigned the best counsellor. You'll receive a confirmation shortly.`
-                                }
+                                Your session with {formData.selectedDoctor?.name} has been requested.
+                                You'll receive a confirmation shortly with session details.
                             </Text>
                         </View>
-                        
-                        {formData.selectedDoctor && (
-                            <View style={styles.selectedDoctorInfo}>
-                                <Image source={{ uri: formData.selectedDoctor.image }} style={styles.selectedDoctorImage} />
-                                <View style={styles.selectedDoctorDetails}>
-                                    <Text style={styles.selectedDoctorName}>{formData.selectedDoctor.name}</Text>
-                                    <Text style={styles.selectedDoctorSpec}>{formData.selectedDoctor.specialization}</Text>
-                                </View>
+
+                        <View style={styles.finalSelectedDoctorInfo}>
+                            <Image
+                                source={{ uri: formData.selectedDoctor?.image }}
+                                style={styles.finalSelectedDoctorImage}
+                            />
+                            <View style={styles.finalSelectedDoctorDetails}>
+                                <Text style={styles.finalSelectedDoctorName}>
+                                    {formData.selectedDoctor?.name}
+                                </Text>
+                                <Text style={styles.finalSelectedDoctorSpec}>
+                                    {formData.selectedDoctor?.specialization}
+                                </Text>
                             </View>
-                        )}
-                        
+                        </View>
+
                         <TouchableOpacity
                             style={styles.modalButton}
                             onPress={resetForm}
@@ -711,6 +944,204 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         minHeight: 100,
     },
+    aiLoadingContainer: {
+        marginBottom: 32,
+    },
+    aiLoadingCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 24,
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#6C63FF',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 6,
+    },
+    aiLoadingTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#1F2153',
+        marginTop: 16,
+        marginBottom: 8,
+    },
+    aiLoadingDescription: {
+        fontSize: 14,
+        color: '#6B7280',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 20,
+    },
+    loadingSteps: {
+        alignSelf: 'stretch',
+    },
+    loadingStep: {
+        fontSize: 12,
+        color: '#6C63FF',
+        marginBottom: 4,
+        paddingLeft: 8,
+    },
+
+    // Selected Doctor Section Styles
+    selectedDoctorSection: {
+        marginBottom: 32,
+    },
+    selectedDoctorCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 20,
+        borderWidth: 2,
+        borderColor: '#10B981',
+        marginBottom: 20,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 6,
+    },
+    aiRecommendationBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ECFDF5',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        alignSelf: 'flex-start',
+        marginBottom: 16,
+        gap: 6,
+    },
+    aiRecommendationText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#10B981',
+    },
+    selectedDoctorHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    selectedDoctorImageContainer: {
+        position: 'relative',
+        marginRight: 16,
+    },
+    selectedDoctorImage: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+    },
+    selectedAvailabilityBadge: {
+        position: 'absolute',
+        bottom: -4,
+        right: -4,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    selectedAvailabilityText: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    selectedDoctorInfo: {
+        flex: 1,
+    },
+    selectedDoctorName: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1F2153',
+        marginBottom: 4,
+    },
+    selectedDoctorSpecialization: {
+        fontSize: 16,
+        color: '#10B981',
+        fontWeight: '500',
+        marginBottom: 8,
+    },
+    selectedDoctorMeta: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    selectedMetaItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    selectedMetaText: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    changeDoctorButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#F0F4FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 12,
+    },
+    selectedDoctorFooter: {
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#F0F4FF',
+    },
+    selectedFeeContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    selectedFeeLabel: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    selectedFeeAmount: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1F2153',
+    },
+    selectedNextSlot: {
+        fontSize: 14,
+        color: '#10B981',
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+    submitButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#10B981',
+        borderRadius: 16,
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        gap: 8,
+        marginBottom: 20,
+        shadowColor: '#10B981',
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    submitButtonText: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+
     buttonsContainer: {
         gap: 12,
         marginTop: 20,
@@ -769,7 +1200,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#6C63FF',
     },
-    
+
     // Modal Styles
     modalOverlay: {
         flex: 1,
@@ -828,7 +1259,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 24,
     },
-    selectedDoctorInfo: {
+    finalSelectedDoctorInfo: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#F0F4FF',
@@ -837,21 +1268,21 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         gap: 12,
     },
-    selectedDoctorImage: {
+    finalSelectedDoctorImage: {
         width: 48,
         height: 48,
         borderRadius: 24,
     },
-    selectedDoctorDetails: {
+    finalSelectedDoctorDetails: {
         flex: 1,
     },
-    selectedDoctorName: {
+    finalSelectedDoctorName: {
         fontSize: 16,
         fontWeight: '600',
         color: '#1F2153',
         marginBottom: 2,
     },
-    selectedDoctorSpec: {
+    finalSelectedDoctorSpec: {
         fontSize: 14,
         color: '#6B7280',
     },
@@ -867,7 +1298,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#FFFFFF',
     },
-    
+
     // Doctor Modal Styles
     doctorModalContainer: {
         backgroundColor: '#FFFFFF',
