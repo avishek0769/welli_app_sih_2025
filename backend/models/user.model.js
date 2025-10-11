@@ -1,11 +1,26 @@
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import mongoose, { Schema } from "mongoose";
 
-const usersSchema = new Schema({
-    fullname: {
+const userSchema = new Schema({
+    realFullname: {
         type: String,
         required: true
     },
-    email: {
+    annonymousUsername: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    age: {
+        type: Number,
+        required: true
+    },
+    gender: {
+        type: String,
+        enum: ["Male", "Female", "Others", "PNTS"]
+    },
+    phone: {
         type: String,
         required: true,
         unique: true
@@ -17,6 +32,10 @@ const usersSchema = new Schema({
     otp: {
         type: Number,
         default: 0
+    },
+    isVerified: {
+        type: Boolean,
+        default: false
     },
     condition: {
         type: String,
@@ -58,4 +77,35 @@ const usersSchema = new Schema({
     },
 })
 
-export const Users = mongoose.model("Users", usersSchema)
+userSchema.pre("save", async function (next) {
+    if(!this.isModified("password")) next();
+    this.password = await bcrypt.hash(this.password, 10);
+    next()
+})
+
+userSchema.methods.isPasswordCorrect = async function(password) {
+    return await bcrypt.compare(password, this.password)
+}
+
+userSchema.methods.generateAccessToken = function() {
+    return jwt.sign(
+        {
+            _id: this._id,
+            phone: this.phone,
+            annonymousUsername: this.annonymousUsername,
+            realFullname: this.realFullname,
+        },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: "1D" }
+    )
+}
+
+userSchema.methods.generateRefreshToken = function() {
+    return jwt.sign(
+        { _id: this._id },
+        process.env.REFRESH_TOKEN_SECRET,
+        { expiresIn: "7D" }
+    )
+}
+
+export const User = mongoose.model("User", userSchema)
