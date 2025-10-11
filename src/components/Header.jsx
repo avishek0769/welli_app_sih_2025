@@ -1,15 +1,16 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native'
 import Icon from 'react-native-vector-icons/MaterialIcons';
-
 
 const Header = () => {
     return (
         <View style={styles.header}>
             <View style={styles.headerLeft}>
                 <View style={styles.appLogo}>
-                    <View style={styles.logoGradient}>
-                        <Icon name="psychology" size={26} color="#FFFFFF" />
-                    </View>
+                    <Image 
+                        source={require('../assets/welli_logo.png')} 
+                        style={styles.logoImage}
+                        resizeMode="contain"
+                    />
                 </View>
                 <View style={styles.appInfo}>
                     <Text style={styles.appName}>Welli</Text>
@@ -29,14 +30,12 @@ const Header = () => {
 export default Header;
 
 const styles = StyleSheet.create({
-    // Enhanced Header Styles
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 30,
-        paddingBottom: 15,
+        paddingRight: 7,
+        paddingTop: 16,
         backgroundColor: "#FFFFFF",
         shadowColor: "#6C63FF",
         shadowOffset: {
@@ -46,8 +45,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: 12,
         elevation: 8,
-        // borderBottomLeftRadius: 15,
-        // borderBottomRightRadius: 15,
     },
     headerLeft: {
         flexDirection: 'row',
@@ -55,25 +52,12 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     appLogo: {
-        marginRight: 16,
+        marginRight: 0,
     },
-    logoGradient: {
-        width: 48,
-        height: 48,
-        borderRadius: 16,
-        backgroundColor: "#6C63FF",
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: "#6C63FF",
-        shadowOffset: {
-            width: 0,
-            height: 6,
-        },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        elevation: 8,
-        borderWidth: 3,
-        borderColor: "#E8F0FF",
+    logoImage: {
+        width: 95,
+        height: 95,
+        marginLeft: -10,
     },
     appInfo: {
         flex: 1,

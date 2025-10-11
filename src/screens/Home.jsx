@@ -97,6 +97,84 @@ const MoodChart = ({ data }) => {
     );
 };
 
+/* ---------- Welcome Section Component ---------- */
+const WelcomeSection = () => {
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 60000); // Update every minute
+
+        return () => clearInterval(timer);
+    }, []);
+
+    const getGreeting = () => {
+        const hour = currentTime.getHours();
+        if (hour < 12) return "Good Morning";
+        if (hour < 17) return "Good Afternoon";
+        return "Good Evening";
+    };
+
+    const getWellnessQuote = () => {
+        const quotes = [
+            "Your mental health is a priority. Your happiness is essential.",
+            "Taking care of yourself is not selfish, it's necessary.",
+            "You are stronger than you think and braver than you feel.",
+            "Every step forward is progress, no matter how small.",
+            "Your mental wellness journey starts with a single step."
+        ];
+        const today = new Date().getDate();
+        return quotes[today % quotes.length];
+    };
+
+    return (
+        <View style={styles.welcomeContainer}>
+            <View style={styles.welcomeCard}>
+                <View style={styles.cardIconRow}>
+                    <Icon name="psychology" size={20} color="#6C63FF" />
+                    <Icon name="spa" size={20} color="#10B981" />
+                    <Icon name="group" size={20} color="#F59E0B" />
+                    <Icon name="chat" size={20} color="#EF4444" />
+                </View>
+
+                <Text style={styles.welcomeTitle}>Welcome to Welli</Text>
+                <Text style={styles.welcomeSubtitle}>
+                    Your comprehensive mental wellness companion designed to support your emotional well-being every step of the way.
+                </Text>
+
+                <View style={styles.featuresRow}>
+                    <View style={styles.featureItem}>
+                        <View style={styles.featureIconSmall}>
+                            <Icon name="psychology" size={28} color="#6C63FF" />
+                        </View>
+                        <Text style={styles.featureText}>AI Support</Text>
+                    </View>
+                    <View style={styles.featureItem}>
+                        <View style={styles.featureIconSmall}>
+                            <Icon name="emergency" size={28} color="#10B981" />
+                        </View>
+                        <Text style={styles.featureText}>Expert Counselors</Text>
+                    </View>
+                    <View style={styles.featureItem}>
+                        <View style={styles.featureIconSmall}>
+                            <Icon name="group" size={28} color="#F59E0B" />
+                        </View>
+                        <Text style={styles.featureText}>Peer Community</Text>
+                    </View>
+                </View>
+
+                <View style={styles.quoteContainer}>
+                    <View style={styles.quoteIcon}>
+                        <Icon name="format-quote" size={16} color="#6C63FF" />
+                    </View>
+                    <Text style={styles.quoteText}>{getWellnessQuote()}</Text>
+                </View>
+            </View>
+        </View>
+    );
+};
+
 /* ---------- MoodTracker Component ---------- */
 const MoodTracker = ({ value, onSelect, trendData }) => {
     const [isSubmitted, setIsSubmitted] = useState(false);
@@ -268,31 +346,31 @@ const QuickAccessTile = ({ label, onPress, iconName, description }) => {
 
 // Update the quickTiles data to remove colors
 const quickTiles = [
-    { 
-        id: "ai", 
-        label: "AI Chat Support", 
-        icon: "chat", 
+    {
+        id: "ai",
+        label: "AI Chat Support",
+        icon: "chat",
         description: "Get instant mental health support and guidance from our AI assistant available 24/7",
         screen: "Chatbot"
     },
-    { 
-        id: "book", 
-        label: "Book a Counselor", 
-        icon: "calendar-today", 
+    {
+        id: "book",
+        label: "Book a Counselor",
+        icon: "calendar-today",
         description: "Schedule professional counseling sessions with licensed therapists and mental health experts",
         screen: "Counseling"
     },
-    { 
-        id: "well", 
-        label: "Wellness Hub", 
-        icon: "spa", 
+    {
+        id: "well",
+        label: "Wellness Hub",
+        icon: "spa",
         description: "Access curated content including meditation, breathing exercises, and relaxation techniques",
         screen: "Resources"
     },
-    { 
-        id: "peer", 
-        label: "Peer Support", 
-        icon: "group", 
+    {
+        id: "peer",
+        label: "Peer Support",
+        icon: "group",
         description: "Connect with others facing similar challenges in a safe, supportive community environment",
         screen: "PeerSupport"
     },
@@ -310,7 +388,7 @@ const SuggestionsCard = () => {
             videoUrl: "https://youtu.be/8TTABLdGCKI?si=OQDnfZXzrpwnHEFY"
         },
         {
-            id: "2", 
+            id: "2",
             title: "Mindful Body Scan Meditation for Stress",
             thumbnail: "https://i.ytimg.com/vi/6iDKF-TrAfE/hq720.jpg?sqp=-oaymwEnCNAFEJQDSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLDgxjIdhXxKtHEAgTmU1jN-eKdiNw",
             duration: "7:45",
@@ -320,7 +398,7 @@ const SuggestionsCard = () => {
         {
             id: "3",
             title: "Quick Progressive Muscle Relaxation",
-            thumbnail: "https://i.ytimg.com/vi/kdLTOurs2lA/hq720.jpg?sqp=-oaymwEnCNAFEJQDSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLA7_XCfZuuTHK_mm_9T1IM_tmBEZg", 
+            thumbnail: "https://i.ytimg.com/vi/kdLTOurs2lA/hq720.jpg?sqp=-oaymwEnCNAFEJQDSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLA7_XCfZuuTHK_mm_9T1IM_tmBEZg",
             duration: "4:28",
             category: "Relaxation",
             videoUrl: "https://www.youtube.com/watch?v=kdLTOurs2lA"
@@ -337,7 +415,7 @@ const SuggestionsCard = () => {
             // const response = await fetch('your-api-endpoint');
             // const data = await response.json();
             // setSuggestions(data);
-            
+
             // Simulated delay
             setTimeout(() => {
                 setLoading(false);
@@ -362,7 +440,7 @@ const SuggestionsCard = () => {
     };
 
     const renderSuggestionItem = ({ item, index }) => (
-        <TouchableOpacity 
+        <TouchableOpacity
             style={[styles.suggestionCard, { marginRight: index === suggestions.length - 1 ? 16 : 12 }]}
             activeOpacity={0.8}
             onPress={() => handleVideoPress(item.videoUrl)}
@@ -430,7 +508,7 @@ const SuggestionsCard = () => {
 /* ---------- BookingStatusCard Component - Enhanced ---------- */
 const BookingStatusCard = ({ status, acceptedAt }) => {
     const [showBookingModal, setShowBookingModal] = useState(false);
-    
+
     // Mock data - replace with actual data from your API
     const bookingData = {
         requestDate: "Dec 14, 2024",
@@ -578,8 +656,8 @@ const BookingStatusCard = ({ status, acceptedAt }) => {
                 )}
 
                 {status === "Completed" && (
-                    <TouchableOpacity 
-                        style={styles.primaryButton} 
+                    <TouchableOpacity
+                        style={styles.primaryButton}
                         activeOpacity={0.8}
                         onPress={() => setShowBookingModal(true)}
                     >
@@ -590,7 +668,7 @@ const BookingStatusCard = ({ status, acceptedAt }) => {
             </View>
 
             {/* Booking Modal */}
-            <BookingModal 
+            <BookingModal
                 visible={showBookingModal}
                 onClose={() => setShowBookingModal(false)}
                 counselorName={bookingData.counselorName}
@@ -679,13 +757,13 @@ const BookingModal = ({ visible, onClose, counselorName }) => {
                     </View>
 
                     <View style={styles.modalActions}>
-                        <TouchableOpacity 
-                            style={styles.cancelButton} 
+                        <TouchableOpacity
+                            style={styles.cancelButton}
                             onPress={onClose}
                         >
                             <Text style={styles.cancelButtonText}>Cancel</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={[
                                 styles.confirmButton,
                                 (!selectedDay || !selectedTime) && styles.confirmButtonDisabled
@@ -704,8 +782,7 @@ const BookingModal = ({ visible, onClose, counselorName }) => {
 
 /* ---------- Updated HomeScreen with View All Button ---------- */
 const Home = () => {
-    const [todayMood, setTodayMood] = useState(null);
-    const [bookingStatus, setBookingStatus] = useState("Pending"); // Changed to show accepted status
+    const [bookingStatus, setBookingStatus] = useState("Pending");
     const navigation = useNavigation();
 
     const [acceptedAt] = useState(() => {
@@ -713,26 +790,6 @@ const Home = () => {
         d.setDate(d.getDate() + 2);
         return d.toLocaleString();
     });
-
-    // Generate last 30 days mood trend data
-    const trendData = useMemo(() => {
-        const data = [];
-        const today = new Date();
-
-        for (let i = 29; i >= 0; i--) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i);
-
-            const label = `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
-            const baseValue = 1 + Math.random() * 4; // Base mood between 1 and 5
-            const variation = Math.sin(i * 0.1) * 0.8 + (Math.random() - 0.5) * 1.2;
-            const mood = Math.max(1, Math.min(5, Math.round(baseValue + variation)));
-
-            data.push({ x: label, y: mood });
-        }
-
-        return data;
-    }, []);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -742,7 +799,7 @@ const Home = () => {
                 data={[]}
                 ListHeaderComponent={
                     <>
-                        <MoodTracker value={todayMood} onSelect={setTodayMood} trendData={trendData} />
+                        <WelcomeSection />
 
                         <View style={[styles.section, { marginTop: 12 }]}>
                             <Text style={styles.sectionHeading}>Quick Access</Text>
@@ -786,7 +843,243 @@ const Home = () => {
 export default Home;
 
 // Add these new styles to your existing StyleSheet
-const styles = StyleSheet.create({
+const additionalStyles = {
+    // Welcome Section Styles
+    welcomeContainer: {
+        marginBottom: 24,
+        position: 'relative',
+        overflow: 'hidden',
+    },
+    welcomeBackground: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: 24,
+    },
+    gradientCircle1: {
+        position: 'absolute',
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: '#6C63FF',
+        opacity: 0.1,
+        top: -30,
+        right: -30,
+    },
+    gradientCircle2: {
+        position: 'absolute',
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: '#10B981',
+        opacity: 0.08,
+        bottom: -20,
+        left: -20,
+    },
+    gradientCircle3: {
+        position: 'absolute',
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#F59E0B',
+        opacity: 0.06,
+        top: '50%',
+        right: 20,
+    },
+    welcomeContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        padding: 20,
+        shadowColor: '#6C63FF',
+        shadowOffset: {
+            width: 0,
+            height: 6,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 16,
+        elevation: 8,
+        borderWidth: 1,
+        borderColor: '#F0F4FF',
+    },
+    welcomeHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 24,
+    },
+    greetingSection: {
+        flex: 1,
+    },
+    greeting: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: '#1F2153',
+        marginBottom: 4,
+        letterSpacing: 0.5,
+    },
+    userName: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#6C63FF',
+        opacity: 0.8,
+    },
+    appIconContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    appIcon: {
+        width: 56,
+        height: 56,
+        borderRadius: 20,
+        backgroundColor: '#6C63FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#6C63FF',
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+        position: 'relative',
+    },
+    heartbeat: {
+        position: 'absolute',
+        width: 56,
+        height: 56,
+        borderRadius: 20,
+        borderWidth: 2,
+        borderColor: '#6C63FF',
+        opacity: 0.3,
+    },
+    welcomeCard: {
+        backgroundColor: '#F8FAFF',
+        borderRadius: 20,
+        padding: 20,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#E8F0FF',
+    },
+    cardIconRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 16,
+        marginBottom: 16,
+    },
+    welcomeTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#1F2153',
+        textAlign: 'center',
+        marginBottom: 12,
+        letterSpacing: 0.3,
+    },
+    welcomeSubtitle: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#6B7280',
+        textAlign: 'center',
+        lineHeight: 22,
+        marginBottom: 20,
+        letterSpacing: 0.2,
+    },
+    featuresRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        marginBottom: 20,
+        paddingHorizontal: 10,
+    },
+    featureItem: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    featureIconSmall: {
+        width: 52,
+        height: 52,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+        shadowColor: '#6C63FF',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    featureText: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#6B7280',
+        textAlign: 'center',
+    },
+    quoteContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 16,
+        borderLeftWidth: 3,
+        borderLeftColor: '#6C63FF',
+    },
+    quoteIcon: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#F0F4FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    quoteText: {
+        flex: 1,
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#1F2153',
+        lineHeight: 18,
+        fontStyle: 'italic',
+    },
+    statsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFF',
+        borderRadius: 16,
+        paddingVertical: 16,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        borderColor: '#E8F0FF',
+    },
+    statItem: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    statNumber: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#6C63FF',
+        marginBottom: 2,
+    },
+    statLabel: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: '#6B7280',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    statDivider: {
+        width: 1,
+        height: 40,
+        backgroundColor: '#E8F0FF',
+        marginHorizontal: 8,
+    },
+
     container: { flex: 1, backgroundColor: "#FFFFFF", marginBottom: 30 },
 
     // Existing styles
@@ -1623,4 +1916,10 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
         elevation: 2,
     },
+};
+
+// Merge with your existing styles
+const styles = StyleSheet.create({
+    // ... your existing styles ...
+    ...additionalStyles,
 });

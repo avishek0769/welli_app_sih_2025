@@ -28,7 +28,7 @@ const ChatHeader = () => {
                     </View>
                 </View>
                 <View style={styles.chatbotInfo}>
-                    <Text style={styles.chatbotName}>MindCare Assistant</Text>
+                    <Text style={styles.chatbotName}>Welli Assistant</Text>
                     <Text style={styles.chatbotStatus}>AI Mental Health Companion</Text>
                 </View>
             </View>
@@ -90,7 +90,7 @@ export default function Chatbot() {
     const [messages, setMessages] = useState([
         {
             id: '1',
-            text: 'Hello! I\'m your MindCare Assistant. I\'m here to support your mental wellbeing. How are you feeling today?',
+            text: 'Hello! I\'m your Welli Assistant. I\'m here to support your mental wellbeing. How are you feeling today?',
             sender: 'bot',
             time: '10:30 AM'
         }
@@ -217,7 +217,7 @@ export default function Chatbot() {
                         <TouchableOpacity onPress={toggleSidebar} style={styles.menuToggle}>
                             <Icon name="menu" size={24} color="#6C63FF" />
                         </TouchableOpacity>
-                        <Text style={styles.chatTitle}>Chat with MindCare</Text>
+                        <Text style={styles.chatTitle}>Chat with Welli</Text>
                         <TouchableOpacity style={styles.newChatButton}>
                             <Icon name="add" size={20} color="#6C63FF" />
                         </TouchableOpacity>

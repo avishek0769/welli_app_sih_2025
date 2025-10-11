@@ -26,7 +26,7 @@ function App() {
                     <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
                     <NavigationContainer>
-                        <Stack.Navigator initialRouteName="TabNavigator" screenOptions={{ headerShown: false }} >
+                        <Stack.Navigator initialRouteName="SignUp" screenOptions={{ headerShown: false }} >
                             <Stack.Screen name="TabNavigator" component={TabNavigator} />
                             <Stack.Screen name="ChatScreen" component={ChatScreen} />
                             <Stack.Screen name="CalmingSounds" component={CalmingSounds} />
