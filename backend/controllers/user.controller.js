@@ -3,6 +3,7 @@ import { User } from "../models/user.model";
 import asyncHandler from "../utils/asyncHandler"
 import ApiResponse from "../utils/ApiResponse"
 import ApiError from "../utils/ApiError"
+import jwt from "jsonwebtoken";
 
 const client = new Twilio(process.env.ACCOUNT_SID, process.env.AUTH_TOKEN)
 
@@ -76,12 +77,40 @@ const signUp = asyncHandler(async (req, res) => {
         throw new ApiError(401, "User's phone number is not verified")
     }
 
-    return res.status(200).json(200, user, "User has registered successfully")
+    return res
+    .status(200)
+    .json(200, {
+        ...user,
+        accessTokenExp: 86400000,
+        refreshTokenExp: 86400000*7
+    }, "User has registered successfully")
+})
+
+const refreshTokens = asyncHandler(async (req, res) => {
+    const { refreshToken } = req.body;
+
+    const decodedToken = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET)
+    if(!decodedToken) {
+        throw new ApiError(401, "Invalid Refresh Token")
+    }
+
+    const user = await User.findById(decodedToken._id)
+    if(user.refreshToken != refreshToken) {
+        throw new ApiError(402, "Refresh Token does not match")
+    }
+
+    const accessToken = user.generateAccessToken()
+    const newRefreshToken = user.generateRefreshToken()
+    user.refreshToken = newRefreshToken;
+    await user.save()
+
+    return res.status(200).json(new ApiResponse(200, { accessToken, refreshToken: newRefreshToken }, "Access token has been refreshed"))
 })
 
 
 export {
     sendVerificationCode,
     verifyCode,
-    signUp
+    signUp,
+    refreshTokens
 }
