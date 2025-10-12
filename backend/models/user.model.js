@@ -67,10 +67,6 @@ const userSchema = new Schema({
             ref: 'Forums',
         }
     ],
-    accessToken: {
-        type: String,
-        default: null
-    },
     refreshToken: {
         type: String,
         default: null
