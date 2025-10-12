@@ -284,8 +284,8 @@ const Login = ({ navigation }) => {
 
                     <View style={styles.demoCredentials}>
                         <Text style={styles.demoTitle}>Demo Credentials:</Text>
-                        <Text style={styles.demoText}>Phone: 9876543210</Text>
-                        <Text style={styles.demoText}>Password: Test@123</Text>
+                        <Text style={styles.demoText}>Phone: 9999999999</Text>
+                        <Text style={styles.demoText}>Password: 1234</Text>
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>

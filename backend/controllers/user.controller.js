@@ -23,14 +23,13 @@ const sendVerificationCode = asyncHandler(async (req, res) => {
     let otp = Math.floor(Math.random() * (999999 - 111111 + 1) + 111111)
 
     const oldUser = await User.findOne({ phone: phoneNumber })
-    let newUser;
 
     if (oldUser) {
         oldUser.otp = otp;
         await oldUser.save()
     }
     else {
-        newUser = await User.create({
+        await User.create({
             phone: phoneNumber,
             otp
         })
@@ -151,11 +150,21 @@ const refreshTokens = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, { accessToken, refreshToken: newRefreshToken }, "Access token has been refreshed"))
 })
 
+const checkUsername = asyncHandler(async (req, res) => {
+    const { username } = req.params;
+    const user = await User.findOne({ annonymousUsername: username });
+
+    if(user) {
+        return res.status(200).json(new ApiResponse(200, { usernameTaken: true }, "Username is already taken"))
+    }
+    return res.status(200).json(new ApiResponse(200, { usernameTaken: false }, "Username is unique"))
+})
 
 export {
     sendVerificationCode,
     verifyCode,
     signUp,
     refreshTokens,
-    login
+    login,
+    checkUsername
 }
