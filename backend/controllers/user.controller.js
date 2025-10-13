@@ -4,6 +4,7 @@ import asyncHandler from "../utils/asyncHandler"
 import ApiResponse from "../utils/ApiResponse"
 import ApiError from "../utils/ApiError"
 import jwt from "jsonwebtoken";
+import Forum from "../models/forum.model";
 
 const client = new Twilio(process.env.ACCOUNT_SID, process.env.AUTH_TOKEN)
 
@@ -11,6 +12,7 @@ const client = new Twilio(process.env.ACCOUNT_SID, process.env.AUTH_TOKEN)
 TODOs -
 1. Change fields - annonymous username, real fullname, remove institution
 2. Add username taken alert
+3. Make unique Avatar field
 */
 
 const sendVerificationCode = asyncHandler(async (req, res) => {
@@ -160,11 +162,29 @@ const checkUsername = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, { usernameTaken: false }, "Username is unique"))
 })
 
+const setIsActive = asyncHandler(async (req, res) => {
+    const { isActive } = req.query;
+    isActive = Boolean(isActive)
+
+    await User.findByIdAndUpdate(
+        req.user._id,
+        { $set: { isActive } }
+    )
+
+    await Forum.updateMany(
+        { members: req.user._id },
+        { $inc: { totalActive: isActive? 1 : -1 } }
+    )
+
+    return res.status(200).send(`isActive is set to ${isActive}`)
+})
+
 export {
     sendVerificationCode,
     verifyCode,
     signUp,
     refreshTokens,
     login,
-    checkUsername
+    checkUsername,
+    setIsActive
 }
