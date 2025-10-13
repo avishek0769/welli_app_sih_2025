@@ -81,7 +81,7 @@ const getForumMembers = asyncHandler(async (req, res) => {
         }
     ])
 
-    return res.status(200).json(new ApiResponse(200, forum, "Fetched forum menbers and other info"))
+    return res.status(200).json(new ApiResponse(200, forum[0], "Fetched forum menbers and other info"))
 })
 
 const getForumDetails = asyncHandler(async (req, res) => {
