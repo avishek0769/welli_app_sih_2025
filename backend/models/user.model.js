@@ -12,6 +12,9 @@ const userSchema = new Schema({
         required: true,
         unique: true
     },
+    avatar: {
+        type: String,
+    },
     age: {
         type: Number,
         required: true
@@ -34,6 +37,10 @@ const userSchema = new Schema({
         default: 0
     },
     isVerified: {
+        type: Boolean,
+        default: false
+    },
+    isActive: {
         type: Boolean,
         default: false
     },
@@ -61,12 +68,14 @@ const userSchema = new Schema({
         ],
         default: []
     },
-    forums: [
-        {
-            type: Schema.Types.ObjectId,
-            ref: 'Forums',
-        }
-    ],
+    forums: [{
+        type: Schema.Types.ObjectId,
+        ref: 'forums',
+    }],
+    peers: [{
+        type: Schema.Types.ObjectId,
+        ref: 'users',
+    }],
     refreshToken: {
         type: String,
         default: null
