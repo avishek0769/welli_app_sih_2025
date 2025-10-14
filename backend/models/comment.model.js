@@ -16,6 +16,10 @@ const commentSchema = new Schema({
     mentioned: {
         type: Schema.Types.ObjectId,
         ref: "users"
+    },
+    totalLikes: {
+        type: Number,
+        default: 0
     }
 }, { timestamps: true })
 
