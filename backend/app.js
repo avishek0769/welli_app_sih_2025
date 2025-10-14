@@ -4,6 +4,8 @@ import cors from "cors";
 import userRouter from "./routers/user.route.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import forumRouter from "./routers/forum.route.js";
+import postRouter from "./routers/post.route.js";
+import commentRouter from "./routers/comment.route.js";
 
 dotenv.config({
     path: "./.env",
@@ -24,6 +26,10 @@ app.use(cors({
 app.use("/api/v1/user", userRouter);
 
 app.use("/api/v1/forum", forumRouter);
+
+app.use("/api/v1/post", postRouter);
+
+app.use("/api/v1/comment", commentRouter);
 
 // Error handling middleware - must be last
 app.use(errorHandler);
