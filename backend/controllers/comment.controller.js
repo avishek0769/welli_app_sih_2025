@@ -2,7 +2,7 @@ import Comment from "../models/comment.model";
 import Post from "../models/post.model";
 import ApiError from "../utils/ApiError";
 import ApiResponse from "../utils/ApiResponse";
-
+import asyncHandler from "../utils/asyncHandler";
 
 /*
 1. Add mention option in commenting
