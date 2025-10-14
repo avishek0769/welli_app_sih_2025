@@ -11,6 +11,10 @@ import asyncHandler from "../utils/asyncHandler";
 const createComment = asyncHandler(async (req, res) => {
     const { comment, postId, mentionedUserId } = req.body;
     
+    if(!comment || !postId) {
+        throw new ApiError(400, "Comment or Post ID is missing");
+    }
+
     await Comment.create({
         comment,
         commenter: req.user._id,

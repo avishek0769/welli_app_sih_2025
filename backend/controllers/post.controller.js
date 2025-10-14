@@ -27,10 +27,13 @@ const editPost = asyncHandler(async (req, res) => {
     const { text } = req.body;
     const { postId } = req.params;
 
-    await Post.findByIdAndUpdate(
-        postId,
-        { $set: { text } }
-    )
+    const post = await Post.findById(postId)
+
+    if(post.createdBy != req.user._id) {
+        throw new ApiError(403, "You are not authorized to edit this post");
+    }
+    post.text = text;
+    await post.save();
 
     return res.status(200).send("Post edited successfully!")
 })
@@ -39,7 +42,12 @@ const deletePost = asyncHandler(async (req, res) => {
     const { forumId } = req.body;
     const { postId } = req.params;
 
-    await Post.deleteOne({ _id: postId })
+    const post = await Post.findById(postId)
+
+    if(post.createdBy != req.user._id) {
+        throw new ApiError(403, "You are not authorized to delete this post");
+    }
+    await Post.findByIdAndDelete(postId)
 
     await Forum.findByIdAndUpdate(
         forumId,
