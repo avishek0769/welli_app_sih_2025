@@ -44,6 +44,10 @@ const userSchema = new Schema({
         type: Boolean,
         default: false
     },
+    acceptMessages: {
+        type: Boolean,
+        default: true
+    },
     condition: {
         type: String,
         enum: ['depression', 'anxiety', 'stress', 'bipolar', 'ocd', 'ptsd', 'suicidal', 'none'],
@@ -113,4 +117,6 @@ userSchema.methods.generateRefreshToken = function() {
     )
 }
 
-export const User = mongoose.model("User", userSchema)
+const User = mongoose.model("User", userSchema)
+
+export default User
