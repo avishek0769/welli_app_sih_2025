@@ -14,9 +14,13 @@ import { Schema } from "mongoose"
 
 
 const createForum = asyncHandler(async (req, res) => {
-    const { name, description } = req.body
-    await Forum.create({ name, description })
+    const { name, description, password } = req.body
 
+    if(password != "iamadmin"){
+        throw new ApiError(403, "You are not authorized to create a forum")
+    }
+    await Forum.create({ name, description })
+    
     return res.status(200).send("Forum created")
 })
 
