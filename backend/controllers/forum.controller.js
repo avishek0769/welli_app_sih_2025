@@ -2,7 +2,7 @@ import Forum from "../models/forum.model"
 import asyncHandler from "../utils/asyncHandler"
 import ApiResponse from "../utils/ApiResponse"
 import ApiError from "../utils/ApiError"
-import { User } from "../models/user.model"
+import User from "../models/user.model"
 import { Schema } from "mongoose"
 
 /*

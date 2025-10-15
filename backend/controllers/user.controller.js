@@ -1,5 +1,5 @@
 import { Twilio } from "twilio";
-import { User } from "../models/user.model";
+import User from "../models/user.model";
 import asyncHandler from "../utils/asyncHandler"
 import ApiResponse from "../utils/ApiResponse"
 import ApiError from "../utils/ApiError"
