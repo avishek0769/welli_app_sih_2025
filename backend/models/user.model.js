@@ -48,6 +48,10 @@ const userSchema = new Schema({
         type: Boolean,
         default: true
     },
+    socketId: {
+        type: String,
+        default: null
+    },
     condition: {
         type: String,
         enum: ['depression', 'anxiety', 'stress', 'bipolar', 'ocd', 'ptsd', 'suicidal', 'none'],
