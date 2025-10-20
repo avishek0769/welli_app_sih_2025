@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { auth } from '../middlewares/auth';
-import { createChat, deleteChat } from '../controllers/peerchat.controller';
+import { createChat, deleteChat, getChats } from '../controllers/peerchat.controller';
 
 const peerChatRouter = Router();
 
-peerChatRouter.route('/createChat/:peerId').get(auth, createChat)
-peerChatRouter.route('/deleteChat/:peerId').get(auth, deleteChat)
+peerChatRouter.route('/create/:peerId').get(auth, createChat)
+peerChatRouter.route('/delete/:chatId').delete(auth, deleteChat)
+peerChatRouter.route('/get').get(auth, getChats)
 
 
 export default peerChatRouter;
