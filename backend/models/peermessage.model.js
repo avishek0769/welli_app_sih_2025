@@ -27,7 +27,11 @@ const peerMessageSchema = new Schema({
     deletedFor: [{
         type: Schema.Types.ObjectId,
         ref: 'users',
-    }]
+    }],
+    deletedForEveryone: {
+        type: Boolean,
+        default: false
+    }
 })
 
 const PeerMessage = mongoose.model("PeerMessage", peerMessageSchema)
