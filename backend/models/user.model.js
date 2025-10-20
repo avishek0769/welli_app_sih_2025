@@ -80,10 +80,6 @@ const userSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'forums',
     }],
-    peers: [{
-        type: Schema.Types.ObjectId,
-        ref: 'users',
-    }],
     refreshToken: {
         type: String,
         default: null

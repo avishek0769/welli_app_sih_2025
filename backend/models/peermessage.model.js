@@ -23,6 +23,10 @@ const peerMessageSchema = new Schema({
     readBy: [{
         type: Schema.Types.ObjectId,
         ref: "users"
+    }],
+    deletedFor: [{
+        type: Schema.Types.ObjectId,
+        ref: 'users',
     }]
 })
 
