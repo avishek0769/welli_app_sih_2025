@@ -3,7 +3,7 @@ import asyncHandler from "../utils/asyncHandler"
 import ApiResponse from "../utils/ApiResponse"
 import ApiError from "../utils/ApiError"
 import User from "../models/user.model"
-import { Schema } from "mongoose"
+import mongoose from "mongoose"
 
 /*
 1. Remove the header from this screen.
@@ -64,7 +64,7 @@ const getForumMembers = asyncHandler(async (req, res) => {
 
     const forum = await Forum.aggregate([
         {
-            $match: { _id: new Schema.Types.ObjectId(forumId) }
+            $match: { _id: new mongoose.Types.ObjectId(forumId) }
         },
         {
             $lookup: {

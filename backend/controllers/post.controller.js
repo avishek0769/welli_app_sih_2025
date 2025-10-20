@@ -3,7 +3,7 @@ import ApiResponse from "../utils/ApiResponse"
 import ApiError from "../utils/ApiError"
 import Post from "../models/post.model";
 import Forum from "../models/forum.model";
-import { Schema } from "mongoose"
+import mongoose from "mongoose"
 
 
 const createPost = asyncHandler(async (req, res) => {
@@ -61,7 +61,7 @@ const getAllPosts = asyncHandler(async (req, res) => {
     const { forumId } = req.params;
 
     const posts = await Post.aggregate([
-        { $match: { forumId: new Schema.Types.ObjectId(forumId) } },
+        { $match: { forumId: new mongoose.Types.ObjectId(forumId) } },
         {
             $lookup: {
                 from: "users",

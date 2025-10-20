@@ -1,4 +1,4 @@
-import { Schema } from "mongoose";
+import mongoose from "mongoose";
 import asyncHandler from "../utils/asyncHandler"
 import ApiResponse from "../utils/ApiResponse"
 import ApiError from "../utils/ApiError"
@@ -20,8 +20,8 @@ const createChat = asyncHandler(async (req, res) => {
 
     await PeerChat.create({
         participants: [
-            Schema.Types.ObjectId(req.user._id),
-            Schema.Types.ObjectId(peerId)
+            new mongoose.Types.ObjectId(req.user._id),
+            new mongoose.Types.ObjectId(peerId)
         ],
         lastMessage: null,
     })
@@ -34,7 +34,7 @@ const deleteChat = asyncHandler(async (req, res) => {
 
     const chat = await PeerChat.findById(chatId)
 
-    if(chat.deletedFor.length) {
+    if (chat.deletedFor.length) {
         await PeerMessage.deleteMany({ chat: chatId })
         await PeerChat.findByIdAndDelete(chatId)
     }
@@ -54,7 +54,7 @@ const deleteChat = asyncHandler(async (req, res) => {
 
 const getChats = asyncHandler(async (req, res) => {
     const chats = await PeerChat.aggregate([
-        { $match: { participants: new Schema.Types.ObjectId(req.user._id) } },
+        { $match: { participants: new mongoose.Types.ObjectId(req.user._id) } },
         {
             $lookup: {
                 from: "users",
@@ -76,11 +76,46 @@ const getChats = asyncHandler(async (req, res) => {
                 from: "peerMessages",
                 foreignField: "_id",
                 localField: "lastMessage",
-                as: "peerMessages",
+                as: "lastMessage",
             }
-        }
+        },
+        {
+            $unwind: {
+                path: "$lastMessage",
+                preserveNullAndEmptyArrays: true
+            }
+        },
+        {
+            $lookup: {
+                from: "peerMessages",
+                let: { chatId: "$_id", currentUser: req.user._id },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$chat", "$$chatId"] },
+                                    { $not: { $in: ["$$currentUser", "$readBy"] } }
+                                ]
+                            }
+                        },
+                    },
+                    { $count: "unreadCount" }
+                ],
+                as: "unreadMessages"
+            }
+        },
+        {
+            $addFields: {
+                unreadCount: {
+                    $ifNull: [{ $arrayElemAt: ["$unreadMessages.unreadCount", 0] }, 0]
+                }
+            }
+        },
+        { $project: { unreadMessages: 0 } },
+        { $sort: { "lastmessage.timestamp": -1 } }
     ])
-    
+
     return res.status(200).json(new ApiResponse(200, chats, "Chats fetched successfully"))
 })
 

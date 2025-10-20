@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Comment from "../models/comment.model";
 import Post from "../models/post.model";
 import ApiError from "../utils/ApiError";
@@ -75,7 +76,7 @@ const getAllComments = asyncHandler(async (req, res) => {
     const { postId } = req.params;
     
     const comments = await Comment.aggregate([
-        { $match: { postId: mongoose.Types.ObjectId(postId) } },
+        { $match: { postId: new mongoose.Types.ObjectId(postId) } },
         { $sort: { createdAt: -1 } },
         {
             $lookup: {
