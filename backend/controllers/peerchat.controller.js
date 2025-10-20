@@ -18,11 +18,6 @@ const createChat = asyncHandler(async (req, res) => {
         throw new ApiError(401, "User does not accept messages from strangers")
     }
 
-    await User.findByIdAndUpdate(
-        req.user._id,
-        { $addToSet: { peers: peerId } }
-    )
-
     await PeerChat.create({
         participants: [
             Schema.Types.ObjectId(req.user._id),
@@ -31,31 +26,66 @@ const createChat = asyncHandler(async (req, res) => {
         lastMessage: null,
     })
 
-    return res.status(200).send("Chat created with the peer and added to your DM")
+    return res.status(200).send("Chat created with the peer")
 })
 
 const deleteChat = asyncHandler(async (req, res) => {
-    const { peerId } = req.params;
+    const { chatId } = req.params;
 
-    const peer = await User.findById(peerId)
-    const doesIncludeMe = peer.peers.includes(req.user._id)
+    const chat = await PeerChat.findById(chatId)
 
-    if (!doesIncludeMe) {
-        const peerChat = await PeerChat.findOneAndDelete({
-            participants: { $all: [req.user._id, peerId] }
-        })
-        await PeerMessage.deleteMany({ chat: peerChat._id })
+    if(chat.deletedFor.length) {
+        await PeerMessage.deleteMany({ chat: chatId })
+        await PeerChat.findByIdAndDelete(chatId)
     }
-    
-    await User.findByIdAndUpdate(
-        req.user._id,
-        { $pull: { peers: peerId } }
-    )
+    else {
+        await PeerChat.findByIdAndUpdate(
+            chatId,
+            { $push: { deletedFor: req.user._id } }
+        )
+        await PeerMessage.updateMany(
+            { chat: chat },
+            { $push: { deletedFor: req.user._id } }
+        )
+    }
 
     return res.status(200).send("Chat deleted successfully")
 })
 
+const getChats = asyncHandler(async (req, res) => {
+    const chats = await PeerChat.aggregate([
+        { $match: { participants: new Schema.Types.ObjectId(req.user._id) } },
+        {
+            $lookup: {
+                from: "users",
+                foreignField: "_id",
+                localField: "participants",
+                as: "participants",
+                pipeline: [
+                    {
+                        $project: {
+                            annonymousUsername: 1,
+                            avatar: 1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $lookup: {
+                from: "peerMessages",
+                foreignField: "_id",
+                localField: "lastMessage",
+                as: "peerMessages",
+            }
+        }
+    ])
+    
+    return res.status(200).json(new ApiResponse(200, chats, "Chats fetched successfully"))
+})
+
 export {
     createChat,
-    deleteChat
+    deleteChat,
+    getChats
 }
