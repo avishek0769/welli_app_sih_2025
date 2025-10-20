@@ -4,15 +4,17 @@ const PeerChatSchema = new Schema({
     participants: [{
         type: Schema.Types.ObjectId,
         ref: 'users',
+        default: []
     }],
     lastMessage: {
         type: Schema.Types.ObjectId,
         ref: 'peerMessages',
     },
-    lastUpdated: {
-        type: Date,
-        default: Date.now
-    },
+    deletedFor: [{
+        type: Schema.Types.ObjectId,
+        ref: 'users',
+        default: []
+    }]
 });
 
 const PeerChat = mongoose.model('PeerChat', PeerChatSchema);
