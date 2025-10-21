@@ -3,20 +3,32 @@ import ApiResponse from "../utils/ApiResponse"
 import ApiError from "../utils/ApiError"
 import User from "../models/user.model";
 import PeerMessage from "../models/peermessage.model";
+import { connection } from "../app";
+import { Queue } from "bullmq";
 
 /*
 1. File uploads -- send attachments
 */
 
-const handleSendMessage = (socket) => async ({ message, timestamp, receiverId }) => {
-    const user = await User.findById(receiverId)
+const messageQueue = new Queue("peerMessages", { connection })
+
+const handleSendMessage = (socket) => async ({ message, timestamp, senderId, receiverId, chatId,  }) => {
+    const user = await User.findById(receiverId) // TODO: Optimise
+
     if (!user.socketId) {
-        throw new ApiError(401, "Socket id is not present")
+        throw new ApiError(401, "Socket ID not present")
     }
     if (user.isActive) {
         socket.to(user.socketId).emit("newMessage", { message, timestamp })
     }
 
+    await messageQueue.add("newMessage", {
+        chat: chatId,
+        sender: senderId,
+        text: message,
+        timestamp,
+        attachments: [] // Will support in later versions
+    })
 }
 
 const getMessagesByChat = asyncHandler(async (req, res) => {
