@@ -1,7 +1,6 @@
 import express, { json } from "express";
 import http from "http"
 import dotenv from "dotenv";
-import cors from "cors";
 import userRouter from "./routers/user.route.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import forumRouter from "./routers/forum.route.js";
@@ -11,6 +10,7 @@ import peerChatRouter from "./routers/peerchat.route.js";
 import likeRouter from "./routers/like.route.js";
 import { Server } from "socket.io";
 import { handleSendMessage } from "./controllers/peermessage.controller.js";
+import Redis from "ioredis";
 
 dotenv.config({
     path: "./.env",
@@ -24,6 +24,7 @@ const io = new Server(server, {
         credentials: true
     }
 })
+export const connection = new Redis()
 const PORT = process.env.PORT || 3000;
 
 app.use(json({ limit: "16kb" }));
