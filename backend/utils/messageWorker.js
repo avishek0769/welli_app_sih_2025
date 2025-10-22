@@ -32,7 +32,8 @@ const flushMessage = async () => {
                         chat,
                         sender,
                         text,
-                        timestamp
+                        timestamp,
+                        readBy: [sender]
                     }
                 }
             )
@@ -54,10 +55,11 @@ const flushMessage = async () => {
         }
         if (bulkOps.length) await PeerChat.bulkWrite(bulkOps);
 
-        const receivers = await User.find(
+        const receivers = await User.find( // TODO: Optimise getting socket ID
             { _id: { $in: receiversList } },
             { isActive: 1, socketId: 1 }
         )
+        
         let chatByUserEntries = [...chatByUserMap.entries()]
         receivers.filter(receiver => receiver.isActive).map(receiver => {
             let chatId = chatByUserEntries.find(([chat, user]) => user.toString() == receiver._id)?.[0]
