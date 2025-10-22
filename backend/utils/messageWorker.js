@@ -2,6 +2,8 @@ import { Worker } from "bullmq";
 import { connection } from "mongoose";
 import PeerMessage from "../models/peermessage.model";
 import PeerChat from "../models/peerchat.model";
+import User from "../models/user.model";
+import { io } from "../app";
 
 let messageBuffer = []
 let flushTimer;
@@ -15,16 +17,24 @@ const flushMessage = async () => {
 
     try {
         const messages = [...messageBuffer];
+        let receiversList = []
+        let chatByUserMap = new Map()
         messageBuffer = []
 
         const insertedMessages = await PeerMessage.insertMany(
             messages.map(
-                ({ chat, sender, text, timestamp }) => ({
-                    chat,
-                    sender,
-                    text,
-                    timestamp
-                })
+                ({ chat, sender, text, timestamp, receiver }) => {
+                    if (!receiversList.includes(receiver)) {
+                        receiversList.push(receiver)
+                        chatByUserMap.set(chat, receiver)
+                    }
+                    return {
+                        chat,
+                        sender,
+                        text,
+                        timestamp
+                    }
+                }
             )
         )
 
@@ -42,8 +52,19 @@ const flushMessage = async () => {
                 }
             })
         }
-
         if (bulkOps.length) await PeerChat.bulkWrite(bulkOps);
+
+        const receivers = await User.find(
+            { _id: { $in: receiversList } },
+            { isActive: 1, socketId: 1 }
+        )
+        let chatByUserEntries = [...chatByUserMap.entries()]
+        receivers.filter(receiver => receiver.isActive).map(receiver => {
+            let chatId = chatByUserEntries.find(([chat, user]) => user.toString() == receiver._id)?.[0]
+            if(chatId) {
+                io.to(receiver.socketId).emit("checkForNewMessages", chatId)
+            }
+        })
 
         console.log(`Flushed ${messages.length} messages`);
     }

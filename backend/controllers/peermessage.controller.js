@@ -25,6 +25,7 @@ const handleSendMessage = (socket) => async ({ message, timestamp, senderId, rec
     await messageQueue.add("newMessage", {
         chat: chatId,
         sender: senderId,
+        receiver: receiverId,
         text: message,
         timestamp,
         attachments: [] // Will support in later versions
@@ -40,7 +41,7 @@ const getMessagesByChat = asyncHandler(async (req, res) => {
         .sort({ timestamp: 1 })
         .skip(Number(page) * Number(limit))
         .limit(Number(limit))
-
+    
     return res
         .status(200)
         .json(new ApiResponse(
