@@ -3,7 +3,7 @@ import ApiResponse from "../utils/ApiResponse"
 import ApiError from "../utils/ApiError"
 import User from "../models/user.model";
 import PeerMessage from "../models/peermessage.model";
-import { connection } from "../app";
+import { connection, io } from "../app";
 import { Queue } from "bullmq";
 
 /*
@@ -11,24 +11,40 @@ import { Queue } from "bullmq";
 */
 
 const messageQueue = new Queue("peerMessages", { connection })
+const messageSeenQueue = new Queue("peerMessagesSeen", { connection })
 
-const handleSendMessage = (socket) => async ({ message, timestamp, senderId, receiverId, chatId,  }) => {
-    const user = await User.findById(receiverId) // TODO: Optimise
+const handleSendMessage = (socket) => async ({ message, timestamp, senderId, receiverId, chatId, }) => {
+    const user = await User.findById(receiverId) // TODO: Optimise getting socket ID
 
     if (!user.socketId) {
         throw new ApiError(401, "Socket ID not present")
     }
     if (user.isActive) {
-        socket.to(user.socketId).emit("newMessage", { message, timestamp })
+        io.to(user.socketId).emit("newMessage", { message, timestamp })
     }
 
-    await messageQueue.add("newMessage", {
+    await messageQueue.add("new-message", {
         chat: chatId,
         sender: senderId,
         receiver: receiverId,
         text: message,
         timestamp,
         attachments: [] // Will support in later versions
+    })
+}
+
+const handleSeenMessages = (socket) => async ({ userId, chatId, receiverId }) => {
+    const receiver = await User.findById(receiverId) // TODO: Optimise getting socket ID
+
+    if (!receiver.socketId) {
+        throw new ApiError(401, "Socket ID not present")
+    }
+    if (receiver.isActive) {
+        io.to(receiver.socketId).emit("messageSeen", { chatId })
+    }
+
+    await messageSeenQueue.add("message-seen", {
+        userId, chatId, receiverId
     })
 }
 
@@ -41,7 +57,7 @@ const getMessagesByChat = asyncHandler(async (req, res) => {
         .sort({ timestamp: 1 })
         .skip(Number(page) * Number(limit))
         .limit(Number(limit))
-    
+
     return res
         .status(200)
         .json(new ApiResponse(
@@ -54,14 +70,47 @@ const getMessagesByChat = asyncHandler(async (req, res) => {
         ))
 })
 
+const getUnreadMessageCountByChat = asyncHandler(async (req, res) => {
+    const { chatId } = req.params;
+
+    const messageCount = await PeerMessage.find({
+        chat: chatId,
+        readBy: { $nin: [req.user._id] }
+    }).countDocuments()
+
+    return res.status(200).json(new ApiResponse(200, { messageCount }, "No. of unread messages fetched"))
+})
+
 const deleteForMe = asyncHandler(async (req, res) => {
     const { messageId } = req.params;
 
     await PeerMessage.findByIdAndUpdate(
         messageId,
-        { $push: { deletedFor: req.user._id } }
+        { $addToSet: { deletedFor: req.user._id } }
     )
     return res.status(200).send("Deleted the message for me")
+})
+
+const deleteForEveryone = asyncHandler(async (req, res) => {
+    const { messageId } = req.params;
+    const { participantId } = req.query;
+
+    await PeerMessage.findByIdAndUpdate(
+        messageId,
+        {
+            $set: {
+                deletedForEveryone: true,
+                text: ""
+            }
+        }
+    )
+
+    const participant = await User.findById(participantId)
+    if (participant.isActive) {
+        io.to(participant.socketId).emit("messageDltForEv", messageId)
+    }
+
+    return res.status(200).send("This message is deleted for everyone")
 })
 
 const clearChat = asyncHandler(async (req, res) => {
@@ -69,14 +118,17 @@ const clearChat = asyncHandler(async (req, res) => {
 
     await PeerMessage.updateMany(
         { chat: chatId },
-        { $push: { deletedFor: req.user._id } }
+        { $addToSet: { deletedFor: req.user._id } }
     )
     return res.status(200).send("All messages cleared for this chat")
 })
 
 export {
     handleSendMessage,
+    handleSeenMessages,
+    getMessagesByChat,
+    getUnreadMessageCountByChat,
     deleteForMe,
-    clearChat,
-    getMessagesByChat
+    deleteForEveryone,
+    clearChat
 }

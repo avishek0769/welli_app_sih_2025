@@ -41,11 +41,11 @@ const deleteChat = asyncHandler(async (req, res) => {
     else {
         await PeerChat.findByIdAndUpdate(
             chatId,
-            { $push: { deletedFor: req.user._id } }
+            { $addToSet: { deletedFor: req.user._id } }
         )
         await PeerMessage.updateMany(
             { chat: chat },
-            { $push: { deletedFor: req.user._id } }
+            { $addToSet: { deletedFor: req.user._id } }
         )
     }
 
