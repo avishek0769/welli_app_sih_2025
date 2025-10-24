@@ -4,13 +4,13 @@ import { auth } from "../middlewares/auth";
 
 const userRouter = Router()
 
-userRouter.route("/sendVerificationCode").post(sendVerificationCode)
-userRouter.route("/verifyCode").post(verifyCode)
-userRouter.route("/signUp").post(signUp)
+userRouter.route("/send-code").post(sendVerificationCode)
+userRouter.route("/verify-code").post(verifyCode)
+userRouter.route("/sign-up").post(signUp)
 userRouter.route("/login").post(login)
-userRouter.route("/refreshTokens").post(refreshTokens)
-userRouter.route("/checkUsername/:username").get(checkUsername)
-userRouter.route("/setIsActive").get(auth, setIsActive)
+userRouter.route("/tokens").post(refreshTokens)
+userRouter.route("/username/:username").get(checkUsername)
+userRouter.route("/is-active").get(auth, setIsActive)
 
 
 export default userRouter;

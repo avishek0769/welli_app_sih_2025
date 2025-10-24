@@ -11,6 +11,9 @@ import likeRouter from "./routers/like.route.js";
 import { Server } from "socket.io";
 import { handleSendMessage } from "./controllers/peermessage.controller.js";
 import Redis from "ioredis";
+import chatbotMessageRouter from "./routers/chatbotmessage.route.js";
+import chatbotConversationRouter from "./routers/chatbotcoversation.route.js";
+import peermessageRouter from "./routers/peermessage.route.js";
 
 dotenv.config({
     path: "./.env",
@@ -41,7 +44,13 @@ app.use("/api/v1/comment", commentRouter);
 
 app.use("/api/v1/like", likeRouter);
 
-app.use("/api/v1/peerChat", peerChatRouter);
+app.use("/api/v1/peer-chat", peerChatRouter);
+
+app.use("/api/v1/peer-message", peerMessageRouter);
+
+app.use("/api/v1/chatbot-conversation", chatbotConversationRouter);
+
+app.use("/api/v1/chatbot-message", chatbotMessageRouter);
 
 io.on("connection", (socket) => {
     socket.on("sendMessage", handleSendMessage(socket))

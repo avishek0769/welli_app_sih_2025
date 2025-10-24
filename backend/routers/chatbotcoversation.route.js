@@ -5,9 +5,9 @@ import { createChatbotConversation, deleteConversation, getAllConversation, most
 const chatbotConversationRouter = Router()
 
 chatbotConversationRouter.route("/create").post(auth, createChatbotConversation)
-chatbotConversationRouter.route("/getAll").get(auth, getAllConversation)
-chatbotConversationRouter.route("/delete/:chatId").delete(auth, deleteConversation)
-chatbotConversationRouter.route("/updateTitle/:chatId").put(auth, updateTitle)
-chatbotConversationRouter.route("/mostRecentChat").put(auth, mostRecentChat)
+chatbotConversationRouter.route("/all").get(auth, getAllConversation)
+chatbotConversationRouter.route("/:chatId").delete(auth, deleteConversation)
+chatbotConversationRouter.route("/title/:chatId").put(auth, updateTitle)
+chatbotConversationRouter.route("/latest").get(auth, mostRecentChat)
 
 export default chatbotConversationRouter
