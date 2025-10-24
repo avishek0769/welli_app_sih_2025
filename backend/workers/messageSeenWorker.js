@@ -15,7 +15,7 @@ const flushMessage = async () => {
         let seenMessages = [...seenMessagesBuffer]
         seenMessagesBuffer = []
         const receiversList = new Set();
-        const grouped = new Map(); // chatId -> { userIds: Set, receiverIds: Set }
+        const grouped = new Map();
 
         // Group updates by chatId
         for (const { chatId, userId, receiverId } of seenMessages) {

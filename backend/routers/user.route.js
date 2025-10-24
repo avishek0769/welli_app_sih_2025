@@ -9,7 +9,7 @@ userRouter.route("/verifyCode").post(verifyCode)
 userRouter.route("/signUp").post(signUp)
 userRouter.route("/login").post(login)
 userRouter.route("/refreshTokens").post(refreshTokens)
-userRouter.route("/checkUsername").post(checkUsername)
+userRouter.route("/checkUsername/:username").get(checkUsername)
 userRouter.route("/setIsActive").get(auth, setIsActive)
 
 
