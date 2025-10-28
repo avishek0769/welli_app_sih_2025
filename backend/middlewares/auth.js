@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken"
 import ApiError from "../utils/ApiError"
-
+import User from "../models/user.model"
 
 const auth = async (req, res, next) => {
     try {
@@ -13,7 +13,13 @@ const auth = async (req, res, next) => {
         if(!decodedToken) {
             throw new ApiError(401, "Invalid Token")
         }
-        req.user = { ...decodedToken }
+
+        const user = await User.findById(decodedToken._id)
+        if(!user) {
+            throw new ApiError(404, "User not found")
+        }
+
+        req.user = user
         next()
     }
     catch (error) {
