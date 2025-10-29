@@ -9,8 +9,10 @@ from langchain_community.vectorstores import FAISS
 # Optional: load environment variables from a .env file
 load_dotenv()
 
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
 # STEP 1: Setup API Key (keep this in env or .env in production)
-os.environ.setdefault("GROQ_API_KEY", os.getenv("GROQ_API_KEY", "***REMOVED***"))
+os.environ.setdefault("GROQ_API_KEY", os.getenv("GROQ_API_KEY", GROQ_API_KEY))
 
 # STEP 2: Groq LLM Loader
 def load_llm(model_name="llama-3.3-70b-versatile"):
