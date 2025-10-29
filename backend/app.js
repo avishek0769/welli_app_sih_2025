@@ -13,7 +13,7 @@ import { handleSendMessage } from "./controllers/peermessage.controller.js";
 import Redis from "ioredis";
 import chatbotMessageRouter from "./routers/chatbotmessage.route.js";
 import chatbotConversationRouter from "./routers/chatbotcoversation.route.js";
-import peermessageRouter from "./routers/peermessage.route.js";
+import peerMessageRouter from "./routers/peermessage.route.js";
 
 dotenv.config({
     path: "./.env",

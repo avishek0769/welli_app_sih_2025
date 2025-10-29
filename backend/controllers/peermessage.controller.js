@@ -5,6 +5,7 @@ import User from "../models/user.model";
 import PeerMessage from "../models/peermessage.model";
 import { connection, io } from "../app";
 import { Queue } from "bullmq";
+import PeerChat from "../models/peerchat.model";
 
 /*
 1. File uploads -- send attachments
@@ -52,6 +53,11 @@ const getMessagesByChat = asyncHandler(async (req, res) => {
     const { chatId } = req.params;
     const { page = 0, limit = 20 } = req.query;
 
+    const chat = await PeerChat.findById(chatId)
+    if (!chat || !chat.participants.includes(req.user._id)) {
+        throw new ApiError(404, "Chat not found")
+    }
+
     const messages = await PeerMessage
         .find({ chat: chatId })
         .sort({ timestamp: 1 })
@@ -73,6 +79,11 @@ const getMessagesByChat = asyncHandler(async (req, res) => {
 const getUnreadMessageCountByChat = asyncHandler(async (req, res) => {
     const { chatId } = req.params;
 
+    const chat = await PeerChat.findById(chatId)
+    if (!chat || !chat.participants.includes(req.user._id)) {
+        throw new ApiError(404, "Chat not found")
+    }
+
     const messageCount = await PeerMessage.find({
         chat: chatId,
         readBy: { $nin: [req.user._id] }
@@ -84,10 +95,11 @@ const getUnreadMessageCountByChat = asyncHandler(async (req, res) => {
 const deleteForMe = asyncHandler(async (req, res) => {
     const { messageId } = req.params;
 
-    await PeerMessage.findByIdAndUpdate(
-        messageId,
+    await PeerMessage.updateOne(
+        { _id: messageId, sender: req.user._id },
         { $addToSet: { deletedFor: req.user._id } }
     )
+
     return res.status(200).send("Deleted the message for me")
 })
 
@@ -95,8 +107,8 @@ const deleteForEveryone = asyncHandler(async (req, res) => {
     const { messageId } = req.params;
     const { participantId } = req.query;
 
-    await PeerMessage.findByIdAndUpdate(
-        messageId,
+    await PeerMessage.updateOne(
+        { _id: messageId, sender: req.user._id },
         {
             $set: {
                 deletedForEveryone: true,
@@ -115,6 +127,11 @@ const deleteForEveryone = asyncHandler(async (req, res) => {
 
 const clearChat = asyncHandler(async (req, res) => {
     const { chatId } = req.params;
+    
+    const chat = await PeerChat.findById(chatId)
+    if (!chat || !chat.participants.includes(req.user._id)) {
+        throw new ApiError(404, "Chat not found")
+    }
 
     await PeerMessage.updateMany(
         { chat: chatId },

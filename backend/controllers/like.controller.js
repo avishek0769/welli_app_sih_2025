@@ -26,7 +26,14 @@ const likePost = asyncHandler(async (req, res) => {
 const unlikePost = asyncHandler(async (req, res) => {
     const { likeId, postId } = req.params;
 
-    await Like.findByIdAndDelete({ likeId })
+    const likeDeleted = await Like.deleteOne({
+        _id: likeId,
+        postId,
+        likedBy: req.user._id
+    })
+    if(likeDeleted.deletedCount === 0) {
+        throw new ApiError(404, "Like not found")
+    }
 
     await Post.findByIdAndUpdate(
         postId,
@@ -56,7 +63,14 @@ const likeComment = asyncHandler(async (req, res) => {
 const unlikeComment = asyncHandler(async (req, res) => {
     const { likeId, commentId } = req.params;
 
-    await Like.findByIdAndDelete({ likeId })
+    const likeDeleted = await Like.deleteOne({
+        _id: likeId,
+        commentId,
+        likedBy: req.user._id
+    })
+    if(likeDeleted.deletedCount === 0) {
+        throw new ApiError(404, "Like not found")
+    }
 
     await Comment.findByIdAndUpdate(
         commentId,

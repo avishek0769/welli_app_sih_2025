@@ -34,11 +34,11 @@ const deleteChat = asyncHandler(async (req, res) => {
 
     const chat = await PeerChat.findById(chatId)
 
-    if (chat.deletedFor.length) {
+    if (chat.deletedFor.length && chat.participants.includes(req.user._id)) {
         await PeerMessage.deleteMany({ chat: chatId })
         await PeerChat.findByIdAndDelete(chatId)
     }
-    else {
+    else if(chat.participants.includes(req.user._id)) {
         await PeerChat.findByIdAndUpdate(
             chatId,
             { $addToSet: { deletedFor: req.user._id } }
