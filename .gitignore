@@ -95,6 +95,7 @@ myenv/
 # --- Data and Generated Files ---
 data/
 vectorstore/
+*.json
 
 # --- Cache / Temp ---
 *.cache/

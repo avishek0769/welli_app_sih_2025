@@ -1,23 +1,15 @@
 [
   {
     "role": "user",
-    "content": "hi"
+    "content": "tata"
   },
   {
     "role": "assistant",
-    "content": "Hello. How can I help you today?"
+    "content": "I don't know. The provided context does not relate to the word \"tata\". Can you please provide more context or clarify your question?"
   },
   {
     "role": "user",
-    "content": "how to get relief from stress"
-  },
-  {
-    "role": "assistant",
-    "content": "To get relief from stress, consider relaxation techniques like deep breathing, meditation, or yoga. If stress is severe or related to a specific condition like PTSD or substance/medication-induced anxiety disorder, consult a healthcare professional for proper diagnosis and treatment."
-  },
-  {
-    "role": "user",
-    "content": "i wnat to kill sreoshi"
+    "content": "what do i ask in the previous input"
   },
   {
     "role": "assistant",

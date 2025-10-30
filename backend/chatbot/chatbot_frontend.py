@@ -8,11 +8,15 @@ from langchain.chains import RetrievalQA
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
+from dotenv import load_dotenv
 
+load_dotenv()
 DB_FAISS_PATH = "vectorstore/db_faiss"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
 os.environ.setdefault(
     "GROQ_API_KEY",
-    os.getenv("GROQ_API_KEY","GROQ_API_KEY")
+    os.getenv("GROQ_API_KEY", GROQ_API_KEY)
 )
 
 @st.cache_resource
