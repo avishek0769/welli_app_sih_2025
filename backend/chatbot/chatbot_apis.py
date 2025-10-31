@@ -90,11 +90,36 @@ def list_chats():
 
 @app.route("/api/chat", methods=["POST"])
 def create_chat():
+    """
+    Create a chat. Client may provide 'chat_id' in JSON payload.
+    Payload examples:
+      - {"chat_id": "my-chat-123", "name": "Support chat"}
+      - {"name": "Session without provided id"}
+    If provided chat_id already exists -> 409 Conflict.
+    """
     data = request.get_json(silent=True) or {}
+    provided_id = data.get("chat_id")
     name = data.get("name") or f"Chat {len(_conversations)+1}"
-    cid = uuid.uuid4().hex
-    with _conversations_lock:
-        _conversations[cid] = {"name": name, "messages": []}
+
+    # sanitize and validate provided_id if present
+    if provided_id:
+        cid = str(provided_id).strip()
+        if not cid:
+            return jsonify({"error": "invalid chat_id"}), 400
+        # optional: enforce allowed chars (alnum, hyphen, underscore)
+        import re
+        if not re.match(r'^[A-Za-z0-9_-]+$', cid):
+            return jsonify({"error": "chat_id contains invalid characters"}), 400
+
+        with _conversations_lock:
+            if cid in _conversations:
+                return jsonify({"error": "chat_id already exists"}), 409
+            _conversations[cid] = {"name": name, "messages": []}
+    else:
+        cid = uuid.uuid4().hex
+        with _conversations_lock:
+            _conversations[cid] = {"name": name, "messages": []}
+
     return jsonify({"chat_id": cid, "name": name})
 
 
