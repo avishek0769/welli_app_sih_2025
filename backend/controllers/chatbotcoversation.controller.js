@@ -5,21 +5,20 @@ import ApiResponse from "../utils/ApiResponse";
 
 
 const createChatbotConversation = asyncHandler(async (req, res) => {
-    const { userInput } = req.body;
+    const { title } = req.body;
 
-    // const response = await fetch("/api/python-service", {
-    //     method: "POST",
-    //     body: JSON.stringify({ userInput })
-    // })
-    // const data = await response.json()
-    const data = { title: "New Chat" }
-
-    await ChatbotConversation.create({
-        title: data.title,
-        user: req.user._id
+    const chat = new ChatbotConversation({
+        user: req.user._id,
     })
 
-    return res.status(200).send("New Chatbot Conversation created")
+    const response = await fetch("/api/chat", {
+        method: "POST",
+        body: JSON.stringify({ chat_id: chat._id, name: title })
+    })
+    const data = await response.json()
+    await chat.save();
+
+    return res.status(200).json(new ApiResponse(200, data, "Chatbot conversation created successfully"))
 })
 
 const getAllConversation = asyncHandler(async (req, res) => {

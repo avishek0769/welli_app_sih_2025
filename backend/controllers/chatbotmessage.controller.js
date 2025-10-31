@@ -2,6 +2,7 @@ import ChatbotConversation from "../models/chatbotcoversation.model"
 import ChatbotMessage from "../models/chatbotmessage.model"
 import ApiError from "../utils/ApiError"
 import ApiResponse from "../utils/ApiResponse"
+import uploadToS3 from "../utils/uploadToS3"
 
 const createChatbotMessage = asyncHandler(async (req, res) => {
     const { userInput, chatId } = req.body
@@ -11,17 +12,16 @@ const createChatbotMessage = asyncHandler(async (req, res) => {
         throw new ApiError(402, "This chat does not belong to this user")
     }
 
-    // const response = await fetch("/api/python-service", {
-    //     method: "POST",
-    //     body: JSON.stringify({ userInput })
-    // })
-    // const data = await response.json()
-    const data = { chatBotResponse: "New Chat" }
+    const response = await fetch(`/api/chat/${chatId}/message`, {
+        method: "POST",
+        body: JSON.stringify({ message: userInput })
+    })
+    const data = await response.json()
 
     await ChatbotMessage.create({
         chat: chatId,
         promptText: userInput,
-        responseText: data.chatBotResponse,      
+        responseText: data.reply,
     })
 
     return res.status(200).json(new ApiResponse(200, data, "Chatbot response fetched"))
@@ -58,14 +58,17 @@ const getAudio = asyncHandler(async (req, res) => {
         return res.status(200).json(new ApiResponse(200, { audioUrl: message.responseAudioUrl }, "Fetched audio for the chatbot message"))
     }
 
-    // const response = await fetch("/api/python-tts-service", {
-    //     method: "POST",
-    //     body: JSON.stringify({ text: message.responseText })
-    // })
-    // const data = await response.json()
-    const data = { audioUrl: "http://example.com/audio.mp3" }
+    const response = await fetch("/api/chat/message-audio", {
+        method: "POST",
+        body: JSON.stringify({ text: message.responseText })
+    })
+    const blob = await response.blob()
+    const audioBuffer = await blob.arrayBuffer()
 
-    message.responseAudioUrl = data.audioUrl
+    // Upload to aws
+    const audioUrl = await uploadToS3(audioBuffer, `chatbot-messages/${messageId}.mp3`, "audio/mpeg")
+
+    message.responseAudioUrl = audioUrl
     await message.save()
 
     return res.status(200).json(new ApiResponse(200, data, "Fetched audio for the chatbot message"))
