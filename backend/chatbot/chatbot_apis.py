@@ -16,8 +16,9 @@ load_dotenv()
 
 # Configuration (match existing files)
 DB_FAISS_PATH = "vectorstore/db_faiss"
+
 CUSTOM_PROMPT_TEMPLATE = """
-You are a helpful medical assistant. First detect the user's language and answer in the same language.
+You are a helpful medical assistant. First detect the user's language and answer in the same language. Don't need to mention the language you are using.
 If the user's question refers to medical facts, use the provided context to answer.
 If the context is not enough, say "I don't know" — do not hallucinate medical facts.
 Be concise and use clear, simple language suitable for patients.
@@ -65,7 +66,8 @@ def get_qa_chain():
             retriever=_vectorstore.as_retriever(search_kwargs={"k": 3}),
             return_source_documents=False,
             chain_type_kwargs={
-                "prompt": set_custom_prompt(CUSTOM_PROMPT_TEMPLATE)},
+                "prompt": set_custom_prompt(CUSTOM_PROMPT_TEMPLATE)
+            },
         )
         return _qa_chain
 
@@ -111,7 +113,7 @@ def post_message(chat_id):
     Accepts: JSON { "message": "<user text>" }
     Behavior: store user message, generate assistant text via LLM+retrieval.
     NOTE: Do NOT generate or save any audio here. Audio is generated only via /message-audio endpoint.
-    Returns: { "reply": "<assistant text>", "messages": [...] }
+    Returns: { "reply": "<assistant text>" }  <-- only reply, no "messages" array
     """
     payload = request.get_json(silent=True) or {}
     user_text = (payload.get("message") or "").strip()
@@ -136,15 +138,7 @@ def post_message(chat_id):
         conv["messages"].append(
             {"role": "assistant", "content": assistant_text})
 
-    # Persist conversation (best-effort)
-    try:
-        import json
-        with open(f"conversation_{chat_id}.json", "w", encoding="utf-8") as f:
-            json.dump(conv["messages"], f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
-
-    return jsonify({"reply": assistant_text, "messages": conv["messages"]})
+    return jsonify({"reply": assistant_text})
 
 
 @app.route("/api/chat/message-audio", methods=["POST"])
@@ -169,6 +163,6 @@ def post_message_audio():
     except Exception:
         print("TTS failed:", traceback.format_exc())
         return jsonify({"reply": assistant_text, "audio_available": False})
-    
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
