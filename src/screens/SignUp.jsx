@@ -11,8 +11,10 @@ import {
     KeyboardAvoidingView,
     Platform,
     Modal,
+    Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { launchImageLibrary } from 'react-native-image-picker';
 
 const { width, height } = Dimensions.get('window');
 
@@ -67,22 +69,33 @@ const CustomAlert = ({ visible, onClose, title, message, type = 'error', buttonT
 };
 
 const SignUp = ({ navigation }) => {
-    const [currentStep, setCurrentStep] = useState(1);
+    const [currentStep, setCurrentStep] = useState(3);
     const [phoneNumber, setPhoneNumber] = useState('');
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [profileData, setProfileData] = useState({
-        anonymousName: '',
+        fullName: '',
+        username: '',
         age: '',
         gender: '',
         institution: '',
         password: '',
         confirmPassword: '',
     });
+    const [usernameAvailable, setUsernameAvailable] = useState(null); // null = unknown, true/false
+    const [checkingUsername, setCheckingUsername] = useState(false);
+    const [profileImage, setProfileImage] = useState({
+        uri: null,
+        fileName: null,
+        type: null,
+        uploadedUrl: null,
+    });
+    const [uploadingImage, setUploadingImage] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [otpTimer, setOtpTimer] = useState(60);
     const [canResend, setCanResend] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const usernameDebounceRef = useRef(null);
 
     // Alert State
     const [alertVisible, setAlertVisible] = useState(false);
@@ -122,12 +135,105 @@ const SignUp = ({ navigation }) => {
         }
     };
 
-    // Generate random anonymous name
-    const generateAnonymousName = () => {
+    // Generate random anonymous username
+    const generateAnonymousUsername = () => {
         const randomName = anonymousNames[Math.floor(Math.random() * anonymousNames.length)];
         const randomNumber = Math.floor(Math.random() * 999) + 1;
         const generatedName = `${randomName}${randomNumber}`;
-        setProfileData({ ...profileData, anonymousName: generatedName });
+        setProfileData(prev => ({ ...prev, username: generatedName }));
+        // trigger availability check
+        checkUsernameAvailabilityDebounced(generatedName);
+    };
+
+    // Username availability check (debounced)
+    const checkUsernameAvailability = async (username) => {
+        if (!username) {
+            setUsernameAvailable(null);
+            return;
+        }
+        setCheckingUsername(true);
+        try {
+            // Replace endpoint with your backend route
+            const res = await fetch(`https://your-backend.example.com/api/check-username?username=${encodeURIComponent(username)}`);
+            const json = await res.json();
+            // expected response: { available: true/false }
+            setUsernameAvailable(Boolean(json.available));
+        } catch (err) {
+            setUsernameAvailable(null);
+        } finally {
+            setCheckingUsername(false);
+        }
+    };
+
+    const checkUsernameAvailabilityDebounced = (username) => {
+        if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current);
+        usernameDebounceRef.current = setTimeout(() => {
+            checkUsernameAvailability(username);
+        }, 600);
+    };
+
+    // Pick image from library (do NOT upload yet) - upload on submit
+    const pickProfileImage = async () => {
+        try {
+            const result = await launchImageLibrary({
+                mediaType: 'photo',
+                quality: 0.8,
+            });
+
+            if (result.didCancel) return;
+            const asset = result.assets && result.assets[0];
+            if (!asset) return;
+
+            const { uri, fileName, type } = asset;
+            setProfileImage({ uri, fileName: fileName || `photo-${Date.now()}.jpg`, type: type || 'image/jpeg', uploadedUrl: null });
+        } catch (err) {
+            showAlert({ title: 'Error', message: 'Could not pick image. Try again.', type: 'error', buttonText: 'OK' });
+        }
+    };
+
+    // upload profile image to S3 using backend signed url
+    const uploadProfileImage = async () => {
+        if (!profileImage.uri) return null;
+        if (profileImage.uploadedUrl) return profileImage.uploadedUrl;
+
+        setUploadingImage(true);
+        try {
+            const fileName = profileImage.fileName || `photo-${Date.now()}.jpg`;
+            const contentType = profileImage.type || 'image/jpeg';
+
+            // Request signed URL from backend
+            const signRes = await fetch('https://your-backend.example.com/api/s3/sign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fileName,
+                    contentType,
+                }),
+            });
+            const signJson = await signRes.json();
+            if (!signJson.signedUrl) throw new Error('No signed URL returned');
+
+            // fetch local file and upload
+            const fileResp = await fetch(profileImage.uri);
+            const blob = await fileResp.blob();
+
+            await fetch(signJson.signedUrl, {
+                method: 'PUT',
+                body: blob,
+                headers: {
+                    'Content-Type': contentType,
+                },
+            });
+
+            const publicUrl = signJson.publicUrl || signJson.signedUrl.split('?')[0];
+            setProfileImage(prev => ({ ...prev, uploadedUrl: publicUrl }));
+            return publicUrl;
+        } catch (err) {
+            showAlert({ title: 'Upload Failed', message: 'Could not upload profile picture. Please try again.', type: 'error', buttonText: 'OK' });
+            return null;
+        } finally {
+            setUploadingImage(false);
+        }
     };
 
     // Password validation
@@ -271,7 +377,7 @@ const SignUp = ({ navigation }) => {
     };
 
     const handleProfileSubmit = async () => {
-        if (!profileData.anonymousName || !profileData.age || !profileData.gender || !profileData.password || !profileData.confirmPassword) {
+        if (!profileData.username || !profileData.age || !profileData.gender || !profileData.password || !profileData.confirmPassword) {
             showAlert({
                 title: 'Missing Information',
                 message: 'Please fill in all required fields before proceeding',
@@ -315,21 +421,48 @@ const SignUp = ({ navigation }) => {
         }
 
         setIsLoading(true);
+
         try {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
+            // If user selected a profile image but it's not uploaded yet, upload now
+            let uploadedUrl = profileImage.uploadedUrl || null;
+            if (profileImage.uri && !uploadedUrl) {
+                uploadedUrl = await uploadProfileImage();
+                if (!uploadedUrl && profileImage.uri) {
+                    // upload failed, stop submit
+                    setIsLoading(false);
+                    return;
+                }
+            }
+
+            // Optionally verify username is unique before creating account
+            if (usernameAvailable === false) {
+                showAlert({
+                    title: 'Username Taken',
+                    message: 'Please choose a different username.',
+                    type: 'error',
+                    buttonText: 'OK'
+                });
+                setIsLoading(false);
+                return;
+            }
+
+            // simulate server-side create
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
             const userData = {
                 phone: phoneNumber,
+                fullName: profileData.fullName || null,
                 ...profileData,
+                profileImage: uploadedUrl || null,
                 isAnonymous: true,
                 createdAt: new Date().toISOString(),
             };
-            
+
             // Remove confirmPassword from userData before saving
             delete userData.confirmPassword;
-            
+
             console.log('Account created:', userData);
-            
+
             showAlert({
                 title: 'Welcome to Welli!',
                 message: 'Your anonymous account has been created successfully. Ready to start your wellness journey?',
@@ -337,7 +470,7 @@ const SignUp = ({ navigation }) => {
                 buttonText: 'Get Started',
                 onConfirm: () => navigation.replace('TabNavigator')
             });
-            
+
         } catch (error) {
             showAlert({
                 title: 'Account Creation Failed',
@@ -509,27 +642,86 @@ const SignUp = ({ navigation }) => {
 
             <View style={styles.formContainer}>
                 <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Anonymous Name *</Text>
+                    <Text style={styles.inputLabel}>Full Name (optional)</Text>
+                    <TextInput
+                        style={styles.nameInput}
+                        placeholder="Your full name"
+                        placeholderTextColor="#9CA3AF"
+                        value={profileData.fullName}
+                        onChangeText={(text) => setProfileData({...profileData, fullName: text})}
+                        maxLength={60}
+                    />
+                    <Text style={{fontSize:12, color:'#6B7280', marginTop:6}}>
+                        This name will not be used publicly. Your profile picture, however, will be used publicly.
+                    </Text>
+                </View>
+
+                <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Anonymous Username *</Text>
                     <View style={styles.nameInputContainer}>
                         <TextInput
                             style={styles.nameInput}
-                            placeholder="Choose a name (e.g., Student123, Helper, etc.)"
+                            placeholder="Choose a username (e.g., Student123)"
                             placeholderTextColor="#9CA3AF"
-                            value={profileData.anonymousName}
-                            onChangeText={(text) => setProfileData({...profileData, anonymousName: text})}
+                            value={profileData.username}
+                            onChangeText={(text) => {
+                                setProfileData({...profileData, username: text});
+                                setUsernameAvailable(null);
+                                checkUsernameAvailabilityDebounced(text);
+                            }}
+                            autoCapitalize="none"
                             maxLength={20}
                         />
                     </View>
-                    <TouchableOpacity
-                        style={styles.generateNameButton}
-                        onPress={generateAnonymousName}
-                        activeOpacity={0.7}
-                    >
-                        <Icon name="auto-awesome" size={16} color="#6C63FF" />
-                        <Text style={styles.generateNameText}>Generate Random Name</Text>
-                    </TouchableOpacity>
+                    <View style={{marginTop: 6}}>
+                        {checkingUsername ? (
+                            <Text style={{color: '#6B7280'}}>Checking...</Text>
+                        ) : usernameAvailable === null ? (
+                            <Text style={{color: '#6B7280'}}>Enter a username to check availability</Text>
+                        ) : usernameAvailable ? (
+                            <Text style={{color: '#10B981', fontWeight: '600'}}>Username is unique</Text>
+                        ) : (
+                            <Text style={{color: '#EF4444', fontWeight: '600'}}>Username is taken</Text>
+                        )}
+                    </View>
+                    <View style={{marginTop: 8, alignSelf: 'flex-start'}}>
+                        <TouchableOpacity
+                            style={styles.generateNameButton}
+                            onPress={generateAnonymousUsername}
+                            activeOpacity={0.7}
+                        >
+                            <Icon name="auto-awesome" size={16} color="#6C63FF" />
+                            <Text style={styles.generateNameText}>Generate Random Username</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
+                <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Profile Picture (Optional)</Text>
+                    <View style={styles.profileImageRow}>
+                        {profileImage.uri ? (
+                            <Image source={{ uri: profileImage.uri }} style={styles.profileImagePreview} />
+                        ) : (
+                            <View style={styles.profileImagePlaceholder}>
+                                <Icon name="person" size={36} color="#9CA3AF" />
+                                <Text style={{color:'#9CA3AF', marginTop:6, fontSize:12}}>No image</Text>
+                            </View>
+                        )}
+                        <TouchableOpacity
+                            style={styles.selectImageButton}
+                            onPress={pickProfileImage}
+                            activeOpacity={0.8}
+                        >
+                            <Icon name="photo" size={18} color="#6C63FF" />
+                            <Text style={styles.generateNameText}>{uploadingImage ? 'Uploading...' : (profileImage.uploadedUrl ? 'Change Picture' : 'Select Picture')}</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <Text style={{fontSize:12, color:'#6B7280'}}>
+                        Profile picture (if provided) will be uploaded and used publicly.
+                    </Text>
+                </View>
+
+                {/* the rest of the form: age, gender, password, confirm, institution */}
                 <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Age *</Text>
                     <TextInput
@@ -638,9 +830,9 @@ const SignUp = ({ navigation }) => {
             </View>
 
             <TouchableOpacity
-                style={[styles.primaryButton, (!profileData.anonymousName || !profileData.age || !profileData.gender || !profileData.password || !profileData.confirmPassword || isLoading) && styles.buttonDisabled]}
+                style={[styles.primaryButton, (!profileData.username || !profileData.age || !profileData.gender || !profileData.password || !profileData.confirmPassword || isLoading) && styles.buttonDisabled]}
                 onPress={handleProfileSubmit}
-                disabled={!profileData.anonymousName || !profileData.age || !profileData.gender || !profileData.password || !profileData.confirmPassword || isLoading}
+                disabled={!profileData.username || !profileData.age || !profileData.gender || !profileData.password || !profileData.confirmPassword || isLoading}
                 activeOpacity={0.8}
             >
                 <Text style={styles.primaryButtonText}>
@@ -1137,6 +1329,41 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+    profileImageRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 16,
+    },
+    profileImagePreview: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        borderWidth: 2,
+        borderColor: '#E8F0FF',
+        backgroundColor: '#F0F4FF',
+    },
+    profileImagePlaceholder: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        borderWidth: 2,
+        borderColor: '#E8F0FF',
+        backgroundColor: '#F0F4FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    selectImageButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F0F4FF',
+        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        borderColor: '#6C63FF',
+        gap: 6,
     },
 });
 

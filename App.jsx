@@ -15,6 +15,9 @@ import BubblePopGame from './src/screens/BubblePopGame';
 import SignUp from './src/screens/SignUp';
 import Login from './src/screens/login';
 import ForumScreen from './src/screens/ForumScreen';
+import Profile from './src/screens/Profile';
+import User from './backend/models/user.model';
+import UserProvider from './src/context/UserContext';
 
 function App() {
     const Stack = createNativeStackNavigator()
@@ -22,27 +25,30 @@ function App() {
     return (
         <GestureHandlerRootView>
             <SafeAreaProvider>
-                <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={[]}>
-                    <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+                <UserProvider>
+                    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={[]}>
+                        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
-                    <NavigationContainer>
-                        <Stack.Navigator initialRouteName="SignUp" screenOptions={{ headerShown: false }} >
-                            <Stack.Screen name="TabNavigator" component={TabNavigator} />
-                            <Stack.Screen name="ChatScreen" component={ChatScreen} />
-                            <Stack.Screen name="CalmingSounds" component={CalmingSounds} />
-                            <Stack.Screen name="BreathingExercise" component={BreathingExercise} />
-                            <Stack.Screen name="RelevantContent" component={RelevantContent} />
-                            <Stack.Screen name="BubblePopGame" component={BubblePopGame} />
-                            <Stack.Screen name="ForumScreen" component={ForumScreen} />
+                        <NavigationContainer>
+                            <Stack.Navigator initialRouteName="SignUp" screenOptions={{ headerShown: false }} >
+                                <Stack.Screen name="TabNavigator" component={TabNavigator} />
+                                <Stack.Screen name="ChatScreen" component={ChatScreen} />
+                                <Stack.Screen name="CalmingSounds" component={CalmingSounds} />
+                                <Stack.Screen name="BreathingExercise" component={BreathingExercise} />
+                                <Stack.Screen name="RelevantContent" component={RelevantContent} />
+                                <Stack.Screen name="BubblePopGame" component={BubblePopGame} />
+                                <Stack.Screen name="ForumScreen" component={ForumScreen} />
+                                <Stack.Screen name="Profile" component={Profile} />
 
-                            <Stack.Screen name="SignUp" component={SignUp} />
-                            <Stack.Screen name="Login" component={Login} />
-                        </Stack.Navigator>
-                    </NavigationContainer>
+                                <Stack.Screen name="SignUp" component={SignUp} />
+                                <Stack.Screen name="Login" component={Login} />
+                            </Stack.Navigator>
+                        </NavigationContainer>
 
-                </SafeAreaView>
+                    </SafeAreaView>
+                </UserProvider>
             </SafeAreaProvider>
-        </GestureHandlerRootView>
+        </GestureHandlerRootView >
     )
 }
 
