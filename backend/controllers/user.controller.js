@@ -66,9 +66,9 @@ const verifyCode = asyncHandler(async (req, res) => {
 })
 
 const signUp = asyncHandler(async (req, res) => {
-    const { annonymousUsername, realFullname, password, gender, age, phoneNumber } = req.body;
+    const { annonymousUsername, realFullname, password, gender, age, phoneNumber, avatar } = req.body;
 
-    if (!annonymousUsername || !realFullname || !password || !gender || !age || !phoneNumber) {
+    if (!annonymousUsername || !realFullname || !password || !gender || !age || !phoneNumber || !avatar) {
         throw new ApiError(401, "All fields are required")
     }
 
@@ -82,7 +82,8 @@ const signUp = asyncHandler(async (req, res) => {
         user.gender = gender,
         user.age = age,
         user.password = password,
-        user.refreshToken = refreshToken
+        user.refreshToken = refreshToken,
+        user.avatar = avatar
         await user.save()
     }
     else {

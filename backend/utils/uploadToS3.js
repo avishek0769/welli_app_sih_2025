@@ -18,8 +18,14 @@ const uploadToS3 = async (buffer, folder, mimeType) => {
         ACL: 'public-read',
     }
 
-    const uploadResult = await s3.upload(params).promise()
-    return uploadResult.Location
+    try {
+        const uploadResult = await s3.upload(params).promise()
+        return uploadResult.Location
+    }
+    catch (error) {
+        console.error("Error uploading to S3:", error)
+        throw new Error("Failed to upload file to S3")        
+    }
 }
 
 export default uploadToS3
