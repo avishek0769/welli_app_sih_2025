@@ -1,7 +1,14 @@
+import { useNavigation } from '@react-navigation/native';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native'
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useUser } from '../context/UserContext';
 
 const Header = () => {
+    const navigation = useNavigation();
+    const { user } = useUser();
+
+    const avatarUri = user?.avatar || user?.profileImage || null;
+
     return (
         <View style={styles.header}>
             <View style={styles.headerLeft}>
@@ -17,9 +24,13 @@ const Header = () => {
                     <Text style={styles.appSubtitle}>Your Mental Wellness Companion</Text>
                 </View>
             </View>
-            <TouchableOpacity style={styles.profileButton} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.profileButton} activeOpacity={0.8} onPress={() => navigation.navigate('Profile')}>
                 <View style={styles.profileIcon}>
-                    <Icon name="person" size={22} color="#6C63FF" />
+                    {avatarUri ? (
+                        <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                    ) : (
+                        <Icon name="person" size={22} color="#6C63FF" />
+                    )}
                     <View style={styles.notificationBadge} />
                 </View>
             </TouchableOpacity>
@@ -97,6 +108,12 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 4,
         position: 'relative',
+        overflow: 'hidden',
+    },
+    avatarImage: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
     },
     notificationBadge: {
         position: 'absolute',

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     View,
     Text,
@@ -8,94 +8,15 @@ import {
     Image,
     SafeAreaView,
     Dimensions,
-    Animated,
     Modal,
     Linking,
 } from "react-native";
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { LineChart } from 'react-native-gifted-charts';
 import Header from "../components/Header";
 import { useNavigation } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
-/* ---------- Enhanced Chart Component with Gifted Charts ---------- */
-const MoodChart = ({ data }) => {
-    // Convert mood data to chart format
-    const chartData = data.map((point) => ({
-        value: point.y,
-        label: point.x,
-        dataPointText: point.y.toString(),
-    }));
-
-    // Mood labels for Y-axis
-    const moodLabels = {
-        5: 'Happy',
-        4: 'Good',
-        3: 'Okay',
-        2: 'Low',
-        1: 'Upset'
-    };
-
-    return (
-        <View style={styles.chartWrapper}>
-            <LineChart
-                data={chartData}
-                width={width - 100}
-                height={180}
-                spacing={45}
-                color="#6C63FF"
-                thickness={2}
-                dataPointsColor="#6C63FF"
-                dataPointsRadius={4}
-                textColor="#666"
-                textShiftY={-8}
-                textShiftX={0}
-                textFontSize={9}
-                showVerticalLines={false}
-                rulesColor="#E0E7FF"
-                rulesType="solid"
-                initialSpacing={10}
-                endSpacing={10}
-                maxValue={5}
-                minValue={1}
-                noOfSections={5}
-                yAxisTextStyle={{ color: '#666', fontSize: 9 }}
-                xAxisTextNumberOfLines={1}
-                curved={false}
-                animateOnDataChange={true}
-                animationDuration={800}
-                onDataChangeAnimationDuration={300}
-                isAnimated={true}
-                hideDataPoints={false}
-                showDataPointOnPress={true}
-                pressEnabled={true}
-                showStripOnPress={true}
-                stripColor="#6C63FF"
-                stripOpacity={0.2}
-                stripWidth={2}
-                formatYLabel={(value) => {
-                    return moodLabels[Math.round(value)] || '';
-                }}
-                yAxisLabelSuffix=""
-                hideYAxisText={false}
-                yAxisOffset={0}
-                backgroundColor="transparent"
-                focusEnabled={true}
-                showDataPointLabelOnFocus={true}
-                dataPointLabelComponent={(item, index) => {
-                    return (
-                        <View style={styles.dataPointLabel}>
-                            <Text style={styles.dataPointLabelText}>
-                                {moodLabels[item.value] || item.value}
-                            </Text>
-                        </View>
-                    );
-                }}
-            />
-        </View>
-    );
-};
 
 /* ---------- Welcome Section Component ---------- */
 const WelcomeSection = () => {
@@ -108,13 +29,6 @@ const WelcomeSection = () => {
 
         return () => clearInterval(timer);
     }, []);
-
-    const getGreeting = () => {
-        const hour = currentTime.getHours();
-        if (hour < 12) return "Good Morning";
-        if (hour < 17) return "Good Afternoon";
-        return "Good Evening";
-    };
 
     const getWellnessQuote = () => {
         const quotes = [
@@ -175,152 +89,6 @@ const WelcomeSection = () => {
     );
 };
 
-/* ---------- MoodTracker Component ---------- */
-const MoodTracker = ({ value, onSelect, trendData }) => {
-    const [isSubmitted, setIsSubmitted] = useState(false);
-
-    const moodIcons = [
-        { icon: 'sentiment-very-satisfied', color: '#4CAF50', label: 'Great' },
-        { icon: 'sentiment-satisfied', color: '#8BC34A', label: 'Good' },
-        { icon: 'sentiment-neutral', color: '#FF9800', label: 'Okay' },
-        { icon: 'sentiment-dissatisfied', color: '#FF5722', label: 'Bad' },
-        { icon: 'sentiment-very-dissatisfied', color: '#F44336', label: 'Awful' }
-    ];
-
-    const handleSubmitMood = () => {
-        if (value) {
-            setIsSubmitted(true);
-            setTimeout(() => {
-                // setIsSubmitted(false);
-            }, 3000);
-        }
-    };
-
-    const selectedMood = value ? moodIcons[value - 1] : null;
-
-    return (
-        <>
-            <View style={styles.greetingContainer}>
-                {/* <View style={styles.greetingIconWrapper}>
-                    <Icon name="mood" size={24} color="#6C63FF" />
-                </View> */}
-                <View style={styles.greetingTextContainer}>
-                    {isSubmitted ? (
-                        <>
-                            <Text style={styles.greeting}>Mood Recorded!</Text>
-                            <Text style={styles.greetingSubtext}>
-                                Thanks for sharing how you feel today
-                            </Text>
-                        </>
-                    ) : (
-                        <>
-                            <Text style={styles.greeting}>Track Your Mood</Text>
-                            <Text style={styles.greetingSubtext}>
-                                Submit your mood for tracking and relevant content suggestion. Don't worry, your data won't be shared with anyone.
-                            </Text>
-                        </>
-                    )}
-                </View>
-            </View>
-
-            {isSubmitted ? (
-                <View style={styles.moodSubmittedContainer}>
-                    <View style={styles.submittedMoodDisplay}>
-                        <View style={[
-                            styles.submittedMoodIcon,
-                            { backgroundColor: selectedMood.color + '20' }
-                        ]}>
-                            <Icon
-                                name={selectedMood.icon}
-                                size={32}
-                                color={selectedMood.color}
-                            />
-                        </View>
-                        <Text style={[styles.submittedMoodText, { color: selectedMood.color }]}>
-                            You're feeling {selectedMood.label} today
-                        </Text>
-                        <View style={styles.submittedSuccessIcon}>
-                            <Icon name="check-circle" size={20} color="#4CAF50" />
-                            <Text style={styles.submittedSuccessText}>Saved successfully</Text>
-                        </View>
-                    </View>
-                </View>
-            ) : (
-                <>
-                    <View style={styles.moodRow}>
-                        {moodIcons.map((moodItem, i) => {
-                            const idx = i + 1;
-                            const isSelected = value === idx;
-                            return (
-                                <TouchableOpacity
-                                    key={i}
-                                    onPress={() => onSelect(idx)}
-                                    activeOpacity={0.8}
-                                    style={[
-                                        styles.moodButton,
-                                        isSelected && [styles.moodButtonActive, { borderColor: moodItem.color }]
-                                    ]}
-                                >
-                                    <View style={styles.moodButtonContent}>
-                                        <View style={[
-                                            styles.moodIconWrapper,
-                                            isSelected && { backgroundColor: moodItem.color + '15' }
-                                        ]}>
-                                            <Icon
-                                                name={moodItem.icon}
-                                                size={24}
-                                                color={isSelected ? moodItem.color : '#9CA3AF'}
-                                            />
-                                        </View>
-                                        <Text style={[
-                                            styles.moodLabel,
-                                            isSelected && { color: moodItem.color, fontWeight: '700' }
-                                        ]}>
-                                            {moodItem.label}
-                                        </Text>
-                                    </View>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-
-                    <View style={styles.submitButtonContainer}>
-                        <TouchableOpacity
-                            onPress={handleSubmitMood}
-                            activeOpacity={0.8}
-                            disabled={!value}
-                            style={[
-                                styles.submitButton,
-                                !value && styles.submitButtonDisabled
-                            ]}
-                        >
-                            <Icon
-                                name="send"
-                                size={18}
-                                color={value ? "#FFFFFF" : "#B0B0B0"}
-                                style={{ marginRight: 8 }}
-                            />
-                            <Text style={[
-                                styles.submitButtonText,
-                                !value && styles.submitButtonTextDisabled
-                            ]}>
-                                Submit Mood
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </>
-            )}
-
-            <View style={styles.chartCard}>
-                <View style={styles.chartHeader}>
-                    <Icon name="trending-up" size={20} color="#6C63FF" />
-                    <Text style={styles.chartTitle}>30-Day Mood Trend</Text>
-                </View>
-                <MoodChart data={trendData} />
-            </View>
-        </>
-    );
-};
 
 /* ---------- QuickAccessTile Component - Enhanced ---------- */
 const QuickAccessTile = ({ label, onPress, iconName, description }) => {
