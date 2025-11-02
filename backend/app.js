@@ -10,10 +10,11 @@ import peerChatRouter from "./routers/peerchat.route.js";
 import likeRouter from "./routers/like.route.js";
 import { Server } from "socket.io";
 import { handleSendMessage } from "./controllers/peermessage.controller.js";
-import Redis from "ioredis";
 import chatbotMessageRouter from "./routers/chatbotmessage.route.js";
 import chatbotConversationRouter from "./routers/chatbotcoversation.route.js";
 import peerMessageRouter from "./routers/peermessage.route.js";
+import mongoose from "mongoose";
+import "./utils/redisClient.js";
 
 dotenv.config({
     path: "./.env",
@@ -27,7 +28,6 @@ export const io = new Server(server, {
         credentials: true
     }
 })
-export const connection = new Redis()
 const PORT = process.env.PORT || 3000;
 
 app.use(json({ limit: "16kb" }));
@@ -61,4 +61,8 @@ app.use(errorHandler);
 
 server.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
+    mongoose
+        .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log("Connected to MongoDB"))
+        .catch((err) => console.error("MongoDB connection error:", err));
 });

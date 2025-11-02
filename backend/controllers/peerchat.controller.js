@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
-import asyncHandler from "../utils/asyncHandler"
-import ApiResponse from "../utils/ApiResponse"
-import ApiError from "../utils/ApiError"
-import PeerChat from "../models/peerchat.model";
-import User from "../models/user.model";
-import PeerMessage from "../models/peermessage.model";
+import asyncHandler from "../utils/asyncHandler.js"
+import ApiResponse from "../utils/ApiResponse.js"
+import ApiError from "../utils/ApiError.js"
+import PeerChat from "../models/peerchat.model.js";
+import User from "../models/user.model.js";
+import PeerMessage from "../models/peermessage.model.js";
 
 /*
 1. Feat --> Create groups with peers

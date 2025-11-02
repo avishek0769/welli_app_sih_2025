@@ -1,8 +1,8 @@
-import Forum from "../models/forum.model"
-import asyncHandler from "../utils/asyncHandler"
-import ApiResponse from "../utils/ApiResponse"
-import ApiError from "../utils/ApiError"
-import User from "../models/user.model"
+import Forum from "../models/forum.model.js"
+import asyncHandler from "../utils/asyncHandler.js"
+import ApiResponse from "../utils/ApiResponse.js"
+import ApiError from "../utils/ApiError.js"
+import User from "../models/user.model.js"
 import mongoose from "mongoose"
 
 /*

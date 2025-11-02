@@ -1,6 +1,6 @@
 import { Router } from "express"
-import { createForum, getForumDetails, getForumMembers, joinForum, leaveForum } from "../controllers/forum.controller"
-import auth from "../middlewares/auth"
+import { createForum, getForumDetails, getForumMembers, joinForum, leaveForum } from "../controllers/forum.controller.js"
+import { auth } from "../middlewares/auth.js"
 
 const forumRouter = Router()
 

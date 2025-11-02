@@ -1,11 +1,12 @@
-import asyncHandler from "../utils/asyncHandler"
-import ApiResponse from "../utils/ApiResponse"
-import ApiError from "../utils/ApiError"
-import User from "../models/user.model";
-import PeerMessage from "../models/peermessage.model";
-import { connection, io } from "../app";
+import asyncHandler from "../utils/asyncHandler.js"
+import ApiResponse from "../utils/ApiResponse.js"
+import ApiError from "../utils/ApiError.js"
+import User from "../models/user.model.js";
+import PeerMessage from "../models/peermessage.model.js";
+import { io } from "../app.js";
 import { Queue } from "bullmq";
-import PeerChat from "../models/peerchat.model";
+import PeerChat from "../models/peerchat.model.js";
+import { connection } from "../utils/redisClient.js";
 
 /*
 1. File uploads -- send attachments

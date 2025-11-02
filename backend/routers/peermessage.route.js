@@ -1,6 +1,6 @@
 import { Router } from "express"
-import auth from "../middlewares/auth"
-import { clearChat, deleteForEveryone, deleteForMe, getMessagesByChat, getUnreadMessageCountByChat } from "../controllers/peermessage.controller"
+import { auth } from "../middlewares/auth.js"
+import { clearChat, deleteForEveryone, deleteForMe, getMessagesByChat, getUnreadMessageCountByChat } from "../controllers/peermessage.controller.js"
 
 const peerMessageRouter = Router()
 

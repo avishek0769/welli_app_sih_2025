@@ -1,6 +1,6 @@
 import { Router } from "express"
-import { createChatbotMessage, getAllChats, getAudio } from "../controllers/chatbotmessage.controller"
-
+import { auth } from "../middlewares/auth.js"
+import { createChatbotMessage, getAllChats, getAudio } from "../controllers/chatbotmessage.controller.js"
 
 const chatbotMessageRouter = Router()
 

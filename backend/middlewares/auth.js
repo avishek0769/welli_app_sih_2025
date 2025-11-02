@@ -1,8 +1,8 @@
 import jwt from "jsonwebtoken"
-import ApiError from "../utils/ApiError"
-import User from "../models/user.model"
+import ApiError from "../utils/ApiError.js"
+import User from "../models/user.model.js"
 
-const auth = async (req, res, next) => {
+export const auth = async (req, res, next) => {
     try {
         const token = req.cookies?.accessToken || req.headers("Authorization")?.replace("Bearer ", "")
         if(!token) {
@@ -26,5 +26,3 @@ const auth = async (req, res, next) => {
         next(error)
     }
 }
-
-export { auth }

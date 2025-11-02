@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { auth } from "../middlewares/auth";
-import { createChatbotConversation, deleteConversation, getAllConversation, mostRecentChat, updateTitle } from "../controllers/chatbotcoversation.controller";
+import { auth } from "../middlewares/auth.js";
+import { createChatbotConversation, deleteConversation, getAllConversation, mostRecentChat, updateTitle } from "../controllers/chatbotcoversation.controller.js";
 
 const chatbotConversationRouter = Router()
 

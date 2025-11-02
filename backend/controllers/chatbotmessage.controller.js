@@ -1,8 +1,9 @@
-import ChatbotConversation from "../models/chatbotcoversation.model"
-import ChatbotMessage from "../models/chatbotmessage.model"
-import ApiError from "../utils/ApiError"
-import ApiResponse from "../utils/ApiResponse"
-import uploadToS3 from "../utils/uploadToS3"
+import ChatbotConversation from "../models/chatbotcoversation.model.js"
+import ChatbotMessage from "../models/chatbotmessage.model.js"
+import ApiError from "../utils/ApiError.js"
+import ApiResponse from "../utils/ApiResponse.js"
+import asyncHandler from "../utils/asyncHandler.js"
+import uploadToS3 from "../utils/uploadToS3.js"
 
 const createChatbotMessage = asyncHandler(async (req, res) => {
     const { userInput, chatId } = req.body

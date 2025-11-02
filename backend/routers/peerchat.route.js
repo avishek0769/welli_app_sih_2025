@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { auth } from '../middlewares/auth';
-import { createChat, deleteChat, getChats } from '../controllers/peerchat.controller';
+import { auth } from '../middlewares/auth.js';
+import { createChat, deleteChat, getChats } from '../controllers/peerchat.controller.js';
 
 const peerChatRouter = Router();
 
