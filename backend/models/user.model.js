@@ -5,7 +5,7 @@ import mongoose, { Schema } from "mongoose";
 const userSchema = new Schema({
     realFullname: {
         type: String,
-        required: true
+        // required: true
     },
     annonymousUsername: {
         type: String,
@@ -17,7 +17,7 @@ const userSchema = new Schema({
     },
     age: {
         type: Number,
-        required: true
+        // required: true
     },
     gender: {
         type: String,
@@ -30,7 +30,7 @@ const userSchema = new Schema({
     },
     password: {
         type: String,
-        required: true
+        // required: true
     },
     otp: {
         type: Number,
@@ -47,6 +47,10 @@ const userSchema = new Schema({
     acceptMessages: {
         type: Boolean,
         default: true
+    },
+    hasSignedup: {
+        type: Boolean,
+        default: false
     },
     socketId: {
         type: String,

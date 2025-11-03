@@ -1,4 +1,4 @@
-import twl from "twilio";
+import twilio from "twilio";
 import User from "../models/user.model.js";
 import asyncHandler from "../utils/asyncHandler.js"
 import ApiResponse from "../utils/ApiResponse.js"
@@ -12,8 +12,7 @@ const s3 = new AWS.S3({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     region: process.env.AWS_REGION
 });
-
-const client = new twl.Twilio(process.env.ACCOUNT_SID, process.env.AUTH_TOKEN)
+const client = new twilio(process.env.ACCOUNT_SID, process.env.AUTH_TOKEN)
 
 /*
 TODOs -
@@ -40,6 +39,7 @@ const sendVerificationCode = asyncHandler(async (req, res) => {
     else {
         await User.create({
             phone: phoneNumber,
+            annonymousUsername: `user-${Date.now() * Math.floor(Math.random() * 1000)}`,
             otp
         })
     }
@@ -62,7 +62,7 @@ const verifyCode = asyncHandler(async (req, res) => {
 
     const user = await User.findOne({ phone: phoneNumber })
 
-    if (user.otp == code) {
+    if (user.otp == Number(code)) {
         user.isVerified = true;
         await user.save()
         return res.status(200).send("OTP has been verified")
@@ -83,7 +83,7 @@ const signUp = asyncHandler(async (req, res) => {
     const accessToken = user.generateAccessToken()
     const refreshToken = user.generateRefreshToken()
 
-    if (user.isVerified) {
+    if (user.isVerified && !user.hasSignedup) {
         user.annonymousUsername = annonymousUsername,
         user.realFullname = realFullname,
         user.gender = gender,
@@ -91,20 +91,22 @@ const signUp = asyncHandler(async (req, res) => {
         user.password = password,
         user.refreshToken = refreshToken,
         user.avatar = avatar
+        user.hasSignedup = true
         await user.save()
     }
     else {
-        throw new ApiError(402, "User's phone number is not verified")
+        if (!user.isVerified) throw new ApiError(402, "Phone number is not verified");
+        throw new ApiError(403, "User has already signed up with this phone number");
     }
 
     return res
         .status(200)
-        .json(200, {
-            ...user,
+        .json(new ApiResponse(200, {
+            ...user._doc,
             accessToken,
             accessTokenExp: 86400000,
             refreshTokenExp: 86400000 * 7
-        }, "User has registered successfully")
+        }, "User has registered successfully"))
 })
 
 const login = asyncHandler(async (req, res) => {
@@ -114,7 +116,7 @@ const login = asyncHandler(async (req, res) => {
         throw new ApiError(401, "Phone number or password is empty")
     }
 
-    const user = await User.findOne({ phone: phoneNumber }).select("-password");
+    const user = await User.findOne({ phone: phoneNumber })
     if(!user) {
         throw new ApiError(402, "Phone number is invalid")
     }
@@ -131,12 +133,13 @@ const login = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .json(200, {
-            ...user,
+        .json(new ApiResponse(200, {
+            ...user._doc,
+            password: undefined,
             accessToken,
             accessTokenExp: 86400000,
             refreshTokenExp: 86400000 * 7
-        }, "User has logged in successfully")
+        }, "User has logged in successfully"))
 })
 
 const refreshTokens = asyncHandler(async (req, res) => {
@@ -172,16 +175,16 @@ const checkUsername = asyncHandler(async (req, res) => {
 
 const setIsActive = asyncHandler(async (req, res) => {
     const { isActive } = req.query;
-    isActive = Boolean(isActive)
+    const active = Boolean(isActive)
 
     await User.findByIdAndUpdate(
         req.user._id,
-        { $set: { isActive } }
+        { $set: { isActive: active } }
     )
-
+    
     await Forum.updateMany(
         { members: req.user._id },
-        { $inc: { totalActive: isActive? 1 : -1 } }
+        { $inc: { totalActive: active ? 1 : -1 } }
     )
 
     return res.status(200).send(`isActive is set to ${isActive}`)
@@ -199,7 +202,6 @@ const createSignedUrl = asyncHandler(async (req, res) => {
         Key: fileName,
         Expires: 60,
         ContentType: fileType,
-        ACL: 'public-read'
     };
 
     const signedUrl = await s3.getSignedUrlPromise('putObject', params);

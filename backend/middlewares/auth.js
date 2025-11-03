@@ -4,7 +4,7 @@ import User from "../models/user.model.js"
 
 export const auth = async (req, res, next) => {
     try {
-        const token = req.cookies?.accessToken || req.headers("Authorization")?.replace("Bearer ", "")
+        const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "")
         if(!token) {
             throw new ApiError(402, "Access Token is not available")
         }
@@ -19,7 +19,7 @@ export const auth = async (req, res, next) => {
             throw new ApiError(404, "User not found")
         }
 
-        req.user = user
+        req.user = user._doc
         next()
     }
     catch (error) {

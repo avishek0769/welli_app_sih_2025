@@ -1,6 +1,7 @@
+import dotenv from "dotenv";
+dotenv.config();
 import express, { json } from "express";
 import http from "http"
-import dotenv from "dotenv";
 import userRouter from "./routers/user.route.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import forumRouter from "./routers/forum.route.js";
@@ -15,10 +16,6 @@ import chatbotConversationRouter from "./routers/chatbotcoversation.route.js";
 import peerMessageRouter from "./routers/peermessage.route.js";
 import mongoose from "mongoose";
 import "./utils/redisClient.js";
-
-dotenv.config({
-    path: "./.env",
-});
 
 const app = express();
 const server = http.createServer(app)
@@ -62,7 +59,7 @@ app.use(errorHandler);
 server.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
     mongoose
-        .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+        .connect(process.env.MONGO_URI)
         .then(() => console.log("Connected to MongoDB"))
         .catch((err) => console.error("MongoDB connection error:", err));
 });
