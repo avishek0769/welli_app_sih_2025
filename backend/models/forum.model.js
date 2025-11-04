@@ -23,7 +23,11 @@ const forumSchema = new Schema({
     members: [{
         type: Schema.Types.ObjectId,
         ref: "users"
-    }]
+    }],
+    lastUpdated: {
+        type: Date,
+        default: Date.now
+    }
 })
 
 const Forum = mongoose.model("Forum", forumSchema)

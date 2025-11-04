@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { createForum, getForumDetails, getForumMembers, joinForum, leaveForum } from "../controllers/forum.controller.js"
+import { createForum, joinedForums, getForumDetails, getForumMembers, joinForum, leaveForum } from "../controllers/forum.controller.js"
 import { auth } from "../middlewares/auth.js"
 
 const forumRouter = Router()
@@ -7,7 +7,8 @@ const forumRouter = Router()
 forumRouter.route("/create").post(createForum)
 forumRouter.route("/join/:forumId").get(auth, joinForum)
 forumRouter.route("/leave/:forumId").get(auth, leaveForum)
-forumRouter.route("/members").get(auth, getForumMembers)
-forumRouter.route("/details").get(auth, getForumDetails)
+forumRouter.route("/members/:forumId").get(auth, getForumMembers)
+forumRouter.route("/joined").get(auth, joinedForums)
+forumRouter.route("/:forumId").get(auth, getForumDetails)
 
 export default forumRouter

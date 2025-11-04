@@ -10,28 +10,30 @@ import mongoose from "mongoose"
 2. Show the forum name header.
 3. Cliking the header the total members will be shown, desc.
 4. No Forums will be suggested, just show all.
+5. Unseen posts count for each forum.
+6. Frontend -> Differentiate sections for peers and forums
 */
 
 
 const createForum = asyncHandler(async (req, res) => {
     const { name, description, password } = req.body
 
-    if(password != "iamadmin"){
+    if (password != "iamadmin") {
         throw new ApiError(403, "You are not authorized to create a forum")
     }
-    await Forum.create({ name, description })
-    
-    return res.status(200).send("Forum created")
+    const newForum = await Forum.create({ name, description })
+
+    return res.status(200).json(new ApiResponse(200, newForum, "Forum created successfully"))
 })
 
 const joinForum = asyncHandler(async (req, res) => {
     const { forumId } = req.params;
-    
+
     await Forum.findByIdAndUpdate(
         forumId,
         {
             $addToSet: { members: req.user._id },
-            $inc: { totalMembers }
+            $inc: { totalMembers: 1 }
         }
     )
 
@@ -45,7 +47,7 @@ const joinForum = asyncHandler(async (req, res) => {
 
 const leaveForum = asyncHandler(async (req, res) => {
     const { forumId } = req.params;
-    
+
     await Forum.findByIdAndUpdate(
         forumId,
         { $pull: { members: req.user._id } }
@@ -95,10 +97,56 @@ const getForumDetails = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, forum, "Fetched forum details"))
 })
 
+const joinedForums = asyncHandler(async (req, res) => {
+    const forums = await Forum.aggregate([
+        {
+            $match: { members: new mongoose.Types.ObjectId(req.user._id) }
+        },
+        {
+            $lookup: {
+                from: "posts",
+                let: { forumId: "$_id" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$forumId", "$$forumId"] },
+                                    { $in: [new mongoose.Types.ObjectId(req.user._id), "$unseenBy"] }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        $count: "unseenPostCount"
+                    }
+                ],
+                as: "unseenPost"
+            }
+        },
+        {
+            $addFields: {
+                unseenCount: {
+                    $ifNull: [{ $arrayElemAt: ["$unseenPost.unseenCount", 0] }, 0]
+                }
+            }
+        },
+        {
+            $project: {
+                members: 0,
+            }
+        },
+        { $sort: { lastUpdated: -1 } }
+    ])
+
+    return res.status(200).json(new ApiResponse(200, forums, "Fetched all forums of current user"))
+})
+
 export {
     createForum,
     joinForum,
     leaveForum,
     getForumMembers,
-    getForumDetails
+    getForumDetails,
+    joinedForums
 }

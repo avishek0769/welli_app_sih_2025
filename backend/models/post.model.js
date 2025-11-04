@@ -27,6 +27,10 @@ const postSchema = new Schema({
         type: String,
         required: true
     },
+    unseenBy: [{
+        type: Schema.Types.ObjectId,
+        ref: "users"
+    }]
 }, { timestamps: true })
 
 

@@ -9,16 +9,48 @@ import mongoose from "mongoose"
 const createPost = asyncHandler(async (req, res) => {
     const { text, imageUrl, forumId } = req.body;
 
-    await Post.create({
+    const post = new Post({
         text,
         image: imageUrl,
         createdBy: req.user._id,
         forumId,
+        unseenBy: []
     })
+
     await Forum.findByIdAndUpdate(
         forumId,
-        { $inc: { totalPosts } }
+        {
+            $inc: { totalPosts: 1 },
+            $set: { lastUpdated: Date.now() }
+        }
     )
+
+    const forumMembers = await Forum.aggregate([
+        {
+            $match: { _id: new mongoose.Types.ObjectId(forumId) }
+        },
+        {
+            $lookup: {
+                from: "users",
+                foreignField: "_id",
+                localField: "members",
+                as: "members",
+                pipeline: [
+                    { $match: { isActive: true } },
+                    { $project: { socketId: 1 } }
+                ]
+            }
+        }
+    ])
+
+    post.unseenBy = forumMembers[0].members.map(member => member._id);
+    await post.save();
+
+    forumMembers[0].members.forEach(member => {
+        if (member.socketId) {
+            io.to(member.socketId).emit("newPost", { forumId })
+        }
+    })
 
     return res.status(200).send("Post created successfully!")
 })
@@ -29,7 +61,7 @@ const editPost = asyncHandler(async (req, res) => {
 
     const post = await Post.findById(postId)
 
-    if(post.createdBy != req.user._id) {
+    if (post.createdBy != req.user._id) {
         throw new ApiError(403, "You are not authorized to edit this post");
     }
     post.text = text;
@@ -44,7 +76,7 @@ const deletePost = asyncHandler(async (req, res) => {
 
     const post = await Post.findById(postId)
 
-    if(post.createdBy != req.user._id) {
+    if (post.createdBy != req.user._id) {
         throw new ApiError(403, "You are not authorized to delete this post");
     }
     await Post.findByIdAndDelete(postId)
@@ -79,13 +111,30 @@ const getAllPosts = asyncHandler(async (req, res) => {
             }
         }
     ])
-    
+
     return res.status(200).json(new ApiResponse(200, posts, "All posts are fetched succesfully"))
+})
+
+const unseenPostCountByUser = asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+
+    const forums = await Post.aggregate([
+        { $match: { unseenBy: new mongoose.Types.ObjectId(userId) } },
+        {
+            $group: {
+                _id: "$forumId",
+                count: { $sum: 1 }
+            }
+        }
+    ]);
+
+    return res.status(200).json(new ApiResponse(200, forums, "Unseen post count fetched successfully"))
 })
 
 export {
     createPost,
     editPost,
     deletePost,
-    getAllPosts
+    getAllPosts,
+    unseenPostCountByUser
 }
