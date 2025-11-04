@@ -5,11 +5,12 @@ import { getAllCommentLikes, getAllPostLikes, likeComment, likePost, unlikeComme
 const likeRouter = Router()
 
 likeRouter.route("/post/:postId").post(auth, likePost)
-likeRouter.route("/unlike/:likeId/post/:postId").post(auth, unlikePost)
-likeRouter.route("/comment/:commentId").post(auth, likeComment)
-likeRouter.route("/unlike/:likeId/comment/:commentId").post(auth, unlikeComment)
 likeRouter.route("/post/:postId").get(auth, getAllPostLikes)
+likeRouter.route("/unlike/post/:postId").delete(auth, unlikePost)
+
+likeRouter.route("/comment/:commentId").post(auth, likeComment)
 likeRouter.route("/comment/:commentId").get(auth, getAllCommentLikes)
+likeRouter.route("/unlike/comment/:commentId").delete(auth, unlikeComment)
 
 
 export default likeRouter

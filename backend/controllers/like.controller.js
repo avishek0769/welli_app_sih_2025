@@ -9,6 +9,11 @@ import asyncHandler from "../utils/asyncHandler.js";
 const likePost = asyncHandler(async (req, res) => {
     const { postId } = req.params;
 
+    const likeExists = await Like.findOne({ postId, likedBy: req.user._id });
+    if (likeExists) {
+        throw new ApiError(400, "Post already liked");
+    }
+
     await Like.create({
         postId,
         likedBy: req.user._id,
@@ -17,17 +22,16 @@ const likePost = asyncHandler(async (req, res) => {
 
     await Post.findByIdAndUpdate(
         postId,
-        { $inc: { totalLikes } }
+        { $inc: { totalLikes: 1 } }
     )
 
     return res.status(200).send("Liked the post successfully!")
 })
 
 const unlikePost = asyncHandler(async (req, res) => {
-    const { likeId, postId } = req.params;
+    const { postId } = req.params;
 
     const likeDeleted = await Like.deleteOne({
-        _id: likeId,
         postId,
         likedBy: req.user._id
     })
@@ -45,26 +49,30 @@ const unlikePost = asyncHandler(async (req, res) => {
 
 const likeComment = asyncHandler(async (req, res) => {
     const { commentId } = req.params;
+    
+    const likeExists = await Like.findOne({ commentId, likedBy: req.user._id });
+    if (likeExists) {
+        throw new ApiError(400, "Comment already liked");
+    }
 
     await Like.create({
         commentId,
         likedBy: req.user._id,
-        commentId: null
+        postId: null
     })
 
     await Comment.findByIdAndUpdate(
         commentId,
-        { $inc: { totalLikes } }
+        { $inc: { totalLikes: 1 } }
     )
 
     return res.status(200).send("Liked the comment successfully!")
 })
 
 const unlikeComment = asyncHandler(async (req, res) => {
-    const { likeId, commentId } = req.params;
+    const { commentId } = req.params;
 
     const likeDeleted = await Like.deleteOne({
-        _id: likeId,
         commentId,
         likedBy: req.user._id
     })
