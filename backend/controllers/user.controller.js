@@ -209,6 +209,11 @@ const createSignedUrl = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, { signedUrl }, "Signed URL created successfully"))
 })
 
+const currentUser = asyncHandler(async (req, res) => {
+    const user = req.user;
+    return res.status(200).json(new ApiResponse(200, user, "Fetched current user"))
+})
+
 export {
     sendVerificationCode,
     verifyCode,
@@ -217,5 +222,6 @@ export {
     login,
     checkUsername,
     setIsActive,
-    createSignedUrl
+    createSignedUrl,
+    currentUser
 }
