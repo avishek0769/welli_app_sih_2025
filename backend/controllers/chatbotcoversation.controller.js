@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import ChatbotConversation from "../models/chatbotcoversation.model.js";
 import ChatbotMessage from "../models/chatbotmessage.model.js";
 import ApiError from "../utils/ApiError.js";
@@ -10,16 +11,19 @@ const createChatbotConversation = asyncHandler(async (req, res) => {
 
     const chat = new ChatbotConversation({
         user: req.user._id,
+        title
     })
 
-    const response = await fetch("/api/chat", {
+    const response = await fetch("http://localhost:5000/api/chat", {
         method: "POST",
         body: JSON.stringify({ chat_id: chat._id, name: title })
     })
-    const data = await response.json()
+    if(!response.ok) {
+        throw new ApiError(500, "Failed to create chatbot conversation in external service")
+    }
     await chat.save();
 
-    return res.status(200).json(new ApiResponse(200, data, "Chatbot conversation created successfully"))
+    return res.status(200).json(new ApiResponse(200, chat, "Chatbot conversation created successfully"))
 })
 
 const getAllConversation = asyncHandler(async (req, res) => {
@@ -37,13 +41,19 @@ const getAllConversation = asyncHandler(async (req, res) => {
 const deleteConversation = asyncHandler(async (req, res) => {
     const { chatId } = req.params;
 
-    const chat = await ChatbotConversation.findById(chatId)
-    if(chat.user != req.user._id) {
+    const chat = await ChatbotConversation.findById(new mongoose.Types.ObjectId(chatId))
+    if(chat.user.toString() != req.user._id.toString()) {
         throw new ApiError(402, "User is not the creator of this conversation")
     }
 
-    await ChatbotMessage.deleteMany({ chat: chatId })
-    await ChatbotConversation.findByIdAndDelete(chatId)
+    const deletedMessages = await ChatbotMessage.deleteMany({ chat: chatId })
+    if(!deletedMessages) {
+        throw new ApiError(500, "Failed to delete chatbot messages associated with this conversation")
+    }
+    const deletedChat = await ChatbotConversation.findByIdAndDelete(chatId)
+    if(!deletedChat) {
+        throw new ApiError(500, "Failed to delete chatbot conversation")
+    }
 
     return res.status(200).send("Successfully deleted chatbot conversation")
 })
@@ -52,10 +62,13 @@ const updateTitle = asyncHandler(async (req, res) => {
     const { chatId } = req.params;
     const { title } = req.body;
 
-    await ChatbotConversation.findByIdAndUpdate(
+    const chat = await ChatbotConversation.findByIdAndUpdate(
         chatId,
         { title }
     )
+    if(!chat) {
+        throw new ApiError(500, "Failed to update the title of the chatbot conversation")
+    }
 
     return res.status(200).send("Updated the title of the chatbot conversation")
 })
@@ -63,7 +76,7 @@ const updateTitle = asyncHandler(async (req, res) => {
 const mostRecentChat = asyncHandler(async (req, res) => {
     const { page = 0, limit = 20 } = req.query;
 
-    const chat = await ChatbotConversation.findOne({ user: req.user._id }).sort({ lastUpdated: 1 })
+    const chat = await ChatbotConversation.findOne({ user: req.user._id }).sort({ lastUpdated: -1 })
 
     const messages = await ChatbotMessage
         .find({ chat: chat._id })
