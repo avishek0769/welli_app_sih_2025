@@ -16,19 +16,19 @@ const createComment = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Comment or Post ID is missing");
     }
 
-    await Comment.create({
+    const newComment = await Comment.create({
         comment,
         commenter: req.user._id,
-        mentioned: mentionedUserId,
+        mentioned: mentionedUserId || null,
         postId
     })
 
     await Post.findByIdAndUpdate(
         postId,
-        { $inc: { totalComment } }
+        { $inc: { totalComment: 1 } }
     )
 
-    return res.status(200).send("Comment added to the post")
+    return res.status(200).json(new ApiResponse(200, newComment, "Comment created successfully"));
 })
 
 const editComment = asyncHandler(async (req, res) => {
@@ -40,7 +40,7 @@ const editComment = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Comment not found");
     }
 
-    if (existingComment.commenter != req.user._id) {
+    if (existingComment.commenter.toString() != req.user._id.toString()) {
         throw new ApiError(403, "You are not authorized to edit this comment");
     }
 
@@ -58,11 +58,11 @@ const deleteComment = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Comment not found");
     }
 
-    if (existingComment.commenter != req.user._id) {
+    if (existingComment.commenter.toString() != req.user._id.toString()) {
         throw new ApiError(403, "You are not authorized to delete this comment");
     }
 
-    await existingComment.remove();
+    await Comment.findByIdAndDelete(commentId);
 
     await Post.findByIdAndUpdate(
         existingComment.postId,

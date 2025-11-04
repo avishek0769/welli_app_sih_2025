@@ -5,9 +5,9 @@ import { createComment, deleteComment, editComment, getAllComments } from "../co
 const commentRouter = Router()
 
 commentRouter.route("/create").post(auth, createComment)
+commentRouter.route("/post/:postId").get(auth, getAllComments)
 commentRouter.route("/:commentId").put(auth, editComment)
 commentRouter.route("/:commentId").delete(auth, deleteComment)
-commentRouter.route("/posts/:postId").get(auth, getAllComments)
 
 
 export default commentRouter

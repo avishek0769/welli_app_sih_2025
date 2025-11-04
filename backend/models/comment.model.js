@@ -20,8 +20,12 @@ const commentSchema = new Schema({
     totalLikes: {
         type: Number,
         default: 0
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
     }
-}, { timestamps: true })
+})
 
 const Comment = mongoose.model("Comment", commentSchema)
 
