@@ -4,8 +4,8 @@ import { createChatbotMessage, getAllChats, getAudio } from "../controllers/chat
 
 const chatbotMessageRouter = Router()
 
-chatbotMessageRouter.route("/create").post(auth, createChatbotMessage)
-chatbotMessageRouter.route("/:chatId").get(auth, getAllChats)
+chatbotMessageRouter.route("/").post(auth, createChatbotMessage)
 chatbotMessageRouter.route("/audio/:messageId").get(auth, getAudio)
+chatbotMessageRouter.route("/:chatId").get(auth, getAllChats)
 
 export default chatbotMessageRouter
