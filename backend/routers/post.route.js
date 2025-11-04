@@ -7,7 +7,7 @@ const postRouter = Router()
 postRouter.route("/create").post(auth, createPost)
 postRouter.route("/edit/:postId").put(auth, editPost)
 postRouter.route("/delete/:postId").delete(auth, deletePost)
-postRouter.route("/get/:forumId").get(auth, getAllPosts)
+postRouter.route("/forum/:forumId").get(auth, getAllPosts)
 postRouter.route("/unseen/count").get(auth, unseenPostCountByUser)
 
 

@@ -52,7 +52,7 @@ const createPost = asyncHandler(async (req, res) => {
         }
     })
 
-    return res.status(200).send("Post created successfully!")
+    return res.status(200).json(new ApiResponse(200, post, "Post created successfully"))
 })
 
 const editPost = asyncHandler(async (req, res) => {
@@ -60,8 +60,8 @@ const editPost = asyncHandler(async (req, res) => {
     const { postId } = req.params;
 
     const post = await Post.findById(postId)
-
-    if (post.createdBy != req.user._id) {
+    
+    if (post.createdBy.toString() != req.user._id.toString()) {
         throw new ApiError(403, "You are not authorized to edit this post");
     }
     post.text = text;
@@ -76,7 +76,7 @@ const deletePost = asyncHandler(async (req, res) => {
 
     const post = await Post.findById(postId)
 
-    if (post.createdBy != req.user._id) {
+    if (post.createdBy.toString() != req.user._id.toString()) {
         throw new ApiError(403, "You are not authorized to delete this post");
     }
     await Post.findByIdAndDelete(postId)
@@ -123,7 +123,17 @@ const unseenPostCountByUser = asyncHandler(async (req, res) => {
         {
             $group: {
                 _id: "$forumId",
-                count: { $sum: 1 }
+                unseenCount: { $sum: 1 }
+            }
+        },
+        {
+            $addFields: {
+                forumId: "$_id"
+            }
+        },
+        {
+            $project: {
+                _id: 0
             }
         }
     ]);

@@ -25,13 +25,16 @@ const postSchema = new Schema({
     },
     image: {
         type: String,
-        required: true
     },
     unseenBy: [{
         type: Schema.Types.ObjectId,
         ref: "users"
-    }]
-}, { timestamps: true })
+    }],
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
+})
 
 
 const Post = mongoose.model("Post", postSchema)

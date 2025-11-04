@@ -50,6 +50,7 @@ app.use("/api/v1/chatbot-conversation", chatbotConversationRouter);
 app.use("/api/v1/chatbot-message", chatbotMessageRouter);
 
 io.on("connection", (socket) => {
+    console.log("Socket connected --> ". socket.id)
     socket.on("sendMessage", handleSendMessage(socket))
 })
 

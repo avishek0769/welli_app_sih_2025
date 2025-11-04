@@ -127,13 +127,14 @@ const joinedForums = asyncHandler(async (req, res) => {
         {
             $addFields: {
                 unseenCount: {
-                    $ifNull: [{ $arrayElemAt: ["$unseenPost.unseenCount", 0] }, 0]
+                    $ifNull: [{ $arrayElemAt: ["$unseenPost.unseenPostCount", 0] }, 0]
                 }
             }
         },
         {
             $project: {
                 members: 0,
+                unseenPost: 0
             }
         },
         { $sort: { lastUpdated: -1 } }
