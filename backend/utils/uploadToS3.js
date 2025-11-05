@@ -1,5 +1,4 @@
 import aws from "aws-sdk"
-import { v4 as uuidv4 } from "uuid"
 
 const s3 = new aws.S3({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -7,15 +6,14 @@ const s3 = new aws.S3({
     region: process.env.AWS_REGION,
 })
 
-const uploadToS3 = async (buffer, folder, mimeType) => {
-    const key = `${folder}/${uuidv4()}`
+const uploadToS3 = async (arrayBuffer, key, mimeType) => {
+    const buffer = Buffer.from(arrayBuffer)
 
     const params = {
         Bucket: process.env.AWS_S3_BUCKET_NAME,
         Key: key,
         Body: buffer,
         ContentType: mimeType,
-        ACL: 'public-read',
     }
 
     try {
@@ -24,7 +22,7 @@ const uploadToS3 = async (buffer, folder, mimeType) => {
     }
     catch (error) {
         console.error("Error uploading to S3:", error)
-        throw new Error("Failed to upload file to S3")        
+        throw new Error("Failed to upload file to S3")
     }
 }
 

@@ -72,18 +72,18 @@ const getAudio = asyncHandler(async (req, res) => {
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({ text: message.responseText })
+        body: JSON.stringify({ message: message.responseText, messageId })
     })
-    const blob = await response.blob()
-    const audioBuffer = await blob.arrayBuffer()
-
-    // Upload to aws
-    const audioUrl = await uploadToS3(audioBuffer, `chatbot-messages/${messageId}.mp3`, "audio/mpeg")
-
-    message.responseAudioUrl = audioUrl
+    if(!response.ok) {
+        throw new ApiError(500, "Failed to fetch audio from chatbot service")
+    }
+    
+    const data = await response.json()
+    
+    message.responseAudioUrl = data.audio_url
     await message.save()
 
-    return res.status(200).json(new ApiResponse(200, data, "Fetched audio for the chatbot message"))
+    return res.status(200).json(new ApiResponse(200, { audioUrl: message.responseAudioUrl }, "Fetched audio for the chatbot message"))
 })
 
 export {
