@@ -18,7 +18,7 @@ const createChat = asyncHandler(async (req, res) => {
         throw new ApiError(401, "User does not accept messages from strangers")
     }
 
-    await PeerChat.create({
+    const peerChat = await PeerChat.create({
         participants: [
             new mongoose.Types.ObjectId(req.user._id),
             new mongoose.Types.ObjectId(peerId)
@@ -26,25 +26,41 @@ const createChat = asyncHandler(async (req, res) => {
         lastMessage: null,
     })
 
-    return res.status(200).send("Chat created with the peer")
+    return res.status(200).json(new ApiResponse(200, peerChat, "Chat created successfully"))
 })
 
 const deleteChat = asyncHandler(async (req, res) => {
     const { chatId } = req.params;
 
+    const messages = await PeerMessage.countDocuments({ chat: chatId })
+
+    if(messages === 0) {
+        const chat = await PeerChat.findByIdAndDelete(chatId)
+        if(!chat) {
+            throw new ApiError(404, "Chat not found")
+        }
+        return res.status(200).send("Chat deleted successfully")
+    }
+
     const chat = await PeerChat.findById(chatId)
 
-    if (chat.deletedFor.length && chat.participants.includes(req.user._id)) {
+    if (chat.deletedFor.length && chat.participants.includes(req.user._id.toString())) {
         await PeerMessage.deleteMany({ chat: chatId })
-        await PeerChat.findByIdAndDelete(chatId)
+        const deletedChat = await PeerChat.findByIdAndDelete(chatId)
+        if(!deletedChat) {
+            throw new ApiError(404, "Chat not found")
+        }
     }
-    else if(chat.participants.includes(req.user._id)) {
-        await PeerChat.findByIdAndUpdate(
+    else if(chat.participants.includes(req.user._id.toString())) {
+        const updatedChat = await PeerChat.findByIdAndUpdate(
             chatId,
             { $addToSet: { deletedFor: req.user._id } }
         )
+        if(!updatedChat) {
+            throw new ApiError(404, "Chat not found")
+        }
         await PeerMessage.updateMany(
-            { chat: chat },
+            { chat: chat._id },
             { $addToSet: { deletedFor: req.user._id } }
         )
     }

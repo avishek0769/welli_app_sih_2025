@@ -4,9 +4,9 @@ import { createChat, deleteChat, getChats } from '../controllers/peerchat.contro
 
 const peerChatRouter = Router();
 
-peerChatRouter.route('/create/:peerId').get(auth, createChat)
+peerChatRouter.route('/create/:peerId').post(auth, createChat)
 peerChatRouter.route('/delete/:chatId').delete(auth, deleteChat)
-peerChatRouter.route('/get').get(auth, getChats)
+peerChatRouter.route('/all').get(auth, getChats)
 
 
 export default peerChatRouter;
