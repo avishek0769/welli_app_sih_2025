@@ -85,12 +85,12 @@ const signUp = asyncHandler(async (req, res) => {
 
     if (user.isVerified && !user.hasSignedup) {
         user.annonymousUsername = annonymousUsername,
-        user.realFullname = realFullname,
-        user.gender = gender,
-        user.age = age,
-        user.password = password,
-        user.refreshToken = refreshToken,
-        user.avatar = avatar
+            user.realFullname = realFullname,
+            user.gender = gender,
+            user.age = age,
+            user.password = password,
+            user.refreshToken = refreshToken,
+            user.avatar = avatar
         user.hasSignedup = true
         await user.save()
     }
@@ -117,12 +117,12 @@ const login = asyncHandler(async (req, res) => {
     }
 
     const user = await User.findOne({ phone: phoneNumber })
-    if(!user) {
+    if (!user) {
         throw new ApiError(402, "Phone number is invalid")
     }
     const isCorrect = await user.isPasswordCorrect(password)
 
-    if(!isCorrect) {
+    if (!isCorrect) {
         throw new ApiError(403, "Password is incorrect")
     }
 
@@ -167,21 +167,26 @@ const checkUsername = asyncHandler(async (req, res) => {
     const { username } = req.params;
     const user = await User.findOne({ annonymousUsername: username });
 
-    if(user) {
+    if (user) {
         return res.status(200).json(new ApiResponse(200, { usernameTaken: true }, "Username is already taken"))
     }
     return res.status(200).json(new ApiResponse(200, { usernameTaken: false }, "Username is unique"))
 })
 
 const setIsActive = asyncHandler(async (req, res) => {
-    const { isActive } = req.query;
+    const { isActive, socketId } = req.query;
     const active = Boolean(isActive)
 
     await User.findByIdAndUpdate(
         req.user._id,
-        { $set: { isActive: active } }
+        {
+            $set: {
+                isActive: active,
+                socketId: active ? socketId : null
+            }
+        }
     )
-    
+
     await Forum.updateMany(
         { members: req.user._id },
         { $inc: { totalActive: active ? 1 : -1 } }
@@ -214,16 +219,6 @@ const currentUser = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, user, "Fetched current user"))
 })
 
-const updateSocketId = asyncHandler(async (req, res) => {
-    const { socketId } = req.query;
-
-    await User.findByIdAndUpdate(
-        req.user._id,
-        { $set: { socketId } }
-    )
-
-    return res.status(200).send("Socket ID updated successfully")
-})
 
 export {
     sendVerificationCode,
@@ -234,6 +229,5 @@ export {
     checkUsername,
     setIsActive,
     createSignedUrl,
-    currentUser,
-    updateSocketId
+    currentUser
 }
