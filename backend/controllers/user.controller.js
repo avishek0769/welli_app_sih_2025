@@ -214,6 +214,17 @@ const currentUser = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, user, "Fetched current user"))
 })
 
+const updateSocketId = asyncHandler(async (req, res) => {
+    const { socketId } = req.query;
+
+    await User.findByIdAndUpdate(
+        req.user._id,
+        { $set: { socketId } }
+    )
+
+    return res.status(200).send("Socket ID updated successfully")
+})
+
 export {
     sendVerificationCode,
     verifyCode,
@@ -223,5 +234,6 @@ export {
     checkUsername,
     setIsActive,
     createSignedUrl,
-    currentUser
+    currentUser,
+    updateSocketId
 }

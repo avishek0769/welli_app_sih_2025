@@ -109,7 +109,7 @@ userSchema.methods.generateAccessToken = function() {
             realFullname: this.realFullname,
         },
         process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: "1D" }
+        { expiresIn: "10D" }
     )
 }
 

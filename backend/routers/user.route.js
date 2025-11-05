@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { checkUsername, createSignedUrl, currentUser, login, refreshTokens, sendVerificationCode, setIsActive, signUp, verifyCode } from "../controllers/user.controller.js";
+import { checkUsername, createSignedUrl, currentUser, login, refreshTokens, sendVerificationCode, setIsActive, signUp, updateSocketId, verifyCode } from "../controllers/user.controller.js";
 import { auth } from "../middlewares/auth.js";
 
 const userRouter = Router()
@@ -13,6 +13,7 @@ userRouter.route("/username/:username").get(checkUsername)
 userRouter.route("/is-active").get(auth, setIsActive)
 userRouter.route("/signed-url").get(auth, createSignedUrl)
 userRouter.route("/current").get(auth, currentUser)
+userRouter.route("/socket-id").put(auth, updateSocketId)
 
 
 export default userRouter;
