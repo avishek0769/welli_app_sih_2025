@@ -1,6 +1,5 @@
 import { Worker } from "bullmq";
-import { connection, io } from "../app";
-import User from "../models/user.model";
+import PeerMessage from "../models/peermessage.model.js";
 
 let flushTimer;
 const FLUSH_INTERVAL = 15000;
@@ -41,28 +40,6 @@ const flushMessage = async () => {
         if (bulkOps.length > 0) {
             await PeerMessage.bulkWrite(bulkOps);
         }
-
-        // Notify receivers about which chats are seen
-        const receivers = await User.find(
-            { _id: { $in: [...receiversList] } },
-            { isActive: 1, socketId: 1 }
-        );
-
-        for (const receiver of receivers) {
-            if (!receiver.isActive || !receiver.socketId) continue;
-
-            // Find all chatIds this receiver should be notified for
-            const chatIds = [];
-            for (const [chatId, { receiverIds }] of grouped.entries()) {
-                if (receiverIds.has(receiver._id.toString())) {
-                    chatIds.push(chatId);
-                }
-            }
-
-            if (chatIds.length > 0) {
-                io.to(receiver.socketId).emit("messageSeen", { chatIds });
-            }
-        }
     }
     catch (error) {
         console.error("Error flushing seen messages:", error);
@@ -88,7 +65,10 @@ const messageSeenWorker = new Worker("messageseen-worker", async (job) => {
         }, FLUSH_INTERVAL);
     }
 }, {
-    connection,
+    connection: {
+        host: process.env.REDIS_HOST,
+        port: process.env.REDIS_PORT
+    },
     concurrency: 5,
     limiter: {
         max: 100,

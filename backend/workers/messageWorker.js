@@ -1,9 +1,7 @@
 import { Worker } from "bullmq";
-import { connection } from "mongoose";
-import PeerMessage from "../models/peermessage.model";
-import PeerChat from "../models/peerchat.model";
-import User from "../models/user.model";
-import { io } from "../app";
+import PeerMessage from "../models/peermessage.model.js";
+import PeerChat from "../models/peerchat.model.js";
+
 
 let messageBuffer = []
 let flushTimer;
@@ -55,19 +53,6 @@ const flushMessage = async () => {
         }
         if (bulkOps.length) await PeerChat.bulkWrite(bulkOps);
 
-        const receivers = await User.find( // TODO: Optimise getting socket ID
-            { _id: { $in: receiversList } },
-            { isActive: 1, socketId: 1 }
-        )
-        
-        let chatByUserEntries = [...chatByUserMap.entries()]
-        receivers.filter(receiver => receiver.isActive).map(receiver => {
-            let chatId = chatByUserEntries.find(([chat, user]) => user.toString() == receiver._id)?.[0]
-            if(chatId) {
-                io.to(receiver.socketId).emit("checkForNewMessages", chatId)
-            }
-        })
-
         console.log(`Flushed ${messages.length} messages`);
     }
     catch (err) {
@@ -94,7 +79,10 @@ const messageWorker = new Worker("peerMessage-worker", async job => {
         }, TIME_INTERVAL);
     }
 }, {
-    connection,
+    connection: { 
+        host: process.env.REDIS_HOST,
+        port: process.env.REDIS_PORT
+    },
     concurrency: 5,
     limiter: {
         max: 100,

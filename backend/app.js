@@ -9,22 +9,17 @@ import postRouter from "./routers/post.route.js";
 import commentRouter from "./routers/comment.route.js";
 import peerChatRouter from "./routers/peerchat.route.js";
 import likeRouter from "./routers/like.route.js";
-import { Server } from "socket.io";
 import { handleSendMessage } from "./controllers/peermessage.controller.js";
 import chatbotMessageRouter from "./routers/chatbotmessage.route.js";
 import chatbotConversationRouter from "./routers/chatbotcoversation.route.js";
 import peerMessageRouter from "./routers/peermessage.route.js";
 import mongoose from "mongoose";
 import "./utils/redisClient.js";
+import { initSocket } from "./utils/socket.js";
 
 const app = express();
 const server = http.createServer(app)
-export const io = new Server(server, {
-    cors: {
-        origin: process.env.CORS_ORIGIN || "*",
-        credentials: true
-    }
-})
+const io = initSocket(server);
 const PORT = process.env.PORT || 3000;
 
 app.use(json({ limit: "16kb" }));
@@ -50,7 +45,7 @@ app.use("/api/v1/chatbot-conversation", chatbotConversationRouter);
 app.use("/api/v1/chatbot-message", chatbotMessageRouter);
 
 io.on("connection", (socket) => {
-    console.log("Socket connected --> ". socket.id)
+    console.log("Socket connected --> ", socket.id)
     socket.on("sendMessage", handleSendMessage(socket))
 })
 

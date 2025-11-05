@@ -3,26 +3,31 @@ import ApiResponse from "../utils/ApiResponse.js"
 import ApiError from "../utils/ApiError.js"
 import User from "../models/user.model.js";
 import PeerMessage from "../models/peermessage.model.js";
-import { io } from "../app.js";
 import { Queue } from "bullmq";
 import PeerChat from "../models/peerchat.model.js";
 import { connection } from "../utils/redisClient.js";
+import { getIoInstance } from "../utils/socket.js";
 
 /*
 1. File uploads -- send attachments
 */
 
+let io;
+setTimeout(() => {
+    io = getIoInstance();
+}, 3000);
 const messageQueue = new Queue("peerMessages", { connection })
 const messageSeenQueue = new Queue("peerMessagesSeen", { connection })
 
-const handleSendMessage = (socket) => async ({ message, timestamp, senderId, receiverId, chatId, }) => {
-    const user = await User.findById(receiverId) // TODO: Optimise getting socket ID
+const handleSendMessage = (socket) => async ({ message, senderId, receiverId, chatId }) => { // TODO: Validation required for correct chatId, senderId, receiverId
+    const receiver = await User.findById(receiverId) // TODO: Optimise getting socket ID
+    const timestamp = Date.now();
 
-    if (!user.socketId) {
+    if (!receiver.socketId) {
         throw new ApiError(401, "Socket ID not present")
     }
-    if (user.isActive) {
-        io.to(user.socketId).emit("newMessage", { message, timestamp })
+    if (receiver.isActive) {
+        io.to(receiver.socketId).emit("newMessage", { message, timestamp, chatId, senderId })
     }
 
     await messageQueue.add("new-message", {
