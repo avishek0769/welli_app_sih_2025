@@ -1,3 +1,4 @@
+import boto3
 import os
 from io import BytesIO
 from dotenv import load_dotenv
@@ -71,6 +72,13 @@ def get_qa_chain():
 app = Flask(__name__)
 CORS(app)
 
+s3 = boto3.client(
+    's3',
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    region_name=os.getenv("AWS_REGION")
+)
+
 
 @app.route("/api/chat/message", methods=["POST"])
 def chat_message():
@@ -100,23 +108,45 @@ def chat_message():
 def post_message_audio():
     data = request.get_json(silent=True) or {}
     user_text = data.get("message", "").strip()
+    message_id = data.get("messageId", "temp")  # You can pass this from frontend
 
     if not user_text:
         return jsonify({"error": "message required"}), 400
 
-    assistant_text = f"{user_text}"
-
     try:
+        # Generate the TTS audio
         from gtts import gTTS
         import traceback
+
         mp = BytesIO()
-        gTTS(assistant_text).write_to_fp(mp)
+        gTTS(user_text).write_to_fp(mp)
         mp.seek(0)
         audio_bytes = mp.getvalue()
-        return Response(audio_bytes, mimetype="audio/mpeg")
+
+        # Upload to S3
+        key = f"chatbot-messages/{message_id}.mp3"
+        bucket_name = os.getenv("AWS_S3_BUCKET_NAME")
+
+        s3.put_object(
+            Bucket=bucket_name,
+            Key=key,
+            Body=audio_bytes,
+            ContentType="audio/mpeg"
+        )
+
+        # Return public S3 URL
+        audio_url = f"https://s3.{os.getenv('AWS_REGION')}.amazonaws.com/{bucket_name}/{key}"
+
+        return jsonify({
+            "audio_url": audio_url
+        })
+
     except Exception:
         print("TTS failed:", traceback.format_exc())
-        return jsonify({"reply": assistant_text, "audio_available": False})
+        return jsonify({
+            "audio_available": False
+        }), 500
+
 
 
 if __name__ == "__main__":
