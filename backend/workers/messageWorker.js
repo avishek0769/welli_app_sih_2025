@@ -1,6 +1,11 @@
+import dotenv from "dotenv";
+dotenv.config({
+    path: "../.env"
+});
 import { Worker } from "bullmq";
 import PeerMessage from "../models/peermessage.model.js";
 import PeerChat from "../models/peerchat.model.js";
+import mongoose from "mongoose";
 
 
 let messageBuffer = []
@@ -12,6 +17,7 @@ let isFlushing = false;
 const flushMessage = async () => {
     if (messageBuffer.length === 0 || isFlushing) return;
     isFlushing = true
+    console.log("Flushing")
 
     try {
         const messages = [...messageBuffer];
@@ -63,7 +69,8 @@ const flushMessage = async () => {
     }
 }
 
-const messageWorker = new Worker("peerMessage-worker", async job => {
+const messageWorker = new Worker("peerMessages", async job => {
+    console.log("Job received:", job.name, job.data);
     messageBuffer.push(job.data);
 
     if (messageBuffer.length >= MAX_BATCH_SIZE) {
@@ -79,7 +86,7 @@ const messageWorker = new Worker("peerMessage-worker", async job => {
         }, TIME_INTERVAL);
     }
 }, {
-    connection: { 
+    connection: {
         host: process.env.REDIS_HOST,
         port: process.env.REDIS_PORT
     },
@@ -89,5 +96,14 @@ const messageWorker = new Worker("peerMessage-worker", async job => {
         duration: 1000
     }
 })
+
+mongoose.connect(process.env.MONGODB_URI)
+.then(() => {
+    console.log("Message Worker connected to MongoDB");
+})
+.catch((error) => {
+    console.error("Error connecting to MongoDB:", error);
+});
+
 
 export default messageWorker

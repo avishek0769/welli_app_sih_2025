@@ -9,7 +9,7 @@ import postRouter from "./routers/post.route.js";
 import commentRouter from "./routers/comment.route.js";
 import peerChatRouter from "./routers/peerchat.route.js";
 import likeRouter from "./routers/like.route.js";
-import { handleSendMessage } from "./controllers/peermessage.controller.js";
+import { handleSeenMessages, handleSendMessage } from "./controllers/peermessage.controller.js";
 import chatbotMessageRouter from "./routers/chatbotmessage.route.js";
 import chatbotConversationRouter from "./routers/chatbotcoversation.route.js";
 import peerMessageRouter from "./routers/peermessage.route.js";
@@ -46,7 +46,9 @@ app.use("/api/v1/chatbot-message", chatbotMessageRouter);
 
 io.on("connection", (socket) => {
     console.log("Socket connected --> ", socket.id)
+
     socket.on("sendMessage", handleSendMessage(socket))
+    socket.on("seenMessages", handleSeenMessages(socket))
 })
 
 // Error handling middleware - must be last
@@ -55,7 +57,7 @@ app.use(errorHandler);
 server.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
     mongoose
-        .connect(process.env.MONGO_URI)
+        .connect(process.env.MONGODB_URI)
         .then(() => console.log("Connected to MongoDB"))
         .catch((err) => console.error("MongoDB connection error:", err));
 });

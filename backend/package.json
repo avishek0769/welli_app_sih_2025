@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start:server": "nodemon -r dotenv/config app.js",
-    "start:worker": "nodemon workers/messageWorker.js"
+    "start:worker1": "nodemon -r dotenv/config workers/messageWorker.js",
+    "start:worker2": "nodemon -r dotenv/config workers/messageSeenWorker.js"
   },
   "keywords": [],
   "author": "",

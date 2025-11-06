@@ -4,8 +4,8 @@ import { clearChat, deleteForEveryone, deleteForMe, getMessagesByChat, getUnread
 
 const peerMessageRouter = Router()
 
-peerMessageRouter.route("/:chatId").get(auth, getMessagesByChat)
-peerMessageRouter.route("/unread").get(auth, getUnreadMessageCountByChat)
+peerMessageRouter.route("/all/:chatId").get(auth, getMessagesByChat)
+peerMessageRouter.route("/unread/:chatId").get(auth, getUnreadMessageCountByChat)
 peerMessageRouter.route("/delete/for-me/:messageId").delete(auth, deleteForMe)
 peerMessageRouter.route("/delete/for-everyone/:messageId").delete(auth, deleteForEveryone)
 peerMessageRouter.route("/clear/:chatId").delete(auth, clearChat)

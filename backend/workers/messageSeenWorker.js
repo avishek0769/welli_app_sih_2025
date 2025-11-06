@@ -1,5 +1,11 @@
+import dotenv from "dotenv";
+dotenv.config({
+    path: "../.env"
+});
 import { Worker } from "bullmq";
 import PeerMessage from "../models/peermessage.model.js";
+import mongoose from "mongoose";
+
 
 let flushTimer;
 const FLUSH_INTERVAL = 15000;
@@ -9,7 +15,9 @@ let seenMessagesBuffer = []
 
 const flushMessage = async () => {
     if (isFlushing || seenMessagesBuffer.length == 0) return;
-
+    isFlushing = true
+    console.log("Flushing seen messages")
+    
     try {
         let seenMessages = [...seenMessagesBuffer]
         seenMessagesBuffer = []
@@ -40,6 +48,8 @@ const flushMessage = async () => {
         if (bulkOps.length > 0) {
             await PeerMessage.bulkWrite(bulkOps);
         }
+
+        console.log(`Flushed seen messages for ${seenMessages.length} entries`);
     }
     catch (error) {
         console.error("Error flushing seen messages:", error);
@@ -49,7 +59,8 @@ const flushMessage = async () => {
     }
 }
 
-const messageSeenWorker = new Worker("messageseen-worker", async (job) => {
+const messageSeenWorker = new Worker("peerMessagesSeen", async (job) => {
+    console.log(job.name, job.data)
     seenMessagesBuffer.push(job.data)
 
     if (seenMessagesBuffer.length >= MAX_BATCH_SIZE) {
@@ -61,7 +72,7 @@ const messageSeenWorker = new Worker("messageseen-worker", async (job) => {
     if (!flushTimer) {
         flushTimer = setTimeout(async () => {
             await flushMessage()
-            clearTimeout(flushTimer)
+            flushTimer = null
         }, FLUSH_INTERVAL);
     }
 }, {
@@ -75,5 +86,13 @@ const messageSeenWorker = new Worker("messageseen-worker", async (job) => {
         duration: 2000
     }
 })
+
+mongoose.connect(process.env.MONGODB_URI)
+.then(() => {
+    console.log("Message seen Worker connected to MongoDB");
+})
+.catch((error) => {
+    console.error("Error connecting to MongoDB:", error);
+});
 
 export default messageSeenWorker

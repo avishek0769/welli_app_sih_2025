@@ -89,7 +89,7 @@ const getChats = asyncHandler(async (req, res) => {
         },
         {
             $lookup: {
-                from: "peerMessages",
+                from: "peermessages",
                 foreignField: "_id",
                 localField: "lastMessage",
                 as: "lastMessage",
@@ -103,7 +103,7 @@ const getChats = asyncHandler(async (req, res) => {
         },
         {
             $lookup: {
-                from: "peerMessages",
+                from: "peermessages",
                 let: { chatId: "$_id", currentUser: req.user._id },
                 pipeline: [
                     {
