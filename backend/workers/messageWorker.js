@@ -8,30 +8,26 @@ import PeerChat from "../models/peerchat.model.js";
 import mongoose from "mongoose";
 
 
-let messageBuffer = []
+let newMessagesBuffer = []
+let seenMessagesBuffer = []
 let flushTimer;
 const TIME_INTERVAL = 15000;
 const MAX_BATCH_SIZE = 50;
-let isFlushing = false;
+let isFlushingNewMessages = false;
+let isFlushingSeenMessages = false;
 
-const flushMessage = async () => {
-    if (messageBuffer.length === 0 || isFlushing) return;
-    isFlushing = true
+const flushNewMessages = async () => {
+    if (newMessagesBuffer.length === 0 || isFlushingNewMessages) return;
+    isFlushingNewMessages = true
     console.log("Flushing")
 
     try {
-        const messages = [...messageBuffer];
-        let receiversList = []
-        let chatByUserMap = new Map()
-        messageBuffer = []
+        const messages = [...newMessagesBuffer];
+        newMessagesBuffer = []
 
         const insertedMessages = await PeerMessage.insertMany(
             messages.map(
                 ({ chat, sender, text, timestamp, receiver }) => {
-                    if (!receiversList.includes(receiver)) {
-                        receiversList.push(receiver)
-                        chatByUserMap.set(chat, receiver)
-                    }
                     return {
                         chat,
                         sender,
@@ -59,30 +55,88 @@ const flushMessage = async () => {
         }
         if (bulkOps.length) await PeerChat.bulkWrite(bulkOps);
 
-        console.log(`Flushed ${messages.length} messages`);
+        console.log(`Flushed ${messages.length} new messages`);
     }
     catch (err) {
-        console.error("Error flushing messages:", err);
+        console.error("Error flushing new messages:", err);
     }
     finally {
-        isFlushing = false;
+        isFlushingNewMessages = false;
+    }
+}
+
+const flushSeenMessages = async () => {
+    if (isFlushingSeenMessages || seenMessagesBuffer.length == 0) return;
+    isFlushingSeenMessages = true
+    console.log("Flushing seen messages")
+    
+    try {
+        let seenMessages = [...seenMessagesBuffer]
+        seenMessagesBuffer = []
+        const grouped = new Map();
+
+        for (const { chatId, userId, receiverId } of seenMessages) {
+            if (!grouped.has(chatId)) {
+                grouped.set(chatId, { userIds: new Set(), receiverIds: new Set() });
+            }
+            grouped.get(chatId).userIds.add(userId);
+            grouped.get(chatId).receiverIds.add(receiverId);
+        }
+
+        const bulkOps = [];
+        for (const [chatId, { userIds }] of grouped.entries()) {
+            bulkOps.push({
+                updateMany: {
+                    filter: { chat: chatId, readBy: { $nin: [...userIds] } },
+                    update: { $addToSet: { readBy: { $each: [...userIds] } } }
+                }
+            });
+        }
+        if (bulkOps.length > 0) {
+            await PeerMessage.bulkWrite(bulkOps);
+        }
+
+        console.log(`Flushed seen messages for ${seenMessages.length} entries`);
+    }
+    catch (error) {
+        console.error("Error flushing seen messages:", error);
+    }
+    finally {
+        isFlushingSeenMessages = false;
     }
 }
 
 const messageWorker = new Worker("peerMessages", async job => {
-    console.log("Job received:", job.name, job.data);
-    messageBuffer.push(job.data);
+    console.log(job.name, job.data);
+    if(job.name == "new-message") {
+        newMessagesBuffer.push(job.data)
+    }
+    else if(job.name == "seen-message") {
+        seenMessagesBuffer.push(job.data)
+    }
 
-    if (messageBuffer.length >= MAX_BATCH_SIZE) {
-        await flushMessage()
+    if (newMessagesBuffer.length >= MAX_BATCH_SIZE) {
         clearTimeout(flushTimer)
         flushTimer = null;
-        return;
+        await flushNewMessages()
+    }
+    if (seenMessagesBuffer.length >= MAX_BATCH_SIZE) {
+        clearTimeout(flushTimer)
+        flushTimer = null;
+        await flushSeenMessages()
     }
     if (!flushTimer) {
         flushTimer = setTimeout(async () => {
-            await flushMessage()
-            flushTimer = null;
+            try {
+                await flushNewMessages()
+                await flushSeenMessages()
+            }
+            catch (error) {
+                console.error("Error in scheduled flush:", error);
+            }
+            finally {
+                flushTimer = null;
+            }
         }, TIME_INTERVAL);
     }
 }, {
@@ -90,7 +144,7 @@ const messageWorker = new Worker("peerMessages", async job => {
         host: process.env.REDIS_HOST,
         port: process.env.REDIS_PORT
     },
-    concurrency: 5,
+    concurrency: 1,
     limiter: {
         max: 100,
         duration: 1000

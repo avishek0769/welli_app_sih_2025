@@ -17,7 +17,6 @@ setTimeout(() => {
     io = getIoInstance();
 }, 3000);
 const messageQueue = new Queue("peerMessages", { connection })
-const messageSeenQueue = new Queue("peerMessagesSeen", { connection })
 
 const handleSendMessage = (socket) => async ({ message, senderId, receiverId, chatId }) => { // TODO: Validation required for correct chatId, senderId, receiverId
     const receiver = await User.findById(receiverId) // TODO: Optimise getting socket ID
@@ -50,7 +49,7 @@ const handleSeenMessages = (socket) => async ({ userId, chatId, receiverId }) =>
         io.to(receiver.socketId).emit("messageSeen", { chatId })
     }
 
-    await messageSeenQueue.add("message-seen", {
+    await messageQueue.add("seen-message", {
         userId, chatId, receiverId
     })
 }
@@ -131,7 +130,10 @@ const deleteForEveryone = asyncHandler(async (req, res) => {
 
     const message = await PeerMessage.findById(messageId)
     if (!message || message.sender.toString() !== req.user._id.toString()) {
-        throw new ApiError(404, "Message not found")
+        throw new ApiError(404, "Message not found or you are not authorized to delete this message for everyone")
+    }
+    if (message.deletedForEveryone) {
+        throw new ApiError(400, "Message already deleted for everyone")
     }
 
     await PeerMessage.updateOne(
