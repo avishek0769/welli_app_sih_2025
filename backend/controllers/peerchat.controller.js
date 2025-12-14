@@ -18,6 +18,13 @@ const createChat = asyncHandler(async (req, res) => {
         throw new ApiError(401, "User does not accept messages from strangers")
     }
 
+    const chat = await PeerChat.findOne({
+        participants: { $all: [req.user._id, peerId] }
+    })
+    if (chat) {
+        throw new ApiError(400, "Chat already exists")
+    }
+
     const peerChat = await PeerChat.create({
         participants: [
             new mongoose.Types.ObjectId(req.user._id),
