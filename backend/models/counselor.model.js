@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
-const counsellorSchema = new mongoose.Schema({
+const counselorSchema = new Schema({
     // Auth
     phoneNumber: {
         type: String,
@@ -76,6 +76,6 @@ const counsellorSchema = new mongoose.Schema({
             enum: ["morning", "afternoon", "evening", "night"],
         },
     }
-}, { timestamps: true });
+});
 
-export default mongoose.model("Counsellor", counsellorSchema);
+export default mongoose.model("Counselor", counselorSchema);

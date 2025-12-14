@@ -6,6 +6,7 @@ import ApiError from "../utils/ApiError.js"
 import jwt from "jsonwebtoken";
 import Forum from "../models/forum.model.js";
 import AWS from "aws-sdk";
+import ChatbotMessage from "../models/chatbotmessage.model.js"
 
 const s3 = new AWS.S3({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -85,12 +86,12 @@ const signUp = asyncHandler(async (req, res) => {
 
     if (user.isVerified && !user.hasSignedup) {
         user.annonymousUsername = annonymousUsername,
-        user.realFullname = realFullname,
-        user.gender = gender,
-        user.age = age,
-        user.password = password,
-        user.refreshToken = refreshToken,
-        user.avatar = avatar
+            user.realFullname = realFullname,
+            user.gender = gender,
+            user.age = age,
+            user.password = password,
+            user.refreshToken = refreshToken,
+            user.avatar = avatar
         user.hasSignedup = true
         await user.save()
     }
@@ -219,6 +220,43 @@ const currentUser = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, user, "Fetched current user"))
 })
 
+const videoRecommendation = asyncHandler(async (req, res) => {
+    const response = await fetch("http://127.0.0.1:4000/api/v1/chatbot-conversation/latest?page=0&limit=5", {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${req.headers.authorization.split(" ")[1]}`,
+            'Content-Type': 'application/json'
+        }
+    });
+
+    let userQuery = ""
+    const chatbotMessages = await response.json();
+    chatbotMessages.data.messages.map(message => {
+        userQuery += message.promptText
+    })
+
+    if (!userQuery.trim()) {
+        throw new ApiError(400, "Not enough data to generate recommendations")
+    }
+
+    const pythonApiUrl = `${process.env.VIDEO_RECOMMENDER_API_HOST}/api/recommend-videos`;
+
+    const resp = await fetch(pythonApiUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ userQuery: userQuery })
+    });
+
+    const data = await resp.json();
+
+    if (!data.success) {
+        throw new Error(data.error || "Failed to get recommendations from Python service");
+    }
+
+    return res.status(200).json(new ApiResponse(200, data.videos, "Video recommendations fetched successfully"));
+})
 
 export {
     sendVerificationCode,
@@ -229,5 +267,6 @@ export {
     checkUsername,
     setIsActive,
     createSignedUrl,
-    currentUser
+    currentUser,
+    videoRecommendation
 }
