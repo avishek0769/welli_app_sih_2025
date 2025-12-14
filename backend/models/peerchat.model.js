@@ -6,10 +6,6 @@ const PeerChatSchema = new Schema({
         ref: 'users',
         default: []
     }],
-    lastMessage: {
-        type: Schema.Types.ObjectId,
-        ref: 'peerMessages',
-    },
     deletedFor: [{
         type: Schema.Types.ObjectId,
         ref: 'users',

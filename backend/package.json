@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start:server": "nodemon -r dotenv/config app.js",
-    "start:worker": "nodemon -r dotenv/config workers/messageWorker.js",
+    "start:server": "node --watch -r dotenv/config app.js",
+    "start:worker": "node --watch -r dotenv/config workers/messageWorker.js"
   },
   "keywords": [],
   "author": "",

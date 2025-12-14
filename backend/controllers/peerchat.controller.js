@@ -23,7 +23,6 @@ const createChat = asyncHandler(async (req, res) => {
             new mongoose.Types.ObjectId(req.user._id),
             new mongoose.Types.ObjectId(peerId)
         ],
-        lastMessage: null,
     })
 
     return res.status(200).json(new ApiResponse(200, peerChat, "Chat created successfully"))
@@ -74,31 +73,52 @@ const getChats = asyncHandler(async (req, res) => {
         {
             $lookup: {
                 from: "users",
-                foreignField: "_id",
-                localField: "participants",
-                as: "participants",
+                let: { participantIds: "$participants", currentUser: new mongoose.Types.ObjectId(req.user._id) },
                 pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $in: ["$_id", "$$participantIds"] },
+                                    { $ne: ["$_id", "$$currentUser"] }
+                                ]
+                            }
+                        }
+                    },
                     {
                         $project: {
                             annonymousUsername: 1,
                             avatar: 1
                         }
                     }
-                ]
+                ],
+                as: "participant",
             }
         },
         {
             $lookup: {
                 from: "peermessages",
-                foreignField: "_id",
-                localField: "lastMessage",
-                as: "lastMessage",
+                let: { chatId: "$_id", currentUser: new mongoose.Types.ObjectId(req.user._id) },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$chat", "$$chatId"] },
+                                    { $not: { $in: ["$$currentUser", "$deletedFor"] } }
+                                ]
+                            },
+                        }
+                    },
+                    { $sort: { timestamp: -1 } },
+                    { $limit: 1 }
+                ],
+                as: "lastMessages",
             }
         },
         {
-            $unwind: {
-                path: "$lastMessage",
-                preserveNullAndEmptyArrays: true
+            $addFields: {
+                lastMessage: { $arrayElemAt: ["$lastMessages", 0] }
             }
         },
         {
@@ -128,8 +148,14 @@ const getChats = asyncHandler(async (req, res) => {
                 }
             }
         },
-        { $project: { unreadMessages: 0 } },
-        { $sort: { "lastmessage.timestamp": -1 } }
+        {
+            $project: {
+                unreadMessages: 0,
+                lastMessages: 0,
+                participants: 0,
+            }
+        },
+        { $sort: { "lastMessage.timestamp": -1 } }
     ])
 
     return res.status(200).json(new ApiResponse(200, chats, "Chats fetched successfully"))

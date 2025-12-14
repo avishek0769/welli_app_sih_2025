@@ -4,7 +4,6 @@ dotenv.config({
 });
 import { Worker } from "bullmq";
 import PeerMessage from "../models/peermessage.model.js";
-import PeerChat from "../models/peerchat.model.js";
 import mongoose from "mongoose";
 
 
@@ -25,7 +24,7 @@ const flushNewMessages = async () => {
         const messages = [...newMessagesBuffer];
         newMessagesBuffer = []
 
-        const insertedMessages = await PeerMessage.insertMany(
+        await PeerMessage.insertMany(
             messages.map(
                 ({ chat, sender, text, timestamp, receiver }) => {
                     return {
@@ -38,22 +37,6 @@ const flushNewMessages = async () => {
                 }
             )
         )
-
-        const latestMessageByChat = new Map()
-        for (const msg of insertedMessages) {
-            latestMessageByChat.set(msg.chat, msg._id)
-        }
-
-        let bulkOps = []
-        for (const [chatId, msgId] of latestMessageByChat) {
-            bulkOps.push({
-                updateOne: {
-                    filter: { _id: chatId },
-                    update: { $set: { lastMessage: msgId } }
-                }
-            })
-        }
-        if (bulkOps.length) await PeerChat.bulkWrite(bulkOps);
 
         console.log(`Flushed ${messages.length} new messages`);
     }
