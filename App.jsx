@@ -1,4 +1,4 @@
-import { StatusBar, useColorScheme } from 'react-native';
+import { StatusBar } from 'react-native';
 import {
     SafeAreaProvider,
     SafeAreaView,
@@ -16,7 +16,6 @@ import SignUp from './src/screens/SignUp';
 import Login from './src/screens/login';
 import ForumScreen from './src/screens/ForumScreen';
 import Profile from './src/screens/Profile';
-import User from './backend/models/user.model';
 import UserProvider from './src/context/UserContext';
 
 function App() {

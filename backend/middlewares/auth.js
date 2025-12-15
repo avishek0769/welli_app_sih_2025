@@ -11,7 +11,7 @@ export const auth = async (req, res, next) => {
 
         const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
         if(!decodedToken) {
-            throw new ApiError(401, "Invalid Token")
+            throw new ApiError(452, "Invalid Token")
         }
 
         const user = await User.findById(decodedToken._id)

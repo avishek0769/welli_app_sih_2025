@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     View,
     Text,
@@ -15,6 +16,8 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { launchImageLibrary } from 'react-native-image-picker';
+import { BASE_URL } from '../constants';
+import { useUser } from '../context/UserContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -69,7 +72,7 @@ const CustomAlert = ({ visible, onClose, title, message, type = 'error', buttonT
 };
 
 const SignUp = ({ navigation }) => {
-    const [currentStep, setCurrentStep] = useState(3);
+    const [currentStep, setCurrentStep] = useState(1);
     const [phoneNumber, setPhoneNumber] = useState('');
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [profileData, setProfileData] = useState({
@@ -122,6 +125,8 @@ const SignUp = ({ navigation }) => {
         'CompassionateOne', 'EmpathicSoul', 'GratefulHeart', 'ReslientMind', 'HopefulOne'
     ];
 
+    const { currentUser, setCurrentUser } = useUser()
+
     // Show custom alert
     const showAlert = (config) => {
         setAlertConfig(config);
@@ -141,7 +146,6 @@ const SignUp = ({ navigation }) => {
         const randomNumber = Math.floor(Math.random() * 999) + 1;
         const generatedName = `${randomName}${randomNumber}`;
         setProfileData(prev => ({ ...prev, username: generatedName }));
-        // trigger availability check
         checkUsernameAvailabilityDebounced(generatedName);
     };
 
@@ -153,11 +157,12 @@ const SignUp = ({ navigation }) => {
         }
         setCheckingUsername(true);
         try {
-            // Replace endpoint with your backend route
-            const res = await fetch(`https://your-backend.example.com/api/check-username?username=${encodeURIComponent(username)}`);
-            const json = await res.json();
-            // expected response: { available: true/false }
-            setUsernameAvailable(Boolean(json.available));
+            const res = await fetch(`${BASE_URL}/api/v1/user/username/${encodeURIComponent(username)}`);
+            if (!res.ok) setUsernameAvailable(null);
+            else {
+                const json = await res.json();
+                setUsernameAvailable(Boolean(json.data.usernameTaken == false));
+            }
         } catch (err) {
             setUsernameAvailable(null);
         } finally {
@@ -172,7 +177,6 @@ const SignUp = ({ navigation }) => {
         }, 600);
     };
 
-    // Pick image from library (do NOT upload yet) - upload on submit
     const pickProfileImage = async () => {
         try {
             const result = await launchImageLibrary({
@@ -191,7 +195,6 @@ const SignUp = ({ navigation }) => {
         }
     };
 
-    // upload profile image to S3 using backend signed url
     const uploadProfileImage = async () => {
         if (!profileImage.uri) return null;
         if (profileImage.uploadedUrl) return profileImage.uploadedUrl;
@@ -201,23 +204,14 @@ const SignUp = ({ navigation }) => {
             const fileName = profileImage.fileName || `photo-${Date.now()}.jpg`;
             const contentType = profileImage.type || 'image/jpeg';
 
-            // Request signed URL from backend
-            const signRes = await fetch('https://your-backend.example.com/api/s3/sign', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    fileName,
-                    contentType,
-                }),
-            });
+            const signRes = await fetch(`${BASE_URL}/api/v1/user/signed-url?fileName=${fileName}&fileType=${contentType}`);
+            if (!signRes.ok) throw new Error('No signed URL returned');
             const signJson = await signRes.json();
-            if (!signJson.signedUrl) throw new Error('No signed URL returned');
 
-            // fetch local file and upload
             const fileResp = await fetch(profileImage.uri);
             const blob = await fileResp.blob();
 
-            await fetch(signJson.signedUrl, {
+            await fetch(signJson.data.signedUrl, {
                 method: 'PUT',
                 body: blob,
                 headers: {
@@ -225,7 +219,7 @@ const SignUp = ({ navigation }) => {
                 },
             });
 
-            const publicUrl = signJson.publicUrl || signJson.signedUrl.split('?')[0];
+            const publicUrl = signJson.data.signedUrl.split('?')[0];
             setProfileImage(prev => ({ ...prev, uploadedUrl: publicUrl }));
             return publicUrl;
         } catch (err) {
@@ -278,7 +272,16 @@ const SignUp = ({ navigation }) => {
 
         setIsLoading(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            const res = await fetch(`${BASE_URL}/api/v1/user/send-code`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ phoneNumber: '+91' + phoneNumber }),
+            });
+            if(!res.ok) {
+                throw new Error('Failed to send OTP');
+            }
             
             setCurrentStep(2);
             setOtpTimer(60);
@@ -330,19 +333,28 @@ const SignUp = ({ navigation }) => {
 
         setIsLoading(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            setCurrentStep(3);
-            
+            const res = await fetch(`${BASE_URL}/api/v1/user/verify-code`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ phoneNumber: '+91' + phoneNumber, code: otpCode }),
+            });
+            if (!res.ok) {
+                throw new Error('OTP verification failed');
+            }
+            setCurrentStep(3);            
             console.log('OTP verified:', otpCode);
-        } catch (error) {
+        }
+        catch (error) {
             showAlert({
                 title: 'Verification Failed',
                 message: 'Invalid OTP. Please check and try again.',
                 type: 'error',
                 buttonText: 'Retry'
             });
-        } finally {
+        }
+        finally {
             setIsLoading(false);
         }
     };
@@ -352,7 +364,16 @@ const SignUp = ({ navigation }) => {
 
         setIsLoading(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            const res = await fetch(`${BASE_URL}/api/v1/user/send-code`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ phoneNumber: '+91' + phoneNumber }),
+            });
+            if(!res.ok) {
+                throw new Error('Failed to send OTP');
+            }
             
             setOtpTimer(60);
             setCanResend(false);
@@ -364,14 +385,16 @@ const SignUp = ({ navigation }) => {
                 type: 'success',
                 buttonText: 'Great!'
             });
-        } catch (error) {
+        }
+        catch (error) {
             showAlert({
                 title: 'Error',
                 message: 'Failed to resend OTP. Please try again.',
                 type: 'error',
                 buttonText: 'Retry'
             });
-        } finally {
+        }
+        finally {
             setIsLoading(false);
         }
     };
@@ -423,18 +446,21 @@ const SignUp = ({ navigation }) => {
         setIsLoading(true);
 
         try {
-            // If user selected a profile image but it's not uploaded yet, upload now
             let uploadedUrl = profileImage.uploadedUrl || null;
             if (profileImage.uri && !uploadedUrl) {
                 uploadedUrl = await uploadProfileImage();
                 if (!uploadedUrl && profileImage.uri) {
-                    // upload failed, stop submit
-                    setIsLoading(false);
+                    showAlert({
+                        title: 'Upload Failed',
+                        message: 'Could not upload profile picture. Please try again.',
+                        type: 'error',
+                        buttonText: 'OK'
+                    });
+                    setIsLoading(false); 
                     return;
                 }
             }
 
-            // Optionally verify username is unique before creating account
             if (usernameAvailable === false) {
                 showAlert({
                     title: 'Username Taken',
@@ -446,39 +472,38 @@ const SignUp = ({ navigation }) => {
                 return;
             }
 
-            // simulate server-side create
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            const userData = {
-                phone: phoneNumber,
-                fullName: profileData.fullName || null,
-                ...profileData,
-                profileImage: uploadedUrl || null,
-                isAnonymous: true,
-                createdAt: new Date().toISOString(),
-            };
-
-            // Remove confirmPassword from userData before saving
-            delete userData.confirmPassword;
-
-            console.log('Account created:', userData);
-
-            showAlert({
-                title: 'Welcome to Welli!',
-                message: 'Your anonymous account has been created successfully. Ready to start your wellness journey?',
-                type: 'success',
-                buttonText: 'Get Started',
-                onConfirm: () => navigation.replace('TabNavigator')
+            const res = await fetch(`${BASE_URL}/api/v1/user/signup`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    annonymousUsername: profileData.username,
+                    realFullname: profileData.fullName,
+                    password: profileData.password,
+                    gender: profileData.gender,
+                    age: profileData.age,
+                    phoneNumber,
+                    avatar: uploadedUrl || null,
+                }),
             });
-
-        } catch (error) {
+            const json = await res.json()
+            setCurrentUser(json.data);
+            AsyncStorage.setItem('accessToken', json.data.accessToken);
+            AsyncStorage.setItem('refreshToken', json.data.refreshToken);
+            AsyncStorage.setItem('accessTokenExp', json.data.accessTokenExp);
+            AsyncStorage.setItem('refreshTokenExp', json.data.refreshTokenExp);
+            console.log('Account created:', json.data);
+        }
+        catch (error) {
             showAlert({
                 title: 'Account Creation Failed',
                 message: 'Something went wrong. Please try again.',
                 type: 'error',
                 buttonText: 'Retry'
             });
-        } finally {
+        }
+        finally {
             setIsLoading(false);
         }
     };
@@ -849,6 +874,13 @@ const SignUp = ({ navigation }) => {
             </TouchableOpacity>
         </View>
     );
+
+    useEffect(() => {
+        if (currentUser) {
+            navigation.replace('TabNavigator');
+        }
+    }, [currentUser])
+    
 
     return (
         <SafeAreaView style={styles.container}>

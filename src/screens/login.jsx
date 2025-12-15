@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     View,
     Text,
@@ -13,6 +14,8 @@ import {
     Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useUser } from '../context/UserContext';
+import { BASE_URL } from '../constants';
 
 const { width, height } = Dimensions.get('window');
 
@@ -83,7 +86,8 @@ const Login = ({ navigation }) => {
         buttonText: 'OK',
         onConfirm: null
     });
-
+    const { currentUser, setCurrentUser } = useUser()
+    
     // Show custom alert
     const showAlert = (config) => {
         setAlertConfig(config);
@@ -121,11 +125,28 @@ const Login = ({ navigation }) => {
 
         setIsLoading(true);
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Mock authentication logic
-            const isValidCredentials = formData.phoneNumber === '9999999999' && formData.password === '1234';
+            const res = await fetch(`${BASE_URL}/api/v1/user/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    phoneNumber: '+91' + formData.phoneNumber,
+                    password: formData.password,
+                }),
+            })
+            if(!res.ok) {
+                throw new Error('Login failed');
+            }
+            const json = await res.json();
+            setCurrentUser(json.data);
+            AsyncStorage.setItem('accessToken', json.data.accessToken);
+            AsyncStorage.setItem('refreshToken', json.data.refreshToken);
+            AsyncStorage.setItem('accessTokenExp', json.data.accessTokenExp);
+            AsyncStorage.setItem('refreshTokenExp', json.data.refreshTokenExp);
+
+            const isValidCredentials = json.data && json.data._id;
+            console.log('Login successful:', json.data);
             
             if (isValidCredentials) {
                 showAlert({
@@ -173,6 +194,12 @@ const Login = ({ navigation }) => {
             <Text style={styles.appTagline}>Your Wellness Companion</Text>
         </View>
     );
+
+    useEffect(() => {
+        if (currentUser) {
+            navigation.replace('TabNavigator');
+        }
+    }, [currentUser])
 
     return (
         <SafeAreaView style={styles.container}>

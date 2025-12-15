@@ -1,60 +1,109 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BASE_URL } from '../constants';
 
 const UserContext = createContext({
-    user: null,
-    setUser: () => { },
-    refreshUser: () => Promise.resolve(),
-    loadingUser: false,
+    currentUser: null,
+    setCurrentUser: () => { },
+    socketId: null,
+    setSocketId: () => { },
 });
 
 export const useUser = () => useContext(UserContext);
 
-const USER_ME_ENDPOINT = 'https://your-backend.example.com/api/me';
-
 const UserProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [loadingUser, setLoadingUser] = useState(true);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [socketId, setSocketId] = useState(null);
 
     const fetchCurrentUser = useCallback(async () => {
-        setLoadingUser(true);
         try {
-            const token = await AsyncStorage.getItem('authToken');
-            const res = await fetch(USER_ME_ENDPOINT, {
+            const token = await AsyncStorage.getItem('accessToken');
+            const tokenExp = await AsyncStorage.getItem('accessTokenExp');
+            if (!token || (tokenExp && new Date(tokenExp) <= new Date())) {
+                refreshTokens();
+                return;
+            }
+            const res = await fetch(`${BASE_URL}/api/v1/user/current`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    Authorization: `Bearer ${token}`,
                 },
             });
-            if (!res.ok) {
-                setUser(null);
-                setLoadingUser(false);
-                return null;
+            if (res.status === 452) {
+                refreshTokens();
+                return;
             }
             const json = await res.json();
-            // expected json to contain user object, e.g. { user: { id, fullName, avatar, ... } }
-            const currentUser = json.user || json;
-            setUser(currentUser);
-            setLoadingUser(false);
-            return currentUser;
+            const currentUser = json.data;
+            setCurrentUser(currentUser);
         }
         catch (err) {
-            setUser(null);
-            setLoadingUser(false);
-            return null;
+            setCurrentUser(null);
         }
     }, []);
 
+    const updateOnlineStatus = async (isActive) => {
+        try {
+            const token = await AsyncStorage.getItem('accessToken');
+            if (!token) return;
+
+            await fetch(`${BASE_URL}/api/v1/user/online?isActive=${isActive}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+        } catch (error) {
+            console.error('Failed to update online status:', error);
+        }
+    };
+
+    const refreshTokens = async () => {
+        try {
+            const refreshToken = await AsyncStorage.getItem('refreshToken');
+            const refreshTokenExp = await AsyncStorage.getItem('refreshTokenExp');
+
+            if (!refreshToken || (refreshTokenExp && new Date(refreshTokenExp) <= new Date())) {
+                return;
+            }
+
+            const res = await fetch(`${BASE_URL}/api/v1/user/tokens`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ refreshToken }),
+            });
+
+            if (!res.ok) {
+                return;
+            }
+
+            const json = await res.json();
+            
+            await AsyncStorage.setItem('accessToken', json.data.accessToken);
+            await AsyncStorage.setItem('refreshToken', json.data.refreshToken);
+            fetchCurrentUser();
+        }
+        catch (error) {
+            console.error('Failed to refresh tokens:', error);
+        }
+    };
+
     useEffect(() => {
         fetchCurrentUser();
+        updateOnlineStatus(true);      
+
+        return () => {
+            updateOnlineStatus(false);      
+        };
     }, [fetchCurrentUser]);
 
     const value = {
-        user,
-        setUser,
-        refreshUser: fetchCurrentUser,
-        loadingUser,
+        currentUser,
+        setCurrentUser,
     };
 
     return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
