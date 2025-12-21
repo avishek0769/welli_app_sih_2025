@@ -16,10 +16,6 @@ const forumSchema = new Schema({
         type: Number,
         default: 0
     },
-    totalMembers: {
-        type: Number,
-        default: 0
-    },
     members: [{
         type: Schema.Types.ObjectId,
         ref: "users"

@@ -9,7 +9,7 @@ const postSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "users"
     },
-    totalComment: {
+    totalComments: {
         type: Number,
         required: true,
         default: 0

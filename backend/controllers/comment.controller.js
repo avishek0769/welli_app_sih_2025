@@ -11,8 +11,8 @@ import asyncHandler from "../utils/asyncHandler.js";
 
 const createComment = asyncHandler(async (req, res) => {
     const { comment, postId, mentionedUserId } = req.body;
-    
-    if(!comment || !postId) {
+    console.log(postId)
+    if (!comment || !postId) {
         throw new ApiError(400, "Comment or Post ID is missing");
     }
 
@@ -25,7 +25,7 @@ const createComment = asyncHandler(async (req, res) => {
 
     await Post.findByIdAndUpdate(
         postId,
-        { $inc: { totalComment: 1 } }
+        { $inc: { totalComments: 1 } }
     )
 
     return res.status(200).json(new ApiResponse(200, newComment, "Comment created successfully"));
@@ -66,7 +66,7 @@ const deleteComment = asyncHandler(async (req, res) => {
 
     await Post.findByIdAndUpdate(
         existingComment.postId,
-        { $inc: { totalComment: -1 } }
+        { $inc: { totalComments: -1 } }
     )
 
     return res.status(200).send("Comment deleted successfully");
@@ -74,7 +74,7 @@ const deleteComment = asyncHandler(async (req, res) => {
 
 const getAllComments = asyncHandler(async (req, res) => {
     const { postId } = req.params;
-    
+
     const comments = await Comment.aggregate([
         { $match: { postId: new mongoose.Types.ObjectId(postId) } },
         { $sort: { createdAt: -1 } },
@@ -85,6 +85,41 @@ const getAllComments = asyncHandler(async (req, res) => {
                 foreignField: "_id",
                 as: "commenter",
                 pipeline: [{ $project: { annonymousUsername: 1, avatar: 1 } }]
+            }
+        },
+        {
+            $lookup: {
+                from: "likes",
+                let: { commentId: "$_id" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$commentId", "$$commentId"] },
+                                    { $eq: ["$likedBy", new mongoose.Types.ObjectId(req.user._id)] }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                as: "likedByUser"
+            }
+        },
+        {
+            $addFields: {
+                likedByUser: {
+                    $cond: {
+                        if: { $gt: [{ $size: "$likedByUser" }, 0] },
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $addFields: {
+                commenter: { $arrayElemAt: ["$commenter", 0] }
             }
         }
     ]);

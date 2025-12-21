@@ -8,12 +8,10 @@ import {
     SafeAreaView,
     Modal,
     TextInput,
-    ScrollView,
     Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { SvgUri } from 'react-native-svg';
-import Header from '../components/Header';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useEffect } from 'react';
 import { BASE_URL } from '../constants';
@@ -356,8 +354,8 @@ const JoinForumModal = ({ visible, onClose, onJoinForum }) => {
                 console.error('Network error fetching forums:', error);
             }
         };
-        fetchAvailableForums();
-    }, []);
+        if(visible) fetchAvailableForums();
+    }, [visible]);
 
 
     const ForumItem = ({ forum }) => (
@@ -611,7 +609,7 @@ const PeerSupport = () => {
                             },
                         });
                         const forumsData = await forumsRes.json();
-
+                        console.log(forumsData)
                         const unseenRes = await fetch(`${BASE_URL}/api/v1/post/unseen/count`, {
                             method: 'GET',
                             headers: {
@@ -620,6 +618,7 @@ const PeerSupport = () => {
                             },
                         });
                         const unseenData = await unseenRes.json();
+                        console.log(unseenData)
 
                         if (forumsData.success) {
                             const unseenMap = {};
@@ -633,8 +632,8 @@ const PeerSupport = () => {
                                 ...forum,
                                 type: 'forum',
                                 members: forum.totalMembers,
-                                posts: forum.totalPosts || 0,
-                                activeMembers: 0,
+                                posts: forum.totalPosts,
+                                activeMembers: forum.totalActive,
                                 unreadCount: unseenMap[forum._id] || 0
                             }));
                             setForums(mappedForums);
@@ -730,7 +729,8 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingVertical: 16,
+        paddingTop: 35,
+        paddingBottom: 16,
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#F0F4FF',

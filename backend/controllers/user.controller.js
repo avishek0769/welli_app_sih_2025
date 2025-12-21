@@ -175,8 +175,9 @@ const checkUsername = asyncHandler(async (req, res) => {
 })
 
 const setIsActive = asyncHandler(async (req, res) => {
-    const { isActive, socketId } = req.query;
-    const active = Boolean(isActive)
+    const { isActive, socketId, status } = req.query;
+    const active = isActive === 'true';
+    // console.log(status, active)
 
     await User.findByIdAndUpdate(
         req.user._id,

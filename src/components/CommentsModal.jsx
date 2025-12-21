@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -10,26 +10,68 @@ import {
     TextInput,
     KeyboardAvoidingView,
     Platform,
+    Alert,
+    Image
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import UserProfileModal from './UserProfileModal';
+import { useUser } from '../context/UserContext';
 
-const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment }) => {
+const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment, onEditComment, onDeleteComment }) => {
     const [commentText, setCommentText] = useState('');
     const [showUserProfile, setShowUserProfile] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
-
-    if (!post) return null;
+    const [editingComment, setEditingComment] = useState(null);
+    const { currentUser } = useUser();
 
     const handleSendComment = () => {
         if (commentText.trim()) {
-            onAddComment(post.id, commentText.trim());
+            if (editingComment) {
+                onEditComment(editingComment._id, commentText.trim());
+                setEditingComment(null);
+            } else {
+                onAddComment(post._id, commentText.trim());
+            }
             setCommentText('');
         }
     };
 
+    const handleCommentAction = (comment) => {
+        Alert.alert(
+            "Manage Comment",
+            "What would you like to do?",
+            [
+                {
+                    text: "Edit",
+                    onPress: () => {
+                        setEditingComment(comment);
+                        setCommentText(comment.comment);
+                    }
+                },
+                {
+                    text: "Delete",
+                    onPress: () => {
+                        Alert.alert(
+                            "Delete Comment",
+                            "Are you sure you want to delete this comment?",
+                            [
+                                { text: "Cancel", style: "cancel" },
+                                { 
+                                    text: "Delete", 
+                                    style: "destructive",
+                                    onPress: () => onDeleteComment(post._id, comment._id)
+                                }
+                            ]
+                        );
+                    },
+                    style: "destructive"
+                },
+                { text: "Cancel", style: "cancel" }
+            ]
+        );
+    };
+
     const handleUserPress = (user) => {
-        // Don't show profile for current user
         if (user.username === 'You') return;
         setSelectedUser(user);
         setShowUserProfile(true);
@@ -48,32 +90,48 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment }) 
                 <TouchableOpacity 
                     style={styles.commentUserInfo}
                     onPress={() => handleUserPress({
-                        username: comment.username,
+                        username: comment.commenter.annonymousUsername,
                         joinDate: 'Joined 2 months ago',
                         postsCount: Math.floor(Math.random() * 30) + 5,
                         supportGiven: Math.floor(Math.random() * 150) + 20,
                         category: 'Support Member',
                     })}
-                    activeOpacity={comment.username === 'You' ? 1 : 0.7}
+                    activeOpacity={comment.commenter.annonymousUsername === 'You' ? 1 : 0.7}
                 >
-                    <View style={styles.commentAvatar}>
-                        <Text style={styles.commentAvatarText}>
-                            {comment.username.charAt(0).toUpperCase()}
-                        </Text>
+                    <View style={[styles.commentAvatar, !comment.commenter.avatar && { backgroundColor: '#6C63FF', borderRadius: 14 }]}>
+                        {comment.commenter.avatar ? (
+                            <Image 
+                                source={{ uri: comment.commenter.avatar }}
+                                style={{ width: 28, height: 28, borderRadius: 14 }}
+                                resizeMode="cover"
+                            />
+                        ) : (
+                            <Text style={styles.commentAvatarText}>
+                                {comment.commenter.annonymousUsername.charAt(0).toUpperCase()}
+                            </Text>
+                        )}
                     </View>
                     <View style={styles.commentDetails}>
-                        <Text style={styles.commentUsername}>{comment.username}</Text>
-                        <Text style={styles.commentTimestamp}>{comment.timestamp}</Text>
+                        <Text style={styles.commentUsername}>{comment.commenter.annonymousUsername}</Text>
+                        <Text style={styles.commentTimestamp}>{new Date(comment.createdAt).toLocaleString()}</Text>
                     </View>
                 </TouchableOpacity>
+                {comment.commenter._id === currentUser._id && (
+                    <TouchableOpacity 
+                        onPress={() => handleCommentAction(comment)}
+                        style={styles.moreButton}
+                    >
+                        <Icon name="more-vert" size={20} color="#9CA3AF" />
+                    </TouchableOpacity>
+                )}
             </View>
             
-            <Text style={styles.commentContent}>{comment.content}</Text>
+            <Text style={styles.commentContent}>{comment.comment}</Text>
             
             <View style={styles.commentActions}>
                 <TouchableOpacity
                     style={[styles.commentLikeButton, comment.likedByUser && styles.commentLikedButton]}
-                    onPress={() => onLikeComment(post.id, comment.id)}
+                    onPress={() => onLikeComment(post._id, comment._id)}
                     activeOpacity={0.7}
                 >
                     <Icon 
@@ -81,18 +139,24 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment }) 
                         size={14} 
                         color={comment.likedByUser ? "#FF4081" : "#6B7280"} 
                     />
-                    {comment.likes > 0 && (
+                    {comment.totalLikes > 0 && (
                         <Text style={[
                             styles.commentLikeText,
                             comment.likedByUser && styles.commentLikedText
                         ]}>
-                            {formatLikes(comment.likes)}
+                            {formatLikes(comment.totalLikes)}
                         </Text>
                     )}
                 </TouchableOpacity>
             </View>
         </View>
     );
+
+    useEffect(() => {
+        console.log("Post in CommentsModal:", post)
+    }, [post])
+
+    if (!post) return null;
 
     return (
         <Modal
@@ -127,22 +191,27 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment }) 
                             <TouchableOpacity 
                                 style={styles.userInfo}
                                 onPress={() => handleUserPress({
-                                    username: post.username,
+                                    username: post.createdBy.annonymousUsername || 'Anonymous',
                                     joinDate: 'Joined 3 months ago',
                                     postsCount: Math.floor(Math.random() * 50) + 10,
                                     supportGiven: Math.floor(Math.random() * 200) + 50,
                                     category: post.category,
                                 })}
-                                activeOpacity={post.username === 'You' ? 1 : 0.7}
+                                activeOpacity={post.createdBy.annonymousUsername === 'You' ? 1 : 0.7}
                             >
-                                <View style={styles.avatar}>
-                                    <Text style={styles.avatarText}>
-                                        {post.username.charAt(0).toUpperCase()}
-                                    </Text>
+                                <View style={[styles.avatar, !post.createdBy.avatar && { backgroundColor: '#6C63FF', borderRadius: 20 }]}>
+                                    {post.createdBy.avatar ? <Image source={{ uri: post.createdBy.avatar }}
+                                        style={styles.avatar}
+                                        resizeMode="cover"
+                                    /> : (
+                                        <Text style={styles.avatarText}>
+                                            {post.createdBy.annonymousUsername.charAt(0).toUpperCase()}
+                                        </Text>
+                                    )}
                                 </View>
                                 <View style={styles.userDetails}>
-                                    <Text style={styles.username}>{post.username}</Text>
-                                    <Text style={styles.timestamp}>{post.timestamp}</Text>
+                                    <Text style={styles.username}>{post.createdBy.annonymousUsername || 'Anonymous'}</Text>
+                                    <Text style={styles.timestamp}>{post.createdAt ? new Date(post.createdAt).toLocaleDateString() : 'Just now'}</Text>
                                 </View>
                             </TouchableOpacity>
                             <View style={styles.categoryTag}>
@@ -150,7 +219,7 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment }) 
                             </View>
                         </View>
                         <Text style={styles.postContent} numberOfLines={3}>
-                            {post.content}
+                            {post.text}
                         </Text>
                         <View style={styles.postStats}>
                             <Text style={styles.postStatsText}>
@@ -162,7 +231,7 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment }) 
                     {/* Comments List */}
                     <FlatList
                         data={post.commentsData || []}
-                        keyExtractor={(item) => item.id}
+                        keyExtractor={(item) => item._id}
                         renderItem={({ item }) => <CommentItem comment={item} />}
                         style={styles.commentsList}
                         contentContainerStyle={styles.commentsContent}
@@ -183,7 +252,14 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment }) 
                     <View style={styles.inputContainer}>
                         <View style={styles.inputRow}>
                             <View style={styles.inputAvatar}>
-                                <Text style={styles.inputAvatarText}>Y</Text>
+                                {post.createdBy.avatar ? <Image source={{ uri: post.createdBy.avatar }}
+                                    style={styles.avatar}
+                                    resizeMode="cover"
+                                /> : (
+                                    <Text style={styles.avatarText}>
+                                        {post.createdBy.annonymousUsername.charAt(0).toUpperCase()}
+                                    </Text>
+                                )}
                             </View>
                             <TextInput
                                 style={styles.commentInput}
@@ -284,7 +360,6 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#6C63FF',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 8,
@@ -346,17 +421,20 @@ const styles = StyleSheet.create({
         borderBottomColor: '#F8FAFF',
     },
     commentHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
         marginBottom: 8,
     },
     commentUserInfo: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
     },
     commentAvatar: {
         width: 28,
         height: 28,
         borderRadius: 14,
-        backgroundColor: '#6C63FF',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 8,
@@ -441,7 +519,6 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#6C63FF',
         alignItems: 'center',
         justifyContent: 'center',
     },

@@ -30,7 +30,7 @@ const getAllForums = asyncHandler(async (req, res) => {
     const { page = 0, limit = 10 } = req.query;
 
     const forums = await Forum
-        .find()
+        .find({ members: { $not: { $in: [req.user._id] } } })
         .select("-members")
         .sort({ totalMembers: -1 })
         .skip(page * limit)
@@ -76,7 +76,10 @@ const leaveForum = asyncHandler(async (req, res) => {
 
     await Forum.findByIdAndUpdate(
         forumId,
-        { $pull: { members: req.user._id } }
+        {
+            $pull: { members: req.user._id },
+            $inc: { totalMembers: -1 }
+        }
     )
 
     await User.findByIdAndUpdate(

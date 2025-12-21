@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import UserProfileModal from './UserProfileModal';
+import { useEffect } from 'react';
 
 const { width } = Dimensions.get('window');
 

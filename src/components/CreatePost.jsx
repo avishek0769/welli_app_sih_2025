@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import { useUser } from '../context/UserContext';
 
 // Custom Popup Component
 const CustomPopup = ({ visible, title, message, buttons, onClose }) => {
@@ -146,6 +147,7 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
     const [selectedCategory, setSelectedCategory] = useState('General');
     const [selectedImage, setSelectedImage] = useState(null);
     const [isPosting, setIsPosting] = useState(false);
+    const { currentUser } = useUser();
     
     // Popup states
     const [showImagePicker, setShowImagePicker] = useState(false);
@@ -157,19 +159,6 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState('error');
-
-    const categories = [
-        'General',
-        'Anxiety',
-        'Depression',
-        'Academic Stress',
-        'Mindfulness',
-        'Progress',
-        'Sleep Issues',
-        'Nature Therapy',
-        'Social Support',
-        'Self Care'
-    ];
 
     const showToastMessage = (message, type = 'error') => {
         setToastMessage(message);
@@ -277,7 +266,6 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
             onCreatePost({
                 content: content.trim(),
                 category: selectedCategory,
-                image: selectedImage?.uri || null,
                 imageData: selectedImage,
             });
             
@@ -290,24 +278,6 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
             showToastMessage('Post created successfully!', 'success');
         }, 1000);
     };
-
-    const CategoryPill = ({ category, isSelected, onPress }) => (
-        <TouchableOpacity
-            style={[
-                styles.categoryPill,
-                isSelected && styles.categoryPillSelected
-            ]}
-            onPress={onPress}
-            activeOpacity={0.7}
-        >
-            <Text style={[
-                styles.categoryPillText,
-                isSelected && styles.categoryPillTextSelected
-            ]}>
-                {category}
-            </Text>
-        </TouchableOpacity>
-    );
 
     return (
         <SafeAreaView style={styles.container}>
@@ -346,10 +316,17 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
                 <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                     {/* User Info */}
                     <View style={styles.userSection}>
-                        <View style={styles.avatar}>
-                            <Text style={styles.avatarText}>Y</Text>
+                        <View style={[styles.avatar, !currentUser?.avatar && { backgroundColor: '#6C63FF', borderRadius: 20 }]}>
+                            {currentUser.avatar ? <Image source={{ uri: currentUser.avatar }}
+                                style={styles.avatar}
+                                resizeMode="cover"
+                            /> : (
+                                <Text style={styles.avatarText}>
+                                    {currentUser.annonymousUsername.charAt(0).toUpperCase()}
+                                </Text>
+                            )}
                         </View>
-                        <Text style={styles.username}>Posting as You</Text>
+                        <Text style={styles.username}>Posting as {currentUser?.annonymousUsername}</Text>
                     </View>
 
                     {/* Text Input */}
@@ -396,26 +373,6 @@ const CreatePost = ({ onCreatePost, onCancel }) => {
                             </View>
                         </View>
                     )}
-
-                    {/* Categories */}
-                    <View style={styles.categorySection}>
-                        <Text style={styles.sectionTitle}>Category</Text>
-                        <ScrollView 
-                            horizontal 
-                            showsHorizontalScrollIndicator={false}
-                            style={styles.categoriesScroll}
-                            contentContainerStyle={styles.categoriesContent}
-                        >
-                            {categories.map((category) => (
-                                <CategoryPill
-                                    key={category}
-                                    category={category}
-                                    isSelected={selectedCategory === category}
-                                    onPress={() => setSelectedCategory(category)}
-                                />
-                            ))}
-                        </ScrollView>
-                    </View>
 
                     {/* Action Buttons */}
                     <View style={styles.actionButtons}>
@@ -566,7 +523,6 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#6C63FF',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 12,

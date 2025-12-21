@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BASE_URL } from '../constants';
+import { AppState } from 'react-native';
 
 const UserContext = createContext({
     currentUser: null,
@@ -43,12 +44,12 @@ const UserProvider = ({ children }) => {
         }
     }, []);
 
-    const updateOnlineStatus = async (isActive) => {
+    const updateOnlineStatus = async (isActive, status) => {
         try {
             const token = await AsyncStorage.getItem('accessToken');
             if (!token) return;
 
-            await fetch(`${BASE_URL}/api/v1/user/online?isActive=${isActive}`, {
+            await fetch(`${BASE_URL}/api/v1/user/online?isActive=${isActive}&status=${status}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -94,11 +95,20 @@ const UserProvider = ({ children }) => {
 
     useEffect(() => {
         fetchCurrentUser();
-        updateOnlineStatus(true);      
+        updateOnlineStatus(true);
+
+        const subscription = AppState.addEventListener("change", nextAppState => {
+            if (nextAppState === "active") {
+                updateOnlineStatus(true, nextAppState);
+            }
+            else {
+                updateOnlineStatus(false, nextAppState);
+            }
+        });
 
         return () => {
-            updateOnlineStatus(false);      
-        };
+            subscription.remove()
+        }
     }, [fetchCurrentUser]);
 
     const value = {

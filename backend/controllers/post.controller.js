@@ -78,7 +78,7 @@ const editPost = asyncHandler(async (req, res) => {
 const deletePost = asyncHandler(async (req, res) => {
     const { forumId } = req.body;
     const { postId } = req.params;
-
+    
     const post = await Post.findById(postId)
 
     if (post.createdBy.toString() != req.user._id.toString()) {
@@ -96,6 +96,12 @@ const deletePost = asyncHandler(async (req, res) => {
 
 const getAllPosts = asyncHandler(async (req, res) => {
     const { forumId } = req.params;
+    const { page = 0, limit = 10 } = req.query;
+
+    await Post.updateMany(
+        { forumId: forumId, unseenBy: req.user._id },
+        { $pull: { unseenBy: req.user._id } }
+    );
 
     const posts = await Post.aggregate([
         { $match: { forumId: new mongoose.Types.ObjectId(forumId) } },
@@ -151,7 +157,10 @@ const getAllPosts = asyncHandler(async (req, res) => {
             $addFields: {
                 createdBy: { $arrayElemAt: ["$createdBy", 0] },
             }
-        }
+        },
+        { $sort: { createdAt: -1 } },
+        { $skip: parseInt(page) * parseInt(limit) },
+        { $limit: parseInt(limit) }
     ])
 
     return res.status(200).json(new ApiResponse(200, posts, "All posts are fetched succesfully"))

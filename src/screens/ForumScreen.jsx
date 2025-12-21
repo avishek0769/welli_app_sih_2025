@@ -37,7 +37,7 @@ const ForumScreen = ({ route }) => {
             icon: initialData.icon || "https://via.placeholder.com/100",
             description: initialData.description || "Loading...",
             members: Array.isArray(initialData.members) ? initialData.members : [],
-            totalMembers: typeof initialData.members === 'number' ? initialData.members : (initialData.totalMembers || 0)
+            totalMembers: initialData.totalMembers
         };
     });
 
@@ -110,15 +110,6 @@ const ForumScreen = ({ route }) => {
         fetchPosts();
         fetchForumDetails();
         fetchMembers();
-
-        // Fetch unseen count (just logging for now as requested)
-        fetch(`${BASE_URL}/api/v1/post/unseen/count`, {
-            headers: { Authorization: `Bearer ${currentUser.accessToken}` }
-        })
-        .then(res => res.json())
-        .then(data => console.log('Unseen count:', data))
-        .catch(err => console.error('Error fetching unseen count:', err));
-
     }, [forumId]);
 
     const handleLeaveForum = async () => {
@@ -259,7 +250,6 @@ const ForumScreen = ({ route }) => {
 
     const handleComment = async (postId) => {
         const post = posts.find(p => p._id === postId);
-        setSelectedPost(post);
         setShowCommentsModal(true);
 
         try {
@@ -267,19 +257,9 @@ const ForumScreen = ({ route }) => {
                 headers: { Authorization: `Bearer ${currentUser.accessToken}` }
             });
             const data = await res.json();
+            console.log("Comments", data)
             if (data.success) {
-                const comments = data.data.map(c => ({
-                    _id: c._id,
-                    content: c.comment,
-                    username: c.commenter.annonymousUsername || 'Anonymous',
-                    avatar: c.commenter.avatar,
-                    likes: c.totalLikes || 0,
-                    likedByUser: c.likedByUser,
-                    timestamp: new Date(c.createdAt).toLocaleDateString(),
-                    isOwner: c.commenter._id == currentUser._id
-                }));
-                
-                setSelectedPost(prev => ({ ...prev, commentsData: comments }));
+                setSelectedPost({ ...post, commentsData: data.data });
             }
         } catch (err) {
             console.error("Error fetching comments:", err);
@@ -288,6 +268,49 @@ const ForumScreen = ({ route }) => {
 
     const handleCreatePost = async (newPost) => {
         try {
+            let finalImageUrl = null;
+
+            if (newPost.imageData) {
+                const { fileName, type, uri } = newPost.imageData;
+                const uniqueFileName = `Post-${Date.now()}`;
+
+                const signedUrlRes = await fetch(`${BASE_URL}/api/v1/user/signed-url?fileName=${uniqueFileName}&fileType=${type}`, {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${currentUser.accessToken}`,
+                    },
+                });
+                
+                const signedUrlData = await signedUrlRes.json();
+                if (!signedUrlData.success) {
+                    console.error('Failed to get signed URL:', signedUrlData.message);
+                    Alert.alert("Error", "Failed to prepare image upload");
+                    return;
+                }
+                
+                const { signedUrl } = signedUrlData.data;
+
+                const imageRes = await fetch(uri);
+                const blob = await imageRes.blob();
+                console.log(blob)
+
+                const uploadRes = await fetch(signedUrl, {
+                    method: 'PUT',
+                    body: blob,
+                    headers: {
+                        'Content-Type': type,
+                    }
+                });
+
+                if (!uploadRes.ok) {
+                    console.error('Failed to upload image to S3');
+                    Alert.alert("Error", "Failed to upload image");
+                    return;
+                }
+
+                finalImageUrl = signedUrl.split('?')[0];
+            }
+
             const res = await fetch(`${BASE_URL}/api/v1/post/create`, {
                 method: 'POST',
                 headers: {
@@ -296,7 +319,7 @@ const ForumScreen = ({ route }) => {
                 },
                 body: JSON.stringify({
                     text: newPost.content,
-                    imageUrl: newPost.image,
+                    imageUrl: finalImageUrl,
                     forumId: forumId
                 })
             });
@@ -336,24 +359,23 @@ const ForumScreen = ({ route }) => {
                 body: JSON.stringify({ postId, comment: commentText })
             });
             const data = await res.json();
-            
+            console.log("New Comment from server", data)
             if (data.success) {
-                const newComment = {
-                    _id: data.data._id,
-                    content: data.data.comment,
-                    username: 'You',
-                    timestamp: 'Just now',
-                    likes: 0,
-                    likedByUser: currentUser._id,
-                    isOwner: true
-                };
-
+                let newComment = {
+                    ...data.data,
+                    commenter: {
+                        _id: currentUser._id,
+                        annonymousUsername: currentUser.annonymousUsername || 'You',
+                        avatar: currentUser.avatar
+                    }
+                }
+                console.log("New Comment in client", newComment)
                 setPosts(prevPosts => 
                     prevPosts.map(post => 
                         post._id === postId 
                             ? { 
                                 ...post, 
-                                totalComment: (post.totalComment || 0) + 1,
+                                totalComments: (post.totalComments || 0) + 1,
                                 commentsData: [newComment, ...(post.commentsData || [])]
                             }
                             : post
@@ -363,7 +385,7 @@ const ForumScreen = ({ route }) => {
                 // Update selected post for modal
                 setSelectedPost(prevPost => ({
                     ...prevPost,
-                    totalComment: (prevPost.totalComment || 0) + 1,
+                    totalComments: (prevPost.totalComments || 0) + 1,
                     commentsData: [newComment, ...(prevPost.commentsData || [])]
                 }));
             }
@@ -379,7 +401,7 @@ const ForumScreen = ({ route }) => {
                 if (comment._id === commentId) {
                     return {
                         ...comment,
-                        likes: liked ? comment.likes - 1 : comment.likes + 1,
+                        totalLikes: liked ? (comment.totalLikes || 0) - 1 : (comment.totalLikes || 0) + 1,
                         likedByUser: !liked
                     };
                 }
@@ -430,6 +452,25 @@ const ForumScreen = ({ route }) => {
     };
 
     const handleEditComment = async (commentId, newText) => {
+        // Optimistic update
+        const originalPosts = [...posts];
+        const originalSelectedPost = { ...selectedPost };
+
+        const updateComment = (comment) => 
+            comment._id === commentId ? { ...comment, comment: newText } : comment;
+
+        setPosts(prev => prev.map(p => ({
+            ...p,
+            commentsData: (p.commentsData || []).map(updateComment)
+        })));
+        
+        if (selectedPost) {
+            setSelectedPost(prev => ({
+                ...prev,
+                commentsData: (prev.commentsData || []).map(updateComment)
+            }));
+        }
+
         try {
             const res = await fetch(`${BASE_URL}/api/v1/comment/${commentId}`, {
                 method: 'PUT',
@@ -441,25 +482,16 @@ const ForumScreen = ({ route }) => {
             });
             
             if (res.ok) {
-                const updateComment = (comment) => 
-                    comment._id === commentId ? { ...comment, content: newText } : comment;
-
-                setPosts(prev => prev.map(p => ({
-                    ...p,
-                    commentsData: (p.commentsData || []).map(updateComment)
-                })));
-                
-                if (selectedPost) {
-                    setSelectedPost(prev => ({
-                        ...prev,
-                        commentsData: (prev.commentsData || []).map(updateComment)
-                    }));
-                }
                 return true;
+            } else {
+                throw new Error("Failed to edit comment");
             }
-            return false;
         } catch (err) {
             console.error(err);
+            // Revert state
+            setPosts(originalPosts);
+            setSelectedPost(originalSelectedPost);
+            Alert.alert("Error", "Failed to edit comment");
             return false;
         }
     };
@@ -523,7 +555,7 @@ const ForumScreen = ({ route }) => {
                     <View>
                         <Text style={styles.forumName}>{forumDetails.name}</Text>
                         <Text style={styles.memberCountSubtitle}>
-                            {forumDetails.members.length > 0 ? forumDetails.members.length : forumDetails.totalMembers} members
+                            {forumDetails.totalMembers} members
                         </Text>
                     </View>
                 </TouchableOpacity>
@@ -601,7 +633,7 @@ const ForumScreen = ({ route }) => {
                             <Text style={styles.infoDescription}>{forumDetails.description}</Text>
                         </View>
 
-                        <Text style={styles.sectionTitle}>Members ({forumDetails.members.length})</Text>
+                        <Text style={styles.sectionTitle}>Members ({forumDetails.totalMembers})</Text>
                         <View style={styles.membersList}>
                             {forumDetails.members.map(member => (
                                 <View key={member._id} style={styles.memberItem}>
@@ -639,7 +671,8 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingTop: 35,
+        paddingBottom: 16,
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#F0F4FF',
