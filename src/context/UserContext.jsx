@@ -35,7 +35,7 @@ const UserProvider = ({ children }) => {
                 return;
             }
             const json = await res.json();
-            const currentUser = json.data;
+            const currentUser = { ...json.data, accessToken: token };
             setCurrentUser(currentUser);
         }
         catch (err) {

@@ -88,25 +88,23 @@ const unlikeComment = asyncHandler(async (req, res) => {
     return res.status(200).send("Unliked the comment successfully!")
 })
 
-const getAllPostLikes = asyncHandler(async (req, res) => {
-    const { postId } = req.params;
-    const likes = await Like.find({ postId }).countDocuments()
+// const getAllPostLikes = asyncHandler(async (req, res) => {
+//     const { postId } = req.params;
+//     const likes = await Like.find({ postId }).countDocuments()
 
-    return res.status(200).json(new ApiResponse(200, { likes }, "Post Likes fetched successfully"))
-})
+//     return res.status(200).json(new ApiResponse(200, { likes }, "Post Likes fetched successfully"))
+// })
 
-const getAllCommentLikes = asyncHandler(async (req, res) => {
-    const { postId } = req.params;
-    const likes = await Like.find({ postId }).countDocuments()
+// const getAllCommentLikes = asyncHandler(async (req, res) => {
+//     const { postId } = req.params;
+//     const likes = await Like.find({ postId }).countDocuments()
 
-    return res.status(200).json(new ApiResponse(200, { likes }, "Comment Likes fetched successfully"))
-})
+//     return res.status(200).json(new ApiResponse(200, { likes }, "Comment Likes fetched successfully"))
+// })
 
 export {
     likePost,
     unlikePost,
     likeComment,
     unlikeComment,
-    getAllPostLikes,
-    getAllCommentLikes
 }

@@ -4,7 +4,12 @@ import ApiError from "../utils/ApiError.js"
 import Post from "../models/post.model.js";
 import Forum from "../models/forum.model.js";
 import mongoose from "mongoose"
+import { getIoInstance } from "../utils/socket.js";
 
+let io;
+setTimeout(() => {
+    io = getIoInstance();
+}, 3000);
 
 const createPost = asyncHandler(async (req, res) => {
     const { text, imageUrl, forumId } = req.body;
@@ -108,6 +113,43 @@ const getAllPosts = asyncHandler(async (req, res) => {
                         }
                     }
                 ]
+            }
+        },
+        {
+            $lookup: {
+                from: "likes",
+                let: { postId: "$_id" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$postId", "$$postId"] },
+                                    { $eq: ["$likedBy", new mongoose.Types.ObjectId(req.user._id)] }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                as: "likedByUser"
+            }
+        },
+        {
+            $addFields: {
+                likedByUser: {
+                    $cond: {
+                        if: {
+                            $gt: [ { $size: "$likedByUser" }, 0 ]
+                        },
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $addFields: {
+                createdBy: { $arrayElemAt: ["$createdBy", 0] },
             }
         }
     ])

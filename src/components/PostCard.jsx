@@ -6,15 +6,22 @@ import {
     TouchableOpacity,
     Image,
     Dimensions,
+    Alert,
+    Modal,
+    TextInput,
+    KeyboardAvoidingView,
+    Platform
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import UserProfileModal from './UserProfileModal';
 
 const { width } = Dimensions.get('window');
 
-const PostCard = ({ post, onLike, onComment }) => {
+const PostCard = ({ post, onLike, onComment, onEdit, onDelete, currentUserId }) => {
     const [imageError, setImageError] = useState(false);
     const [showUserProfile, setShowUserProfile] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editText, setEditText] = useState(post.text);
 
     const formatLikes = (count) => {
         if (count >= 1000) {
@@ -32,9 +39,61 @@ const PostCard = ({ post, onLike, onComment }) => {
 
     const handleUserPress = () => {
         // Don't show profile for current user's posts
-        if (post.username === 'You') return;
+        const username = post.createdBy.annonymousUsername || 'Anonymous';
+        if (username === 'You') return;
         setShowUserProfile(true);
     };
+
+    const handleAction = () => {
+        Alert.alert(
+            "Manage Post",
+            "What would you like to do?",
+            [
+                {
+                    text: "Edit",
+                    onPress: () => {
+                        setEditText(post.text);
+                        setShowEditModal(true);
+                    }
+                },
+                {
+                    text: "Delete",
+                    onPress: () => {
+                        Alert.alert(
+                            "Delete Post",
+                            "Are you sure you want to delete this post?",
+                            [
+                                { text: "Cancel", style: "cancel" },
+                                { 
+                                    text: "Delete", 
+                                    style: "destructive",
+                                    onPress: onDelete
+                                }
+                            ]
+                        );
+                    },
+                    style: "destructive"
+                },
+                { text: "Cancel", style: "cancel" }
+            ]
+        );
+    };
+
+    const handleSaveEdit = () => {
+        if (editText.trim() !== post.text) {
+            onEdit(editText.trim());
+        }
+        setShowEditModal(false);
+    };
+
+    const username = post.createdBy.annonymousUsername || 'Anonymous';
+    const avatar = post.createdBy.avatar || null;
+    const timestamp = post.createdAt ? new Date(post.createdAt).toLocaleDateString() : 'Just now';
+    const category = post.category || 'General';
+    const content = post.text;
+    const likesCount = post.totalLikes || 0;
+    const commentsCount = post.totalComments || 0;
+    const isOwner = post.createdBy._id === currentUserId;
 
     return (
         <View style={styles.postCard}>
@@ -43,26 +102,39 @@ const PostCard = ({ post, onLike, onComment }) => {
                 <TouchableOpacity 
                     style={styles.userInfo}
                     onPress={handleUserPress}
-                    activeOpacity={post.username === 'You' ? 1 : 0.7}
+                    activeOpacity={username === 'You' ? 1 : 0.7}
                 >
-                    <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>
-                            {post.username.charAt(0).toUpperCase()}
-                        </Text>
+                    <View style={[styles.avatar, !avatar && { backgroundColor: '#6C63FF', borderRadius: 20 }]}>
+                        {avatar && <Image source={{ uri: avatar }}
+                            style={styles.avatar}
+                            resizeMode="cover"
+                        />}
+                        {!avatar && (
+                            <Text style={styles.avatarText}>
+                                {username.charAt(0).toUpperCase()}
+                            </Text>
+                        )}
                     </View>
                     <View style={styles.userDetails}>
-                        <Text style={styles.username}>{post.username}</Text>
-                        <Text style={styles.timestamp}>{post.timestamp}</Text>
+                        <Text style={styles.username}>{username}</Text>
+                        <Text style={styles.timestamp}>{timestamp}</Text>
                     </View>
                 </TouchableOpacity>
-                <View style={styles.categoryTag}>
-                    <Text style={styles.categoryText}>{post.category}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={styles.categoryTag}>
+                        <Text style={styles.categoryText}>{category}</Text>
+                    </View>
+                    {isOwner && (
+                        <TouchableOpacity onPress={handleAction}>
+                            <Icon name="more-vert" size={20} color="#6B7280" />
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
 
             {/* Post Content */}
             <View style={styles.postContent}>
-                <Text style={styles.postText}>{post.content}</Text>
+                <Text style={styles.postText}>{content}</Text>
                 
                 {/* Post Image */}
                 {post.image && !imageError && (
@@ -93,7 +165,7 @@ const PostCard = ({ post, onLike, onComment }) => {
                         styles.actionText,
                         post.likedByUser && styles.likedText
                     ]}>
-                        {formatLikes(post.likes)}
+                        {formatLikes(likesCount)}
                     </Text>
                 </TouchableOpacity>
 
@@ -103,7 +175,7 @@ const PostCard = ({ post, onLike, onComment }) => {
                     activeOpacity={0.7}
                 >
                     <Icon name="chat-bubble-outline" size={18} color="#6B7280" />
-                    <Text style={styles.actionText}>{formatComments(post.comments)}</Text>
+                    <Text style={styles.actionText}>{formatComments(commentsCount)}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -113,29 +185,58 @@ const PostCard = ({ post, onLike, onComment }) => {
                     <Icon name="share" size={18} color="#6B7280" />
                     <Text style={styles.actionText}>Share</Text>
                 </TouchableOpacity>
-
-                <View style={styles.spacer} />
-
-                <TouchableOpacity
-                    style={styles.moreButton}
-                    activeOpacity={0.7}
-                >
-                    <Icon name="more-horiz" size={18} color="#6B7280" />
-                </TouchableOpacity>
             </View>
 
             {/* User Profile Modal */}
             <UserProfileModal
                 visible={showUserProfile}
                 user={{
-                    username: post.username,
+                    username: username,
+                    avatar: avatar,
                     joinDate: 'Joined 3 months ago',
                     postsCount: Math.floor(Math.random() * 50) + 10,
                     supportGiven: Math.floor(Math.random() * 200) + 50,
-                    category: post.category,
+                    category: category,
                 }}
                 onClose={() => setShowUserProfile(false)}
             />
+
+            <Modal
+                visible={showEditModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowEditModal(false)}
+            >
+                <KeyboardAvoidingView 
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    style={styles.modalOverlay}
+                >
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Edit Post</Text>
+                        <TextInput
+                            style={styles.editInput}
+                            value={editText}
+                            onChangeText={setEditText}
+                            multiline
+                            autoFocus
+                        />
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity 
+                                style={[styles.modalButton, styles.cancelButton]}
+                                onPress={() => setShowEditModal(false)}
+                            >
+                                <Text style={styles.cancelButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={[styles.modalButton, styles.saveButton]}
+                                onPress={handleSaveEdit}
+                            >
+                                <Text style={styles.saveButtonText}>Save</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </View>
     );
 };
@@ -173,7 +274,6 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#6C63FF',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 12,
@@ -206,6 +306,57 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '500',
         color: '#6C63FF',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        borderRadius: 12,
+        padding: 20,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        marginBottom: 16,
+        color: '#1F2153',
+    },
+    editInput: {
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 8,
+        padding: 12,
+        minHeight: 100,
+        textAlignVertical: 'top',
+        marginBottom: 16,
+        color: '#1F2153',
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 12,
+    },
+    modalButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 6,
+    },
+    cancelButton: {
+        backgroundColor: '#F3F4F6',
+    },
+    saveButton: {
+        backgroundColor: '#6C63FF',
+    },
+    cancelButtonText: {
+        color: '#4B5563',
+        fontWeight: '500',
+    },
+    saveButtonText: {
+        color: 'white',
+        fontWeight: '500',
     },
     postContent: {
         marginBottom: 16,
@@ -255,10 +406,6 @@ const styles = StyleSheet.create({
     },
     spacer: {
         flex: 1,
-    },
-    moreButton: {
-        padding: 6,
-        borderRadius: 16,
     },
 });
 

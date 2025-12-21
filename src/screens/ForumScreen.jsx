@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -7,287 +7,527 @@ import {
     SafeAreaView,
     TouchableOpacity,
     Modal,
+    Image,
+    ScrollView,
+    Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import Header from '../components/Header';
+import { useNavigation } from '@react-navigation/native';
+// Header component removed
 import PostCard from '../components/PostCard';
 import CreatePost from '../components/CreatePost';
 import CommentsModal from '../components/CommentsModal';
+import { BASE_URL } from '../constants';
+import { useUser } from '../context/UserContext';
 
-const ForumScreen = () => {
-    const [posts, setPosts] = useState([
-        {
-            id: '1',
-            username: 'MindfulStudent_23',
-            content: 'Just finished my first meditation session this week! Starting to feel more centered and focused. Has anyone else tried the breathing exercises from the wellness app?',
-            image: null,
-            likes: 12,
-            comments: 3,
-            likedByUser: false,
-            timestamp: '2 hours ago',
-            category: 'Mindfulness',
-            commentsData: [
-                {
-                    id: 'c1',
-                    username: 'ZenMaster_99',
-                    content: 'Yes! The 4-7-8 breathing technique really helped me with anxiety.',
-                    timestamp: '1 hour ago',
-                    likes: 5,
-                    likedByUser: true
-                },
-                {
-                    id: 'c2',
-                    username: 'CalmSeeker_34',
-                    content: 'I love the guided sessions. They make it easier to stay focused.',
-                    timestamp: '45 minutes ago',
-                    likes: 3,
-                    likedByUser: false
-                },
-                {
-                    id: 'c3',
-                    username: 'PeacefulMind_77',
-                    content: 'Great progress! Keep it up. Consistency is key with meditation.',
-                    timestamp: '30 minutes ago',
-                    likes: 2,
-                    likedByUser: false
-                }
-            ]
-        },
-        {
-            id: '2',
-            username: 'AnxietyWarrior_45',
-            content: 'Sharing my progress: managed to attend my first social gathering in months! Small steps but feeling proud of myself. 💪',
-            image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=300&fit=crop',
-            likes: 28,
-            comments: 8,
-            likedByUser: true,
-            timestamp: '4 hours ago',
-            category: 'Progress',
-            commentsData: [
-                {
-                    id: 'c4',
-                    username: 'ProudSupporter_11',
-                    content: 'That\'s amazing! You should be proud of yourself. Every step counts!',
-                    timestamp: '3 hours ago',
-                    likes: 8,
-                    likedByUser: true
-                },
-                {
-                    id: 'c5',
-                    username: 'ProgressTracker_56',
-                    content: 'You\'re inspiring! I\'m working on similar goals.',
-                    timestamp: '2 hours ago',
-                    likes: 4,
-                    likedByUser: false
-                }
-            ]
-        },
-        {
-            id: '3',
-            username: 'StudyStress_Helper',
-            content: 'Finals week is approaching and I\'m feeling overwhelmed. Any tips for managing study stress? I\'ve been having trouble sleeping and focusing.',
-            image: null,
-            likes: 15,
-            comments: 12,
-            likedByUser: false,
-            timestamp: '6 hours ago',
-            category: 'Academic Stress',
-            commentsData: [
-                {
-                    id: 'c6',
-                    username: 'StudyBuddy_88',
-                    content: 'Try the Pomodoro technique! 25 minutes study, 5 minute break.',
-                    timestamp: '5 hours ago',
-                    likes: 6,
-                    likedByUser: true
-                },
-                {
-                    id: 'c7',
-                    username: 'SleepExpert_22',
-                    content: 'For sleep: no screens 1 hour before bed, try chamomile tea.',
-                    timestamp: '4 hours ago',
-                    likes: 4,
-                    likedByUser: false
-                }
-            ]
-        },
-        {
-            id: '4',
-            username: 'WellnessJourney_89',
-            content: 'Found this beautiful spot for my morning walks. Nature therapy is real! Sometimes the best medicine is just getting outside and breathing fresh air.',
-            image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=300&fit=crop',
-            likes: 34,
-            comments: 5,
-            likedByUser: true,
-            timestamp: '8 hours ago',
-            category: 'Nature Therapy',
-            commentsData: [
-                {
-                    id: 'c8',
-                    username: 'NatureLover_66',
-                    content: 'Beautiful! Nature walks are my favorite form of therapy too.',
-                    timestamp: '7 hours ago',
-                    likes: 3,
-                    likedByUser: false
-                }
-            ]
-        },
-        {
-            id: '5',
-            username: 'SleepStruggler_12',
-            content: 'Has anyone tried sleep meditation apps? I\'ve been struggling with insomnia for weeks now and looking for natural solutions before considering medication.',
-            image: null,
-            likes: 9,
-            comments: 15,
-            likedByUser: false,
-            timestamp: '12 hours ago',
-            category: 'Sleep Issues',
-            commentsData: [
-                {
-                    id: 'c9',
-                    username: 'SleepHelper_33',
-                    content: 'Insight Timer has great sleep meditations. Also try keeping a consistent bedtime.',
-                    timestamp: '11 hours ago',
-                    likes: 7,
-                    likedByUser: true
-                },
-                {
-                    id: 'c10',
-                    username: 'InsomniacSupport_44',
-                    content: 'I feel you. Progressive muscle relaxation helped me a lot.',
-                    timestamp: '10 hours ago',
-                    likes: 5,
-                    likedByUser: false
-                }
-            ]
-        }
-    ]);
-
+const ForumScreen = ({ route }) => {
+    const navigation = useNavigation();
+    const { forumId, forumName, forumData } = route.params || {};
+    const [posts, setPosts] = useState([]);
     const [showCreatePost, setShowCreatePost] = useState(false);
     const [selectedPost, setSelectedPost] = useState(null);
     const [showCommentsModal, setShowCommentsModal] = useState(false);
+    const [showForumInfo, setShowForumInfo] = useState(false);
+    const { currentUser } = useUser()
 
-    const handleLike = (postId) => {
-        setPosts(prevPosts => 
-            prevPosts.map(post => 
-                post.id === postId 
-                    ? { 
-                        ...post, 
-                        likes: post.likedByUser ? post.likes - 1 : post.likes + 1,
-                        likedByUser: !post.likedByUser 
+    const [forumDetails, setForumDetails] = useState(() => {
+        const initialData = forumData || {};
+        return {
+            name: forumName || initialData.name || "Loading...",
+            icon: initialData.icon || "https://via.placeholder.com/100",
+            description: initialData.description || "Loading...",
+            members: Array.isArray(initialData.members) ? initialData.members : [],
+            totalMembers: typeof initialData.members === 'number' ? initialData.members : (initialData.totalMembers || 0)
+        };
+    });
+
+    useEffect(() => {
+        if (!forumId) return;
+
+        const fetchPosts = async () => {
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/post/forum/${forumId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${currentUser.accessToken}`,
+                    },
+                });
+                const data = await res.json();
+                console.log(data)
+                if (data.success) {
+                    setPosts(data.data);
+                }
+            } catch (err) {
+                console.error('Error fetching posts:', err);
+            }
+        };
+
+        const fetchForumDetails = async () => {
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/forum/${forumId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${currentUser.accessToken}`,
+                    },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    setForumDetails(prev => ({ ...prev, ...data.data }));
+                }
+            } catch (err) {
+                console.error('Error fetching forum details:', err);
+            }
+        };
+
+        const fetchMembers = async () => {
+            try {
+                const res = await fetch(`${BASE_URL}/api/v1/forum/members/${forumId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${currentUser.accessToken}`,
+                    },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Backend returns forum object with members populated
+                    // data.data.members is the array
+                    const members = data.data.members.map(m => ({
+                        id: m._id,
+                        name: m.annonymousUsername,
+                        isOnline: m.isActive,
+                        avatar: m.avatar
+                    }));
+                    setForumDetails(prev => ({ ...prev, members }));
+                }
+            } catch (err) {
+                console.error('Error fetching members:', err);
+            }
+        };
+
+        fetchPosts();
+        fetchForumDetails();
+        fetchMembers();
+
+        // Fetch unseen count (just logging for now as requested)
+        fetch(`${BASE_URL}/api/v1/post/unseen/count`, {
+            headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+        })
+        .then(res => res.json())
+        .then(data => console.log('Unseen count:', data))
+        .catch(err => console.error('Error fetching unseen count:', err));
+
+    }, [forumId]);
+
+    const handleLeaveForum = async () => {
+        Alert.alert(
+            "Leave Forum",
+            "Are you sure you want to leave this forum?",
+            [
+                { text: "Cancel", style: "cancel" },
+                { 
+                    text: "Leave", 
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            const res = await fetch(`${BASE_URL}/api/v1/forum/leave/${forumId}`, {
+                                method: 'GET',
+                                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+                            });
+                            if (res.ok) {
+                                navigation.goBack();
+                            } else {
+                                Alert.alert("Error", "Failed to leave forum");
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            Alert.alert("Error", "An error occurred");
+                        }
                     }
-                    : post
-            )
+                }
+            ]
         );
     };
 
-    const handleComment = (postId) => {
-        const post = posts.find(p => p.id === postId);
+    const handleDeletePost = async (postId) => {
+        Alert.alert(
+            "Delete Post",
+            "Are you sure you want to delete this post?",
+            [
+                { text: "Cancel", style: "cancel" },
+                { 
+                    text: "Delete", 
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            const res = await fetch(`${BASE_URL}/api/v1/post/delete/${postId}`, {
+                                method: 'DELETE',
+                                headers: { 
+                                    'Content-Type': 'application/json',
+                                    Authorization: `Bearer ${currentUser.accessToken}` 
+                                },
+                                body: JSON.stringify({ forumId })
+                            });
+                            if (res.ok) {
+                                setPosts(prev => prev.filter(p => p._id !== postId));
+                            } else {
+                                const error = await res.json();
+                                Alert.alert("Error", error.message || "Failed to delete post");
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            Alert.alert("Error", "An error occurred");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleEditPost = async (postId, newText) => {
+        try {
+            const res = await fetch(`${BASE_URL}/api/v1/post/edit/${postId}`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${currentUser.accessToken}` 
+                },
+                body: JSON.stringify({ text: newText })
+            });
+            if (res.ok) {
+                setPosts(prev => prev.map(p => p._id === postId ? { ...p, text: newText } : p));
+                return true;
+            } else {
+                Alert.alert("Error", "Failed to edit post");
+                return false;
+            }
+        } catch (err) {
+            console.error(err);
+            Alert.alert("Error", "An error occurred");
+            return false;
+        }
+    };
+
+    const handleLike = async (postId) => {
+        const post = posts.find(p => p._id === postId);
+        const isLiked = post.likedByUser;
+        
+        // Optimistic update
+        setPosts(prevPosts => 
+            prevPosts.map(p => 
+                p._id === postId
+                    ? { 
+                        ...p, 
+                        totalLikes: isLiked ? (p.totalLikes || 0) - 1 : (p.totalLikes || 0) + 1,
+                        likedByUser: !isLiked
+                    }
+                    : p
+            )
+        );
+
+        try {
+            const res = await fetch(`${BASE_URL}/api/v1/like/${isLiked ? 'unlike/post' : 'post'}/${postId}`, {
+                method: isLiked ? 'DELETE' : 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${currentUser.accessToken}`,
+                },
+            });
+            
+            if (!res.ok) {
+                throw new Error('Failed to like/unlike post');
+            }
+        } catch (error) {
+            console.error("Failed to like/unlike post", error);
+            // Revert state
+            setPosts(prevPosts => 
+                prevPosts.map(p => 
+                    p._id === postId
+                        ? { 
+                            ...p, 
+                            totalLikes: post.totalLikes,
+                            likedByUser: isLiked
+                        }
+                        : p
+                )
+            );
+            Alert.alert("Error", "Failed to update like");
+        }
+    };
+
+    const handleComment = async (postId) => {
+        const post = posts.find(p => p._id === postId);
         setSelectedPost(post);
         setShowCommentsModal(true);
+
+        try {
+            const res = await fetch(`${BASE_URL}/api/v1/comment/post/${postId}`, {
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                const comments = data.data.map(c => ({
+                    _id: c._id,
+                    content: c.comment,
+                    username: c.commenter.annonymousUsername || 'Anonymous',
+                    avatar: c.commenter.avatar,
+                    likes: c.totalLikes || 0,
+                    likedByUser: c.likedByUser,
+                    timestamp: new Date(c.createdAt).toLocaleDateString(),
+                    isOwner: c.commenter._id == currentUser._id
+                }));
+                
+                setSelectedPost(prev => ({ ...prev, commentsData: comments }));
+            }
+        } catch (err) {
+            console.error("Error fetching comments:", err);
+        }
     };
 
-    const handleCreatePost = (newPost) => {
-        console.log('Creating post:', newPost);
-        const post = {
-            id: Date.now().toString(),
-            username: 'You',
-            content: newPost.content,
-            image: newPost.image,
-            likes: 0,
-            comments: 0,
-            likedByUser: false,
-            timestamp: 'Just now',
-            category: newPost.category || 'General',
-            commentsData: []
-        };
-        
-        setPosts(prevPosts => [post, ...prevPosts]);
-        setShowCreatePost(false);
+    const handleCreatePost = async (newPost) => {
+        try {
+            const res = await fetch(`${BASE_URL}/api/v1/post/create`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${currentUser.accessToken}`,
+                },
+                body: JSON.stringify({
+                    text: newPost.content,
+                    imageUrl: newPost.image,
+                    forumId: forumId
+                })
+            });
+            const data = await res.json();
+            console.log(data);
+            if (data.success) {
+                const createdPost = data.data;
+                const newPostData = {
+                    ...createdPost,
+                    createdBy: [{
+                        _id: currentUser._id,
+                        annonymousUsername: currentUser.annonymousUsername || 'You',
+                        avatar: currentUser.avatar
+                    }],
+                    totalLikes: 0,
+                    totalComment: 0,
+                    commentsData: []
+                };
+                setPosts(prevPosts => [newPostData, ...prevPosts]);
+                setShowCreatePost(false);
+            } else {
+                console.error('Failed to create post:', data.message);
+            }
+        } catch (err) {
+            console.error('Error creating post:', err);
+        }
     };
 
-    const handleAddComment = (postId, commentText) => {
-        const newComment = {
-            id: `c${Date.now()}`,
-            username: 'You',
-            content: commentText,
-            timestamp: 'Just now',
-            likes: 0,
-            likedByUser: false
-        };
+    const handleAddComment = async (postId, commentText) => {
+        try {
+            const res = await fetch(`${BASE_URL}/api/v1/comment/create`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${currentUser.accessToken}` 
+                },
+                body: JSON.stringify({ postId, comment: commentText })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                const newComment = {
+                    _id: data.data._id,
+                    content: data.data.comment,
+                    username: 'You',
+                    timestamp: 'Just now',
+                    likes: 0,
+                    likedByUser: currentUser._id,
+                    isOwner: true
+                };
 
-        setPosts(prevPosts => 
-            prevPosts.map(post => 
-                post.id === postId 
-                    ? { 
-                        ...post, 
-                        comments: post.comments + 1,
-                        commentsData: [newComment, ...(post.commentsData || [])]
-                    }
-                    : post
-            )
-        );
+                setPosts(prevPosts => 
+                    prevPosts.map(post => 
+                        post._id === postId 
+                            ? { 
+                                ...post, 
+                                totalComment: (post.totalComment || 0) + 1,
+                                commentsData: [newComment, ...(post.commentsData || [])]
+                            }
+                            : post
+                    )
+                );
 
-        // Update selected post for modal
-        setSelectedPost(prevPost => ({
-            ...prevPost,
-            comments: prevPost.comments + 1,
-            commentsData: [newComment, ...(prevPost.commentsData || [])]
-        }));
+                // Update selected post for modal
+                setSelectedPost(prevPost => ({
+                    ...prevPost,
+                    totalComment: (prevPost.totalComment || 0) + 1,
+                    commentsData: [newComment, ...(prevPost.commentsData || [])]
+                }));
+            }
+        } catch (err) {
+            console.error("Error adding comment:", err);
+        }
     };
 
-    const handleLikeComment = (postId, commentId) => {
-        setPosts(prevPosts => 
-            prevPosts.map(post => 
-                post.id === postId 
-                    ? {
-                        ...post,
-                        commentsData: post.commentsData.map(comment =>
-                            comment.id === commentId
-                                ? {
-                                    ...comment,
-                                    likes: comment.likedByUser ? comment.likes - 1 : comment.likes + 1,
-                                    likedByUser: !comment.likedByUser
-                                }
-                                : comment
-                        )
-                    }
-                    : post
-            )
-        );
+    const handleLikeComment = async (postId, commentId) => {
+        // Optimistic update
+        const updateLikeState = (liked) => {
+            const updateComment = (comment) => {
+                if (comment._id === commentId) {
+                    return {
+                        ...comment,
+                        likes: liked ? comment.likes - 1 : comment.likes + 1,
+                        likedByUser: !liked
+                    };
+                }
+                return comment;
+            };
 
-        // Update selected post for modal
-        if (selectedPost && selectedPost.id === postId) {
-            setSelectedPost(prevPost => ({
-                ...prevPost,
-                commentsData: prevPost.commentsData.map(comment =>
-                    comment.id === commentId
-                        ? {
-                            ...comment,
-                            likes: comment.likedByUser ? comment.likes - 1 : comment.likes + 1,
-                            likedByUser: !comment.likedByUser
-                        }
-                        : comment
+            setPosts(prevPosts => 
+                prevPosts.map(post => 
+                    post._id === postId 
+                        ? { ...post, commentsData: (post.commentsData || []).map(updateComment) }
+                        : post
                 )
-            }));
+            );
+
+            if (selectedPost && selectedPost._id === postId) {
+                setSelectedPost(prevPost => ({
+                    ...prevPost,
+                    commentsData: (prevPost.commentsData || []).map(updateComment)
+                }));
+            }
+        };
+
+        // Find current state
+        const post = posts.find(p => p._id === postId);
+        const comment = post?.commentsData?.find(c => c._id === commentId) || 
+                       selectedPost?.commentsData?.find(c => c._id === commentId);
+        
+        if (!comment) return;
+        const isLiked = !!comment.likedByUser;
+
+        updateLikeState(isLiked);
+
+        try {
+            const res = await fetch(`${BASE_URL}/api/v1/like/${isLiked ? 'unlike/comment' : 'comment'}/${commentId}`, {
+                method: isLiked ? 'DELETE' : 'POST',
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+            
+            if (!res.ok) {
+                // Revert if failed
+                updateLikeState(!isLiked);
+                console.error("Failed to like/unlike comment");
+            }
+        } catch (err) {
+            updateLikeState(!isLiked);
+            console.error("Error liking comment:", err);
+        }
+    };
+
+    const handleEditComment = async (commentId, newText) => {
+        try {
+            const res = await fetch(`${BASE_URL}/api/v1/comment/${commentId}`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${currentUser.accessToken}` 
+                },
+                body: JSON.stringify({ comment: newText })
+            });
+            
+            if (res.ok) {
+                const updateComment = (comment) => 
+                    comment._id === commentId ? { ...comment, content: newText } : comment;
+
+                setPosts(prev => prev.map(p => ({
+                    ...p,
+                    commentsData: (p.commentsData || []).map(updateComment)
+                })));
+                
+                if (selectedPost) {
+                    setSelectedPost(prev => ({
+                        ...prev,
+                        commentsData: (prev.commentsData || []).map(updateComment)
+                    }));
+                }
+                return true;
+            }
+            return false;
+        } catch (err) {
+            console.error(err);
+            return false;
+        }
+    };
+
+    const handleDeleteComment = async (postId, commentId) => {
+        try {
+            const res = await fetch(`${BASE_URL}/api/v1/comment/${commentId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+            
+            if (res.ok) {
+                const filterComments = (comments) => comments.filter(c => c._id !== commentId);
+
+                setPosts(prev => prev.map(p => 
+                    p._id === postId ? { 
+                        ...p, 
+                        totalComment: Math.max(0, (p.totalComment || 0) - 1),
+                        commentsData: filterComments(p.commentsData || []) 
+                    } : p
+                ));
+                
+                if (selectedPost && selectedPost._id === postId) {
+                    setSelectedPost(prev => ({
+                        ...prev,
+                        totalComment: Math.max(0, (prev.totalComment || 0) - 1),
+                        commentsData: filterComments(prev.commentsData || [])
+                    }));
+                }
+            }
+        } catch (err) {
+            console.error(err);
         }
     };
 
     const renderPost = ({ item }) => (
         <PostCard
             post={item}
-            onLike={() => handleLike(item.id)}
-            onComment={() => handleComment(item.id)}
+            onLike={() => handleLike(item._id)}
+            onComment={() => handleComment(item._id)}
+            onEdit={(newText) => handleEditPost(item._id, newText)}
+            onDelete={() => handleDeletePost(item._id)}
+            currentUserId={currentUser._id}
         />
     );
+    
 
     return (
         <SafeAreaView style={styles.container}>
-            <Header />
-
-            {/* Forum Header */}
+            {/* Forum Header - Clickable */}
             <View style={styles.forumHeader}>
-                <Text style={styles.screenTitle}>Community Forums</Text>
+                <TouchableOpacity 
+                    style={styles.headerLeft}
+                    onPress={() => setShowForumInfo(true)}
+                    activeOpacity={0.7}
+                >
+                    <Image 
+                        source={{ uri: forumDetails.icon }} 
+                        style={styles.forumIcon} 
+                    />
+                    <View>
+                        <Text style={styles.forumName}>{forumDetails.name}</Text>
+                        <Text style={styles.memberCountSubtitle}>
+                            {forumDetails.members.length > 0 ? forumDetails.members.length : forumDetails.totalMembers} members
+                        </Text>
+                    </View>
+                </TouchableOpacity>
+
                 <TouchableOpacity
                     style={styles.createPostButton}
                     onPress={() => {
@@ -303,7 +543,7 @@ const ForumScreen = () => {
             {/* Posts Feed */}
             <FlatList
                 data={posts}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => item._id}
                 renderItem={renderPost}
                 style={styles.postsList}
                 showsVerticalScrollIndicator={false}
@@ -335,7 +575,56 @@ const ForumScreen = () => {
                 }}
                 onAddComment={handleAddComment}
                 onLikeComment={handleLikeComment}
+                onEditComment={handleEditComment}
+                onDeleteComment={handleDeleteComment}
             />
+
+            {/* Forum Info Modal */}
+            <Modal
+                visible={showForumInfo}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setShowForumInfo(false)}
+            >
+                <SafeAreaView style={styles.infoModalContainer}>
+                    <View style={styles.infoModalHeader}>
+                        <Text style={styles.infoModalTitle}>About Forum</Text>
+                        <TouchableOpacity onPress={() => setShowForumInfo(false)}>
+                            <Icon name="close" size={24} color="#1F2153" />
+                        </TouchableOpacity>
+                    </View>
+                    
+                    <ScrollView contentContainerStyle={styles.infoModalContent}>
+                        <View style={styles.infoHero}>
+                            <Image source={{ uri: forumDetails.icon }} style={styles.infoHeroIcon} />
+                            <Text style={styles.infoHeroName}>{forumDetails.name}</Text>
+                            <Text style={styles.infoDescription}>{forumDetails.description}</Text>
+                        </View>
+
+                        <Text style={styles.sectionTitle}>Members ({forumDetails.members.length})</Text>
+                        <View style={styles.membersList}>
+                            {forumDetails.members.map(member => (
+                                <View key={member._id} style={styles.memberItem}>
+                                    <View style={styles.memberAvatarContainer}>
+                                        <Image source={{ uri: member.avatar }} style={styles.memberAvatar} />
+                                        {member.isOnline && <View style={styles.onlineBadge} />}
+                                    </View>
+                                    <Text style={styles.memberName}>{member.name}</Text>
+                                    <Text style={styles.memberStatus}>{member.isOnline ? 'Online' : 'Offline'}</Text>
+                                </View>
+                            ))}
+                        </View>
+
+                        <TouchableOpacity 
+                            style={styles.leaveButton}
+                            onPress={handleLeaveForum}
+                        >
+                            <Icon name="logout" size={20} color="#EF4444" />
+                            <Text style={styles.leaveButtonText}>Leave Forum</Text>
+                        </TouchableOpacity>
+                    </ScrollView>
+                </SafeAreaView>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -350,15 +639,36 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingVertical: 16,
+        paddingVertical: 12,
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#F0F4FF',
+        elevation: 2,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
     },
-    screenTitle: {
-        fontSize: 24,
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+    },
+    forumIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: '#F0F4FF',
+    },
+    forumName: {
+        fontSize: 18,
         fontWeight: '700',
         color: '#1F2153',
+    },
+    memberCountSubtitle: {
+        fontSize: 12,
+        color: '#6B7280',
     },
     createPostButton: {
         flexDirection: 'row',
@@ -382,6 +692,110 @@ const styles = StyleSheet.create({
     },
     postSeparator: {
         height: 8,
+    },
+    // Modal Styles
+    infoModalContainer: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+    },
+    infoModalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F4FF',
+    },
+    infoModalTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#1F2153',
+    },
+    infoModalContent: {
+        padding: 20,
+    },
+    infoHero: {
+        alignItems: 'center',
+        marginBottom: 30,
+    },
+    infoHeroIcon: {
+        width: 80,
+        height: 80,
+        borderRadius: 24,
+        marginBottom: 16,
+    },
+    infoHeroName: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#1F2153',
+        marginBottom: 8,
+    },
+    infoDescription: {
+        fontSize: 16,
+        color: '#4B5563',
+        textAlign: 'center',
+        lineHeight: 24,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#1F2153',
+        marginBottom: 16,
+    },
+    membersList: {
+        gap: 16,
+    },
+    memberItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    memberAvatarContainer: {
+        position: 'relative',
+    },
+    memberAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+    },
+    onlineBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: '#10B981',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    memberName: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#1F2153',
+        flex: 1,
+    },
+    memberStatus: {
+        fontSize: 14,
+        color: '#6B7280',
+    },
+    leaveButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 32,
+        paddingVertical: 12,
+        backgroundColor: '#FEF2F2',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#FECaca',
+        gap: 8,
+        marginBottom: 20,
+    },
+    leaveButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#EF4444',
     },
 });
 

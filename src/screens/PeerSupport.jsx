@@ -14,7 +14,10 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { SvgUri } from 'react-native-svg';
 import Header from '../components/Header';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useEffect } from 'react';
+import { BASE_URL } from '../constants';
+import { useUser } from '../context/UserContext';
 
 /* ---------- Chat/Forum List Item Component ---------- */
 const ChatListItem = ({ item, onPress }) => {
@@ -65,21 +68,30 @@ const ChatListItem = ({ item, onPress }) => {
 
                 <View style={styles.chatPreview}>
                     {item.type === 'forum' ? (
-                        <View style={styles.forumPreview}>
-                            <Text style={styles.forumDescription} numberOfLines={1}>
-                                {item.description}
-                            </Text>
-                            <View style={styles.forumStats}>
-                                <View style={styles.forumStat}>
-                                    <Icon name="people" size={12} color="#6B7280" />
-                                    <Text style={styles.forumStatText}>{item.members}</Text>
-                                </View>
-                                <View style={styles.forumStat}>
-                                    <Icon name="article" size={12} color="#6B7280" />
-                                    <Text style={styles.forumStatText}>{item.posts}</Text>
+                        <>
+                            <View style={styles.forumPreview}>
+                                <Text style={styles.forumDescription} numberOfLines={1}>
+                                    {item.description}
+                                </Text>
+                                <View style={styles.forumStats}>
+                                    <View style={styles.forumStat}>
+                                        <Icon name="people" size={12} color="#6B7280" />
+                                        <Text style={styles.forumStatText}>{item.members}</Text>
+                                    </View>
+                                    <View style={styles.forumStat}>
+                                        <Icon name="article" size={12} color="#6B7280" />
+                                        <Text style={styles.forumStatText}>{item.posts}</Text>
+                                    </View>
                                 </View>
                             </View>
-                        </View>
+                            {item.unreadCount > 0 && (
+                                <View style={styles.unreadBadge}>
+                                    <Text style={styles.unreadText}>
+                                        {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </>
                     ) : item.type === 'volunteer' ? (
                         <>
                             <Text style={styles.volunteerSpecialty} numberOfLines={1}>
@@ -280,101 +292,73 @@ const VolunteersModal = ({ visible, onClose, onStartChat }) => {
 const JoinForumModal = ({ visible, onClose, onJoinForum }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredForums, setFilteredForums] = useState([]);
+    const [availableForums, setAvailableForums] = useState([]);
+    const { currentUser } = useUser()
 
-    // Available forums to join
-    const availableForums = [
-        {
-            id: 'FORUM001',
-            name: 'Mindfulness & Meditation',
-            description: 'Daily meditation practices and mindfulness techniques',
-            members: 245,
-            posts: 1120,
-            activeMembers: 24,
-            category: 'Meditation',
-            isPublic: true,
-        },
-        {
-            id: 'FORUM002',
-            name: 'Student Mental Health',
-            description: 'Support for students dealing with academic stress',
-            members: 186,
-            posts: 890,
-            activeMembers: 18,
-            category: 'Academic',
-            isPublic: true,
-        },
-        {
-            id: 'FORUM003',
-            name: 'Workplace Wellness',
-            description: 'Managing work-life balance and professional stress',
-            members: 320,
-            posts: 1450,
-            activeMembers: 32,
-            category: 'Professional',
-            isPublic: true,
-        },
-        {
-            id: 'FORUM004',
-            name: 'Sleep & Recovery Support',
-            description: 'Tips and support for better sleep and recovery',
-            members: 150,
-            posts: 670,
-            activeMembers: 15,
-            category: 'Wellness',
-            isPublic: true,
-        },
-        {
-            id: 'FORUM005',
-            name: 'Creative Expression Therapy',
-            description: 'Art, music, and creative outlets for mental wellness',
-            members: 210,
-            posts: 980,
-            activeMembers: 21,
-            category: 'Creative',
-            isPublic: true,
-        },
-        {
-            id: 'FORUM006',
-            name: 'Parent Support Network',
-            description: 'Support for parents dealing with stress and challenges',
-            members: 280,
-            posts: 1340,
-            activeMembers: 28,
-            category: 'Family',
-            isPublic: true,
-        },
-        {
-            id: 'FORUM007',
-            name: 'Grief & Loss Support',
-            description: 'Compassionate support for those dealing with loss',
-            members: 120,
-            posts: 560,
-            activeMembers: 12,
-            category: 'Support',
-            isPublic: true,
-        },
-    ];
-
-    React.useEffect(() => {
+    useEffect(() => {
         if (searchQuery.trim() === '') {
             setFilteredForums(availableForums);
-        } else {
-            const filtered = availableForums.filter(forum =>
-                forum.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                forum.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                forum.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                forum.description.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-            setFilteredForums(filtered);
+        }
+        else {
+            let timeoutId = setTimeout(() => {
+                fetch(`${BASE_URL}/api/v1/forum/search?q=${encodeURIComponent(searchQuery)}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.accessToken}`,
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data.statusCode)
+                    if (data.success) {
+                        setFilteredForums(data.data);
+                    }
+                    else {
+                        console.error('Error searching forums:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Network error searching forums:', error);
+                });
+            }, 600);
+
+            return () => clearTimeout(timeoutId);
         }
     }, [searchQuery]);
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (visible) {
             setFilteredForums(availableForums);
             setSearchQuery('');
         }
     }, [visible]);
+
+    useEffect(() => {
+        const fetchAvailableForums = async () => {
+            try {
+                const response = await fetch(`${BASE_URL}/api/v1/forum/all`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.accessToken}`,
+                    },
+                });
+                const data = await response.json();
+                if (data.success) {
+                    setAvailableForums(data.data);
+                }
+                else {
+                    console.error('Error fetching forums:', data.message);
+                }
+            }
+            catch (error) {
+                console.error('Network error fetching forums:', error);
+            }
+        };
+        fetchAvailableForums();
+    }, []);
+
 
     const ForumItem = ({ forum }) => (
         <View style={styles.forumItem}>
@@ -384,7 +368,7 @@ const JoinForumModal = ({ visible, onClose, onJoinForum }) => {
                 </View>
                 <View style={styles.forumItemInfo}>
                     <Text style={styles.forumItemName}>{forum.name}</Text>
-                    <Text style={styles.forumItemId}>ID: {forum.id}</Text>
+                    <Text style={styles.forumItemId}>ID: {forum._id}</Text>
                     <Text style={styles.forumItemDescription}>{forum.description}</Text>
                     <View style={styles.forumItemMeta}>
                         <View style={styles.categoryTag}>
@@ -392,10 +376,10 @@ const JoinForumModal = ({ visible, onClose, onJoinForum }) => {
                         </View>
                         <View style={styles.forumItemStats}>
                             <Text style={styles.participantCount}>
-                                {forum.members} members
+                                {forum.totalMembers} members
                             </Text>
                             <Text style={styles.participantCount}>
-                                {forum.posts} posts
+                                {forum.totalPosts} posts
                             </Text>
                         </View>
                     </View>
@@ -449,7 +433,7 @@ const JoinForumModal = ({ visible, onClose, onJoinForum }) => {
                 {/* Forums List */}
                 <FlatList
                     data={filteredForums}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item) => item._id}
                     renderItem={({ item }) => <ForumItem forum={item} />}
                     style={styles.forumsList}
                     contentContainerStyle={styles.forumsListContent}
@@ -472,11 +456,13 @@ const JoinForumModal = ({ visible, onClose, onJoinForum }) => {
 /* ---------- Main Peer Support Component ---------- */
 const PeerSupport = () => {
     const navigation = useNavigation();
+    const [activeTab, setActiveTab] = useState('forums');
     const [showJoinModal, setShowJoinModal] = useState(false);
     const [showVolunteersModal, setShowVolunteersModal] = useState(false);
     const [volunteerChats, setVolunteerChats] = useState([]);
+    const [forums, setForums] = useState([]);
+    const { currentUser } = useUser()
 
-    // Generate cartoon SVG avatars for anonymity
     const getCartoonAvatar = (seed) => {
         const cartoonAvatars = [
             'https://api.dicebear.com/9.x/avataaars/svg?seed=Felix',
@@ -513,127 +499,6 @@ const PeerSupport = () => {
         return cartoonAvatars[seed % cartoonAvatars.length];
     };
 
-    // Mixed data with forums and individual chats
-    const chatsAndForums = [
-        // Volunteer chats (at the top)
-        ...volunteerChats,
-        // Forums
-        {
-            id: 'FORUM001',
-            name: 'Anxiety Support Forum',
-            type: 'forum',
-            description: 'A safe space to share experiences and support each other',
-            members: 245,
-            posts: 1120,
-            activeMembers: 24,
-            category: 'Mental Health',
-        },
-        {
-            id: 'FORUM002',
-            name: 'Student Wellness Hub',
-            type: 'forum',
-            description: 'Academic stress, study tips, and student life support',
-            members: 186,
-            posts: 890,
-            activeMembers: 18,
-            category: 'Academic',
-        },
-        {
-            id: 'FORUM003',
-            name: 'Mindfulness Corner',
-            type: 'forum',
-            description: 'Meditation practices, breathing exercises, and mindful living',
-            members: 320,
-            posts: 1450,
-            activeMembers: 32,
-            category: 'Meditation',
-        },
-        // Individual Chats
-        {
-            id: '2',
-            name: 'Peaceful_Heart_89',
-            type: 'individual',
-            avatar: getCartoonAvatar(2),
-            lastMessage: 'How are you feeling today?',
-            lastMessageTime: '1:45 PM',
-            unreadCount: 1,
-            isOnline: true,
-        },
-        {
-            id: '4',
-            name: 'Calm_Spirit_67',
-            type: 'individual',
-            avatar: getCartoonAvatar(4),
-            lastMessage: 'That meditation app really helped!',
-            lastMessageTime: '11:30 AM',
-            unreadCount: 0,
-            isOnline: false,
-        },
-        // More Forums
-        {
-            id: 'FORUM004',
-            name: 'Sleep & Recovery',
-            type: 'forum',
-            description: 'Better sleep habits and recovery techniques',
-            members: 150,
-            posts: 670,
-            activeMembers: 15,
-            category: 'Wellness',
-        },
-        // More Individual Chats
-        {
-            id: '6',
-            name: 'Hope_Walker_34',
-            type: 'individual',
-            avatar: getCartoonAvatar(6),
-            lastMessage: 'Hope you\'re doing well today',
-            lastMessageTime: 'Yesterday',
-            unreadCount: 0,
-            isOnline: true,
-        },
-        {
-            id: '7',
-            name: 'Gentle_Wind_78',
-            type: 'individual',
-            avatar: getCartoonAvatar(7),
-            lastMessage: 'The breathing exercises helped me a lot',
-            lastMessageTime: 'Yesterday',
-            unreadCount: 2,
-            isOnline: false,
-        },
-        {
-            id: '8',
-            name: 'Rising_Phoenix_56',
-            type: 'individual',
-            avatar: getCartoonAvatar(8),
-            lastMessage: 'Thank you for listening',
-            lastMessageTime: '2 days ago',
-            unreadCount: 0,
-            isOnline: true,
-        },
-        {
-            id: '9',
-            name: 'Quiet_Strength_91',
-            type: 'individual',
-            avatar: getCartoonAvatar(9),
-            lastMessage: 'Your advice really helped me',
-            lastMessageTime: '2 days ago',
-            unreadCount: 0,
-            isOnline: false,
-        },
-        {
-            id: '10',
-            name: 'Inner_Light_25',
-            type: 'individual',
-            avatar: getCartoonAvatar(10),
-            lastMessage: 'Good morning! Ready for today?',
-            lastMessageTime: '3 days ago',
-            unreadCount: 1,
-            isOnline: true,
-        },
-    ];
-
-    // Mock messages for individual chats
     const getMockMessages = (chatId) => {
         const messagesByChat = {
             '2': [
@@ -652,21 +517,18 @@ const PeerSupport = () => {
             'vol_2': [
                 { id: '1', text: 'Hi there! I\'m Michael Chen, and I specialize in helping students manage academic stress and study pressures.', sender: 'other', senderName: 'Michael Chen', time: 'Just now', avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face' },
             ],
-            // Add more volunteer message patterns...
         };
         return messagesByChat[chatId] || [];
     };
 
     const handleItemPress = (item) => {
         if (item.type === 'forum') {
-            // Navigate to Forum Screen for forums
             navigation.navigate('ForumScreen', {
-                forumId: item.id,
+                forumId: item._id,
                 forumName: item.name,
                 forumData: item,
             });
         } else {
-            // Navigate to Chat Screen for individual chats or volunteers
             const messages = getMockMessages(item.id);
             navigation.navigate('ChatScreen', {
                 chat: item,
@@ -675,17 +537,29 @@ const PeerSupport = () => {
         }
     };
 
-    const handleJoinForum = (forum) => {
-        // Close modal
+    const handleJoinForum = async (forum) => {
         setShowJoinModal(false);
 
-        // Navigate to the new forum
+        const res = await fetch(`${BASE_URL}/api/v1/forum/join/${forum._id}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${currentUser.accessToken}`,
+            },
+        });
+
+        if (!res.ok) {
+            console.error('Error joining forum:', res.statusText);
+            return;
+        }
+        const data = await res.text();
+        console.log(data, forum._id);
         navigation.navigate('ForumScreen', {
-            forumId: forum.id,
+            forumId: forum._id,
             forumName: forum.name,
             forumData: {
                 ...forum,
-                members: forum.members + 1, // Add user to count
+                totalMembers: forum.totalMembers + 1,
             },
         });
     };
@@ -724,10 +598,58 @@ const PeerSupport = () => {
         });
     };
 
+    useFocusEffect(
+        React.useCallback(() => {
+            if (activeTab === 'forums') {
+                const fetchForumsAndUnseen = async () => {
+                    try {
+                        const forumsRes = await fetch(`${BASE_URL}/api/v1/forum/joined`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${currentUser.accessToken}`,
+                            },
+                        });
+                        const forumsData = await forumsRes.json();
+
+                        const unseenRes = await fetch(`${BASE_URL}/api/v1/post/unseen/count`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${currentUser.accessToken}`,
+                            },
+                        });
+                        const unseenData = await unseenRes.json();
+
+                        if (forumsData.success) {
+                            const unseenMap = {};
+                            if (unseenData.success) {
+                                unseenData.data.forEach(item => {
+                                    unseenMap[item.forumId] = item.unseenCount;
+                                });
+                            }
+
+                            const mappedForums = forumsData.data.map(forum => ({
+                                ...forum,
+                                type: 'forum',
+                                members: forum.totalMembers,
+                                posts: forum.totalPosts || 0,
+                                activeMembers: 0,
+                                unreadCount: unseenMap[forum._id] || 0
+                            }));
+                            setForums(mappedForums);
+                        }
+                    } catch (error) {
+                        console.error('Error fetching forums or unseen counts:', error);
+                    }
+                };
+                fetchForumsAndUnseen();
+            }
+        }, [activeTab])
+    );
+
     return (
         <SafeAreaView style={styles.container}>
-            <Header />
-
             <View style={styles.chatListHeader}>
                 <Text style={styles.screenTitle}>Community</Text>
                 <View style={styles.headerButtons}>
@@ -748,9 +670,24 @@ const PeerSupport = () => {
                 </View>
             </View>
 
+            <View style={styles.tabContainer}>
+                <TouchableOpacity 
+                    style={[styles.tab, activeTab === 'peers' && styles.activeTab]}
+                    onPress={() => setActiveTab('peers')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'peers' && styles.activeTabText]}>Peers</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                    style={[styles.tab, activeTab === 'forums' && styles.activeTab]}
+                    onPress={() => setActiveTab('forums')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'forums' && styles.activeTabText]}>Forums</Text>
+                </TouchableOpacity>
+            </View>
+
             <FlatList
-                data={chatsAndForums}
-                keyExtractor={(item) => item.id}
+                data={activeTab === 'forums' ? forums : volunteerChats}
+                keyExtractor={(item) => item._id || item.id}
                 renderItem={({ item }) => (
                     <ChatListItem
                         item={item}
@@ -797,6 +734,33 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
         borderBottomColor: '#F0F4FF',
+    },
+    tabContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F4FF',
+        gap: 12,
+    },
+    tab: {
+        flex: 1,
+        paddingVertical: 8,
+        alignItems: 'center',
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
+    },
+    activeTab: {
+        backgroundColor: '#6C63FF',
+    },
+    tabText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    activeTabText: {
+        color: '#FFFFFF',
     },
     screenTitle: {
         fontSize: 24,

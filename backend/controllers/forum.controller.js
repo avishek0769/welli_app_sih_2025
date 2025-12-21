@@ -26,6 +26,32 @@ const createForum = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, newForum, "Forum created successfully"))
 })
 
+const getAllForums = asyncHandler(async (req, res) => {
+    const { page = 0, limit = 10 } = req.query;
+
+    const forums = await Forum
+        .find()
+        .select("-members")
+        .sort({ totalMembers: -1 })
+        .skip(page * limit)
+        .limit(limit)
+
+    return res.status(200).json(new ApiResponse(200, forums, "Fetched all forums"))  
+})
+
+const searchForums = asyncHandler(async (req, res) => {
+    const { q, page = 0, limit = 10 } = req.query;
+
+    const forums = await Forum.find(
+        { name: { $regex: q, $options: "i" } }
+    )
+    .select("-members")
+    .skip(page * limit)
+    .limit(limit)
+
+    return res.status(200).json(new ApiResponse(200, forums, "Fetched searched forums"))
+})
+
 const joinForum = asyncHandler(async (req, res) => {
     const { forumId } = req.params;
 
@@ -149,5 +175,7 @@ export {
     leaveForum,
     getForumMembers,
     getForumDetails,
-    joinedForums
+    joinedForums,
+    getAllForums,
+    searchForums
 }

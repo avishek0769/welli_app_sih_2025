@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     View,
@@ -135,39 +135,31 @@ const Login = ({ navigation }) => {
                     password: formData.password,
                 }),
             })
-            if(!res.ok) {
-                throw new Error('Login failed');
-            }
-            const json = await res.json();
-            setCurrentUser(json.data);
-            AsyncStorage.setItem('accessToken', json.data.accessToken);
-            AsyncStorage.setItem('refreshToken', json.data.refreshToken);
-            AsyncStorage.setItem('accessTokenExp', json.data.accessTokenExp);
-            AsyncStorage.setItem('refreshTokenExp', json.data.refreshTokenExp);
 
-            const isValidCredentials = json.data && json.data._id;
-            console.log('Login successful:', json.data);
+            const json = await res.json();
+            const isValidCredentials = json.success;
+            console.log('Login successful:', json);
             
             if (isValidCredentials) {
-                showAlert({
-                    title: 'Welcome Back!',
-                    message: 'Login successful. Redirecting to your wellness dashboard.',
-                    type: 'success',
-                    buttonText: 'Continue',
-                    onConfirm: () => navigation.replace('TabNavigator')
-                });
-            } else {
+                AsyncStorage.setItem('accessToken', json.data.accessToken);
+                AsyncStorage.setItem('refreshToken', json.data.refreshToken);
+                AsyncStorage.setItem('accessTokenExp', json.data.accessTokenExp);
+                AsyncStorage.setItem('refreshTokenExp', json.data.refreshTokenExp);
+                setCurrentUser(json.data);
+            }
+            else {
                 showAlert({
                     title: 'Login Failed',
-                    message: 'Invalid phone number or password. Please check your credentials and try again.',
+                    message: json.message || 'Invalid phone number or password. Please try again.',
                     type: 'error',
                     buttonText: 'Try Again'
                 });
             }
         } catch (error) {
+            console.log(error)
             showAlert({
-                title: 'Connection Error',
-                message: 'Unable to connect to the server. Please check your internet connection and try again.',
+                title: 'Login failed',
+                message: error.message || 'Unable to connect to the server. Please check your internet connection and try again.',
                 type: 'error',
                 buttonText: 'Retry'
             });
