@@ -12,46 +12,52 @@ import { getIoInstance } from "../utils/socket.js";
 1. File uploads -- send attachments
 */
 
-let io;
-setTimeout(() => {
-    io = getIoInstance();
-}, 3000);
 const messageQueue = new Queue("peerMessages", { connection })
 
 const handleSendMessage = (socket) => async ({ message, senderId, receiverId, chatId }) => { // TODO: Validation required for correct chatId, senderId, receiverId
-    const receiver = await User.findById(receiverId) // TODO: Optimise getting socket ID
-    const timestamp = Date.now();
-
-    if (!receiver.socketId) {
-        throw new ApiError(401, "Socket ID not present")
+    try {
+        const receiver = await User.findById(receiverId) // TODO: Optimise getting socket ID
+        const timestamp = Date.now();
+    
+        if (!receiver.socketId) {
+            throw new ApiError(401, "Socket ID not present")
+        }
+        if (receiver.isActive) {
+            socket.to(receiver.socketId).emit("newMessage", { message, timestamp, chatId, senderId })
+        }
+    
+        await messageQueue.add("new-message", {
+            chat: chatId,
+            sender: senderId,
+            receiver: receiverId,
+            text: message,
+            timestamp,
+            attachments: [] // Will support in later versions
+        })
     }
-    if (receiver.isActive) {
-        io.to(receiver.socketId).emit("newMessage", { message, timestamp, chatId, senderId })
+    catch (error) {
+        return ApiResponse(500, null, error.message);
     }
-
-    await messageQueue.add("new-message", {
-        chat: chatId,
-        sender: senderId,
-        receiver: receiverId,
-        text: message,
-        timestamp,
-        attachments: [] // Will support in later versions
-    })
 }
 
 const handleSeenMessages = (socket) => async ({ userId, chatId, receiverId }) => {
-    const receiver = await User.findById(receiverId) // TODO: Optimise getting socket ID
-
-    if (!receiver.socketId) {
-        throw new ApiError(401, "Socket ID not present")
+    try {
+        const receiver = await User.findById(receiverId) // TODO: Optimise getting socket ID
+    
+        if (!receiver.socketId) {
+            throw new ApiError(401, "Socket ID not present")
+        }
+        if (receiver.isActive) {
+            socket.to(receiver.socketId).emit("messageSeen", { chatId })
+        }
+    
+        await messageQueue.add("seen-message", {
+            userId, chatId, receiverId
+        })
     }
-    if (receiver.isActive) {
-        io.to(receiver.socketId).emit("messageSeen", { chatId })
+    catch (error) {
+        return ApiResponse(500, null, error.message);
     }
-
-    await messageQueue.add("seen-message", {
-        userId, chatId, receiverId
-    })
 }
 
 const getMessagesByChat = asyncHandler(async (req, res) => {
@@ -148,7 +154,10 @@ const deleteForEveryone = asyncHandler(async (req, res) => {
 
     const participant = await User.findById(participantId) // TODO: Should check whether participant is part of the chat
     if (participant.isActive) {
-        io.to(participant.socketId).emit("messageDltForEv", messageId)
+        const io = getIoInstance();
+        if (io) {
+            io.to(participant.socketId).emit("messageDltForEv", messageId)
+        }
     }
 
     return res.status(200).send("This message is deleted for everyone")

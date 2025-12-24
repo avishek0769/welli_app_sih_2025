@@ -156,6 +156,11 @@ const getChats = asyncHandler(async (req, res) => {
             }
         },
         {
+            $addFields: {
+                participant: { $arrayElemAt: ["$participant", 0] }
+            }
+        },
+        {
             $project: {
                 unreadMessages: 0,
                 lastMessages: 0,

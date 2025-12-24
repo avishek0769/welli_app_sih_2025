@@ -13,7 +13,7 @@ import BreathingExercise from './src/screens/BreathingExercise';
 import RelevantContent from './src/screens/RelevantContent';
 import BubblePopGame from './src/screens/BubblePopGame';
 import SignUp from './src/screens/SignUp';
-import Login from './src/screens/login';
+import Login from './src/screens/Login';
 import ForumScreen from './src/screens/ForumScreen';
 import Profile from './src/screens/Profile';
 import UserProvider from './src/context/UserContext';
@@ -29,7 +29,7 @@ function App() {
                         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
                         <NavigationContainer>
-                            <Stack.Navigator initialRouteName="SignUp" screenOptions={{ headerShown: false }} >
+                            <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }} >
                                 <Stack.Screen name="TabNavigator" component={TabNavigator} />
                                 <Stack.Screen name="ChatScreen" component={ChatScreen} />
                                 <Stack.Screen name="CalmingSounds" component={CalmingSounds} />

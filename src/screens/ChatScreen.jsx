@@ -10,66 +10,32 @@ import {
     Platform,
     Modal,
     ScrollView,
-    Alert
+    Alert,
+    Image
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { SvgUri } from 'react-native-svg';
-
-// Move avatar generation outside component to prevent re-creation
-const avatarCache = {};
-
-const cartoonAvatars = [
-    'https://api.dicebear.com/9.x/avataaars/svg?seed=Felix',
-    'https://api.dicebear.com/9.x/avataaars/svg?seed=Aneka',
-    'https://api.dicebear.com/9.x/avataaars/svg?seed=Zoey',
-    'https://api.dicebear.com/9.x/personas/svg?seed=Peaceful',
-    'https://api.dicebear.com/9.x/personas/svg?seed=Mindful',
-    'https://api.dicebear.com/9.x/big-smile/svg?seed=Hope',
-    'https://api.dicebear.com/9.x/big-smile/svg?seed=Gentle',
-    'https://api.dicebear.com/9.x/adventurer/svg?seed=Quiet',
-    'https://api.dicebear.com/9.x/adventurer/svg?seed=Inner',
-    'https://api.dicebear.com/9.x/avataaars/svg?seed=Sophie',
-];
-
-const getCartoonAvatar = (seed) => {
-    if (avatarCache[seed]) {
-        return avatarCache[seed];
-    }
-    
-    const avatar = cartoonAvatars[seed % cartoonAvatars.length];
-    avatarCache[seed] = avatar;
-    return avatar;
-};
-
-// Pre-generate peer data with static avatars
-const peerData = [
-    { name: 'Mindful_Soul_23', avatar: getCartoonAvatar(1), isOnline: true, lastSeen: 'Online' },
-    { name: 'Peaceful_Heart_89', avatar: getCartoonAvatar(2), isOnline: false, lastSeen: '5 mins ago' },
-    { name: 'Strong_Mind_45', avatar: getCartoonAvatar(3), isOnline: true, lastSeen: 'Online' },
-    { name: 'Calm_Spirit_67', avatar: getCartoonAvatar(4), isOnline: false, lastSeen: '1 hour ago' },
-    { name: 'Brave_Journey_12', avatar: getCartoonAvatar(5), isOnline: true, lastSeen: 'Online' },
-    { name: 'Hope_Walker_34', avatar: getCartoonAvatar(6), isOnline: true, lastSeen: 'Online' },
-    { name: 'Gentle_Wind_78', avatar: getCartoonAvatar(7), isOnline: false, lastSeen: '2 hours ago' },
-    { name: 'Rising_Phoenix_56', avatar: getCartoonAvatar(8), isOnline: true, lastSeen: 'Online' },
-    { name: 'Quiet_Strength_91', avatar: getCartoonAvatar(9), isOnline: false, lastSeen: '30 mins ago' },
-    { name: 'Inner_Light_25', avatar: getCartoonAvatar(10), isOnline: true, lastSeen: 'Online' },
-];
+import { BASE_URL } from '../constants';
+import { useUser } from '../context/UserContext';
 
 // Memoize MessageBubble outside component
 const MessageBubble = React.memo(({ message, chatType }) => {
     const isUser = message.sender === 'user';
+    const isDeleted = message.deletedForEveryone;
 
     return (
         <View style={[styles.messageContainer, isUser ? styles.userMessageContainer : styles.otherMessageContainer]}>
             {!isUser && chatType === 'group' && message.avatar && (
                 <View style={styles.messageSenderAvatarContainer}>
-                    <SvgUri
-                        uri={message.avatar}
-                        width={28}
-                        height={28}
-                    />
+                    {message.avatar ? (
+                        <Image
+                            source={{ uri: message.avatar }}
+                            style={{ width: 28, height: 28, borderRadius: 14 }}
+                        />
+                    ) : (
+                        <Icon name="person" size={28} color="#6C63FF" />
+                    )}
                 </View>
             )}
 
@@ -77,19 +43,33 @@ const MessageBubble = React.memo(({ message, chatType }) => {
                 {!isUser && chatType === 'group' && (
                     <Text style={styles.messageSenderName}>{message.senderName}</Text>
                 )}
-                <Text style={[styles.messageText, isUser ? styles.userMessageText : styles.otherMessageText]}>
-                    {message.text}
+                <Text style={[
+                    styles.messageText, 
+                    isUser ? styles.userMessageText : styles.otherMessageText,
+                    isDeleted && { fontStyle: 'italic', color: isUser ? '#E0E7FF' : '#9CA3AF' }
+                ]}>
+                    {isDeleted ? "This message was deleted" : message.text}
                 </Text>
-                <Text style={[styles.messageTime, isUser ? styles.userMessageTime : styles.otherMessageTime]}>
-                    {message.time}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 4 }}>
+                    <Text style={[styles.messageTime, isUser ? styles.userMessageTime : styles.otherMessageTime]}>
+                        {message.time}
+                    </Text>
+                    {isUser && !isDeleted && (
+                        <Icon 
+                            name="done-all" 
+                            size={16} 
+                            color={message.isSeen ? "#34B7F1" : "#E0E7FF"} 
+                            style={{ marginLeft: 4 }}
+                        />
+                    )}
+                </View>
             </View>
         </View>
     );
 });
 
 // Group Info Modal Component
-const GroupInfoModal = ({ visible, onClose, chat }) => {
+const GroupInfoModal = ({ visible, onClose, chat, token }) => {
     const navigation = useNavigation();
 
     const handleLeaveGroup = () => {
@@ -104,7 +84,19 @@ const GroupInfoModal = ({ visible, onClose, chat }) => {
                 {
                     text: 'Leave',
                     style: 'destructive',
-                    onPress: () => {
+                    onPress: async () => {
+                        const res = await fetch(`${BASE_URL}/chats/${chat.id}/leave`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${token}`,
+                            },
+                        });
+
+                        if (!res.ok) {
+                            Alert.alert('Error', 'Failed to leave the group. Please try again.');
+                            return;
+                        }
                         onClose();
                         navigation.goBack();
                     },
@@ -116,11 +108,14 @@ const GroupInfoModal = ({ visible, onClose, chat }) => {
     const ParticipantItem = ({ participant }) => (
         <View style={styles.participantItem}>
             <View style={styles.participantAvatar}>
-                <SvgUri
-                    uri={participant.avatar}
-                    width={40}
-                    height={40}
-                />
+                {participant.avatar ? (
+                    <Image
+                        source={{ uri: participant.avatar }}
+                        style={{ width: 40, height: 40, borderRadius: 20 }}
+                    />
+                ) : (
+                    <Icon name="person" size={40} color="#6C63FF" />
+                )}
             </View>
             <View style={styles.participantInfo}>
                 <Text style={styles.participantName}>{participant.name}</Text>
@@ -219,68 +214,83 @@ const GroupInfoModal = ({ visible, onClose, chat }) => {
 
 const ChatScreen = () => {
     const [inputText, setInputText] = useState('');
-    const [messages, setMessages] = useState([]);
     const [showGroupInfo, setShowGroupInfo] = useState(false);
     const route = useRoute();
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
     const flatListRef = useRef(null);
+    const { currentUser, peerMessages, fetchChatMessages, sendChatMessage, markMessagesAsSeen, setActiveChatId } = useUser();
     
     // Get chat data and initial messages from route params
-    const { chat = {}, messages: initialMessages = [] } = route.params || {};
+    const { chat = {} } = route.params || {};
 
-    // Initialize messages when component mounts
+    // Set active chat ID
     useEffect(() => {
-        setMessages(initialMessages);
-    }, [initialMessages]);
-
-    // Auto scroll to bottom when new messages are added
-    useEffect(() => {
-        if (flatListRef.current && messages.length > 0) {
-            setTimeout(() => {
-                flatListRef.current.scrollToEnd({ animated: true });
-            }, 100);
+        if (chat._id) {
+            setActiveChatId(chat._id);
+            return () => setActiveChatId(null);
         }
-    }, [messages]);
+    }, [chat._id, setActiveChatId]);
+
+    // Fetch messages on mount
+    useEffect(() => {
+        if (chat._id) {
+            fetchChatMessages(chat._id);
+        }
+    }, [chat._id, fetchChatMessages]);
+
+    // Mark as seen when chat opens or new messages arrive
+    useEffect(() => {
+        if (chat._id && peerMessages[chat._id]) {
+            const messages = peerMessages[chat._id];
+            const hasUnread = messages.some(msg => 
+                msg.sender !== currentUser._id && 
+                (!msg.readBy || !msg.readBy.includes(currentUser._id))
+            );
+
+            if (hasUnread) {
+                const receiverId = chat.participant?._id;
+                if (receiverId) {
+                    markMessagesAsSeen(chat._id, receiverId);
+                }
+            }
+        }
+    }, [chat._id, markMessagesAsSeen, peerMessages, currentUser._id]);
+
+    // Format messages for display
+    const messages = useMemo(() => {
+        const raw = peerMessages[chat._id] || [];
+        return raw
+            .filter(msg => !msg.deletedFor?.includes(currentUser._id))
+            .map(msg => {
+                const otherUserId = chat.participant?._id;
+                const isSeen = msg.readBy && otherUserId && msg.readBy.includes(otherUserId);
+                
+                return {
+                    id: msg._id,
+                    text: msg.text,
+                    sender: msg.sender === currentUser._id ? 'user' : 'other',
+                    senderName: msg.sender === currentUser._id ? 'You' : chat.name,
+                    time: new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    avatar: msg.sender === currentUser._id ? null : chat.avatar,
+                    deletedForEveryone: msg.deletedForEveryone,
+                    isSeen: isSeen
+                };
+            });
+    }, [peerMessages, chat._id, currentUser, chat.name, chat.avatar, chat.participant]);
+    
 
     const onBack = () => {
         navigation.goBack();
     };
 
     const onSendMessage = (text) => {
-        const newMessage = {
-            id: Date.now().toString(),
-            text: text,
-            sender: 'user',
-            senderName: 'You',
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        setMessages(prev => [...prev, newMessage]);
-
-        // Simulate response
-        setTimeout(() => {
-            const responses = [
-                "Thanks for sharing that with us!",
-                "I understand how you're feeling.",
-                "That's a great point!",
-                "We're here to support you.",
-                "That sounds really challenging.",
-                "You're so brave for sharing that.",
-                "I've felt similar before."
-            ];
-
-            const randomPeer = peerData[Math.floor(Math.random() * peerData.length)];
-            
-            const response = {
-                id: (Date.now() + 1).toString(),
-                text: responses[Math.floor(Math.random() * responses.length)],
-                sender: chat.type === 'group' ? 'peer' : 'other',
-                senderName: chat.type === 'group' ? randomPeer.name : chat.name,
-                avatar: chat.type === 'group' ? randomPeer.avatar : chat.avatar,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            };
-            setMessages(prev => [...prev, response]);
-        }, 1500);
+        const receiverId = chat.participant._id;
+        if (receiverId) {
+            sendChatMessage(chat._id, text, receiverId);
+        } else {
+            console.error("Receiver ID not found");
+        }
     };
 
     const handleSend = () => {
@@ -303,11 +313,14 @@ const ChatScreen = () => {
         } else if (chat.avatar) {
             return (
                 <View style={styles.headerSvgAvatarContainer}>
-                    <SvgUri
-                        uri={chat.avatar}
-                        width={40}
-                        height={40}
-                    />
+                    {chat.avatar ? (
+                        <Image
+                            source={{ uri: chat.avatar }}
+                            style={{ width: 40, height: 40, borderRadius: 20 }}
+                        />
+                    ) : (
+                        <Icon name="person" size={40} color="#6C63FF" />
+                    )}
                 </View>
             );
         }
@@ -362,6 +375,7 @@ const ChatScreen = () => {
                 removeClippedSubviews={true}
                 maxToRenderPerBatch={10}
                 windowSize={10}
+                inverted
             />
 
             {/* Input Area */}
@@ -396,6 +410,7 @@ const ChatScreen = () => {
                 visible={showGroupInfo}
                 onClose={() => setShowGroupInfo(false)}
                 chat={chat}
+                token={currentUser.accessToken}
             />
         </SafeAreaView>
     );

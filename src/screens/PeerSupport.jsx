@@ -11,7 +11,6 @@ import {
     Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { SvgUri } from 'react-native-svg';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useEffect } from 'react';
 import { BASE_URL } from '../constants';
@@ -39,11 +38,14 @@ const ChatListItem = ({ item, onPress }) => {
                     </View>
                 ) : (
                     <View style={styles.svgAvatarContainer}>
-                        <SvgUri
-                            uri={item.avatar}
-                            width={50}
-                            height={50}
-                        />
+                        {item.avatar ? (
+                            <Image
+                                source={{ uri: item.avatar }}
+                                style={{ width: 50, height: 50, borderRadius: 25 }}
+                            />
+                        ) : (
+                            <Icon name="person" size={30} color="#6C63FF" />
+                        )}
                     </View>
                 )}
                 {item.isOnline && <View style={styles.onlineIndicator} />}
@@ -60,7 +62,7 @@ const ChatListItem = ({ item, onPress }) => {
                         )}
                     </View>
                     <Text style={styles.chatTime}>
-                        {item.type === 'forum' ? `${item.activeMembers} active` : item.lastMessageTime}
+                        {item.type === 'forum' ? `${item.activeMembers} active` : new Date(item.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                 </View>
 
@@ -454,70 +456,11 @@ const JoinForumModal = ({ visible, onClose, onJoinForum }) => {
 /* ---------- Main Peer Support Component ---------- */
 const PeerSupport = () => {
     const navigation = useNavigation();
-    const [activeTab, setActiveTab] = useState('forums');
+    const [activeTab, setActiveTab] = useState('peers');
     const [showJoinModal, setShowJoinModal] = useState(false);
     const [showVolunteersModal, setShowVolunteersModal] = useState(false);
-    const [volunteerChats, setVolunteerChats] = useState([]);
     const [forums, setForums] = useState([]);
-    const { currentUser } = useUser()
-
-    const getCartoonAvatar = (seed) => {
-        const cartoonAvatars = [
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=Felix',
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=Aneka',
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=Zoey',
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=Sam',
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=Luna',
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=Max',
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=Mia',
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=Leo',
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=Cleo',
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=Rex',
-            'https://api.dicebear.com/9.x/personas/svg?seed=Peaceful',
-            'https://api.dicebear.com/9.x/personas/svg?seed=Mindful',
-            'https://api.dicebear.com/9.x/personas/svg?seed=Calm',
-            'https://api.dicebear.com/9.x/personas/svg?seed=Strong',
-            'https://api.dicebear.com/9.x/personas/svg?seed=Brave',
-            'https://api.dicebear.com/9.x/big-smile/svg?seed=Hope',
-            'https://api.dicebear.com/9.x/big-smile/svg?seed=Gentle',
-            'https://api.dicebear.com/9.x/big-smile/svg?seed=Rising',
-            'https://api.dicebear.com/9.x/adventurer/svg?seed=Quiet',
-            'https://api.dicebear.com/9.x/adventurer/svg?seed=Inner',
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=Sophie',
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=Oliver',
-            'https://api.dicebear.com/9.x/personas/svg?seed=Emma',
-            'https://api.dicebear.com/9.x/personas/svg?seed=Liam',
-            'https://api.dicebear.com/9.x/big-smile/svg?seed=Ava',
-            'https://api.dicebear.com/9.x/big-smile/svg?seed=Noah',
-            'https://api.dicebear.com/9.x/adventurer/svg?seed=Isabella',
-            'https://api.dicebear.com/9.x/adventurer/svg?seed=William',
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=Charlotte',
-            'https://api.dicebear.com/9.x/avataaars/svg?seed=James',
-        ];
-        return cartoonAvatars[seed % cartoonAvatars.length];
-    };
-
-    const getMockMessages = (chatId) => {
-        const messagesByChat = {
-            '2': [
-                { id: '1', text: 'Hello! I hope you\'re having a good day.', sender: 'other', senderName: 'Peaceful_Heart_89', time: '1:40 PM', avatar: getCartoonAvatar(2) },
-                { id: '2', text: 'How are you feeling today?', sender: 'other', senderName: 'Peaceful_Heart_89', time: '1:45 PM', avatar: getCartoonAvatar(2) },
-            ],
-            '4': [
-                { id: '1', text: 'Hey! How\'s your meditation practice going?', sender: 'other', senderName: 'Calm_Spirit_67', time: '11:25 AM', avatar: getCartoonAvatar(4) },
-                { id: '2', text: 'That meditation app really helped!', sender: 'other', senderName: 'Calm_Spirit_67', time: '11:30 AM', avatar: getCartoonAvatar(4) },
-            ],
-            // Add volunteer messages
-            'vol_1': [
-                { id: '1', text: 'Hello! I\'m Dr. Sarah Johnson. I\'m here to help you with any anxiety or stress concerns you might have.', sender: 'other', senderName: 'Dr. Sarah Johnson', time: 'Just now', avatar: 'https://images.unsplash.com/photo-1594824575670-8a0e6e8c21b6?w=150&h=150&fit=crop&crop=face' },
-                { id: '2', text: 'Feel free to share what\'s on your mind. This is a safe space.', sender: 'other', senderName: 'Dr. Sarah Johnson', time: 'Just now', avatar: 'https://images.unsplash.com/photo-1594824575670-8a0e6e8c21b6?w=150&h=150&fit=crop&crop=face' },
-            ],
-            'vol_2': [
-                { id: '1', text: 'Hi there! I\'m Michael Chen, and I specialize in helping students manage academic stress and study pressures.', sender: 'other', senderName: 'Michael Chen', time: 'Just now', avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face' },
-            ],
-        };
-        return messagesByChat[chatId] || [];
-    };
+    const { currentUser, peerChats, fetchPeerChats } = useUser()
 
     const handleItemPress = (item) => {
         if (item.type === 'forum') {
@@ -527,10 +470,8 @@ const PeerSupport = () => {
                 forumData: item,
             });
         } else {
-            const messages = getMockMessages(item.id);
             navigation.navigate('ChatScreen', {
                 chat: item,
-                messages: messages,
             });
         }
     };
@@ -562,38 +503,41 @@ const PeerSupport = () => {
         });
     };
 
-    const handleStartVolunteerChat = (volunteer) => {
+    const handleStartVolunteerChat = async (volunteer) => {
         // Close modal
         setShowVolunteersModal(false);
 
-        // Create volunteer chat item
-        const volunteerChat = {
-            id: volunteer.id,
-            name: volunteer.name,
-            type: 'volunteer',
-            specialty: volunteer.specialty,
-            avatar: volunteer.avatar,
-            lastMessage: 'Started conversation',
-            lastMessageTime: 'Just now',
-            unreadCount: 0,
-            isOnline: volunteer.isOnline,
-        };
+        try {
+            const res = await fetch(`${BASE_URL}/api/v1/peer-chat/create/${volunteer.id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${currentUser.accessToken}`,
+                },
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                const newChat = {
+                    ...data.data,
+                    participant: {
+                        _id: volunteer.id,
+                        annonymousUsername: volunteer.name,
+                        avatar: volunteer.avatar
+                    },
+                    unreadCount: 0,
+                    lastMessage: null
+                };
 
-        // Add to volunteer chats if not already present
-        setVolunteerChats(prev => {
-            const exists = prev.find(chat => chat.id === volunteer.id);
-            if (!exists) {
-                return [volunteerChat, ...prev];
+                await fetchPeerChats();
+
+                navigation.navigate('ChatScreen', {
+                    chat: newChat,
+                });
             }
-            return prev;
-        });
-
-        // Navigate to chat
-        const messages = getMockMessages(volunteer.id);
-        navigation.navigate('ChatScreen', {
-            chat: volunteerChat,
-            messages: messages,
-        });
+        } catch (error) {
+            console.error("Failed to create chat", error);
+        }
     };
 
     useFocusEffect(
@@ -609,7 +553,7 @@ const PeerSupport = () => {
                             },
                         });
                         const forumsData = await forumsRes.json();
-                        console.log(forumsData)
+                        
                         const unseenRes = await fetch(`${BASE_URL}/api/v1/post/unseen/count`, {
                             method: 'GET',
                             headers: {
@@ -618,7 +562,6 @@ const PeerSupport = () => {
                             },
                         });
                         const unseenData = await unseenRes.json();
-                        console.log(unseenData)
 
                         if (forumsData.success) {
                             const unseenMap = {};
@@ -685,7 +628,7 @@ const PeerSupport = () => {
             </View>
 
             <FlatList
-                data={activeTab === 'forums' ? forums : volunteerChats}
+                data={activeTab === 'forums' ? forums : peerChats}
                 keyExtractor={(item) => item._id || item.id}
                 renderItem={({ item }) => (
                     <ChatListItem

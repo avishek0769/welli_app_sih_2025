@@ -8,6 +8,7 @@ import {
     TouchableOpacity,
     Animated,
     Alert,
+    Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
@@ -42,7 +43,7 @@ const UserProfileModal = ({ visible, user, onClose }) => {
                 id: `chat_${user.username}`,
                 name: user.username,
                 type: 'individual',
-                avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.username}`,
+                avatar: user.avatar || null,
                 lastMessage: '',
                 lastMessageTime: 'Now',
                 unreadCount: 0,
@@ -142,10 +143,15 @@ const UserProfileModal = ({ visible, user, onClose }) => {
                     {/* Header */}
                     <View style={styles.header}>
                         <View style={styles.headerLeft}>
-                            <View style={styles.avatar}>
-                                <Text style={styles.avatarText}>
-                                    {user.username.charAt(0).toUpperCase()}
-                                </Text>
+                            <View style={[styles.avatar, !user.avatar && { backgroundColor: '#6C63FF', borderRadius: 40 }]}>
+                                {user.avatar ? <Image source={{ uri: user.avatar }}
+                                    style={styles.avatar}
+                                    resizeMode="cover"
+                                /> : (
+                                    <Text style={styles.avatarText}>
+                                        {user.username.charAt(0).toUpperCase()}
+                                    </Text>
+                                )}
                             </View>
                             <View style={styles.userInfo}>
                                 <Text style={styles.username}>{user.username}</Text>
@@ -254,7 +260,6 @@ const styles = StyleSheet.create({
         width: 50,
         height: 50,
         borderRadius: 25,
-        backgroundColor: '#6C63FF',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 12,
