@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BASE_URL } from '../constants';
 import { AppState } from 'react-native';
 import { io } from 'socket.io-client';
+import { BSON } from 'bson';
 
 const UserContext = createContext({
     currentUser: null,
@@ -51,6 +52,7 @@ const UserProvider = ({ children }) => {
                 headers: { Authorization: `Bearer ${currentUser.accessToken}` }
             });
             const data = await res.json();
+            console.log("Messages", data)
             if (data.success) {
                 const messages = data.data.messages; 
                 setPeerMessages(prev => ({ ...prev, [chatId]: messages }));
@@ -79,14 +81,14 @@ const UserProvider = ({ children }) => {
                 },
             });
             const data = await res.json();
-            
+            console.log("Chats", data)
             if (data.success) {
                 const mappedChats = data.data.map(chat => ({
                     ...chat,
                     name: chat.participant.annonymousUsername || 'Unknown',
                     avatar: chat.participant.avatar,
-                    lastMessage: chat.lastMessage?.text || 'This message was deleted',
-                    lastMessageTime: chat.lastMessage?.timestamp,
+                    lastMessage: chat.lastMessage?.text,
+                    lastMessageTime: chat.lastMessage?.timestamp || chat.updatedAt,
                     unreadCount: chat.unreadCount || 0,
                     type: 'peer'
                 }));
@@ -101,9 +103,10 @@ const UserProvider = ({ children }) => {
     const sendChatMessage = useCallback(async (chatId, text, receiverId) => {
         if (!currentUser) return;
         
-        const tempId = Date.now().toString();
+        const bsonId = new BSON.ObjectId().toString();
+        console.log(bsonId)
         const newMessage = {
-            _id: tempId,
+            _id: bsonId,
             text: text,
             sender: currentUser._id,
             timestamp: new Date().toISOString(),
@@ -142,27 +145,30 @@ const UserProvider = ({ children }) => {
 
         if (socket) {
             socket.emit('sendMessage', {
+                messageId: bsonId,
                 message: text,
                 senderId: currentUser._id,
                 receiverId: receiverId,
-                chatId: chatId
+                chatId: chatId,
+                timestamp: newMessage.timestamp
             });
         }
     }, [currentUser, socket]);
 
-    const markMessagesAsSeen = useCallback((chatId, receiverId) => {
-        if (socket && currentUser) {
+    const markMessagesAsSeen = useCallback((chatId, receiverId, messageIds) => {
+        if (socket && currentUser && messageIds && messageIds.length > 0) {
             socket.emit('seenMessages', {
                 userId: currentUser._id,
                 chatId,
-                receiverId
+                receiverId,
+                messageIds
             });
 
             // Optimistically mark as seen locally
             setPeerMessages(prev => {
                 const messages = prev[chatId] || [];
                 const updated = messages.map(msg => {
-                    if (msg.sender !== currentUser._id && (!msg.readBy || !msg.readBy.includes(currentUser._id))) {
+                    if (messageIds.includes(msg._id) && msg.sender !== currentUser._id && (!msg.readBy || !msg.readBy.includes(currentUser._id))) {
                         return { ...msg, readBy: [...(msg.readBy || []), currentUser._id] };
                     }
                     return msg;
@@ -185,10 +191,166 @@ const UserProvider = ({ children }) => {
         }
     }, [socket, currentUser]);
 
+    const startChat = useCallback(async (peerId) => {
+        if (!currentUser) return null;
+        try {
+            const res = await fetch(`${BASE_URL}/api/v1/peer-chat/create/${peerId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${currentUser.accessToken}`,
+                },
+            });
+            const data = await res.json();
+            console.log(data);
+            if (data.success) {
+                const newChat = {
+                    ...data.data,
+                    unreadCount: 0,
+                    lastMessage: null,
+                    type: 'peer'
+                };
+                
+                setPeerChats(prev => {
+                    if (prev.find(c => c._id === newChat._id)) return prev;
+                    const updated = [newChat, ...prev];
+                    AsyncStorage.setItem('peer_chats', JSON.stringify(updated));
+                    return updated;
+                });
+                return newChat;
+            }
+        } catch (error) {
+            console.error("Failed to create chat", error);
+        }
+        return null;
+    }, [currentUser]);
+
+    const deleteChat = useCallback(async (chatId) => {
+        if (!currentUser) return;
+        
+        setPeerChats(prev => {
+            const updated = prev.filter(c => c._id !== chatId);
+            AsyncStorage.setItem('peer_chats', JSON.stringify(updated));
+            return updated;
+        });
+        
+        try {
+            await fetch(`${BASE_URL}/api/v1/peer-chat/delete/${chatId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+        } catch (err) {
+            console.error("Error deleting chat", err);
+        }
+    }, [currentUser]);
+
+    const clearChat = useCallback(async (chatId) => {
+        if (!currentUser) return;
+        
+        setPeerMessages(prev => ({ ...prev, [chatId]: [] }));
+        AsyncStorage.removeItem(`chat_messages_${chatId}`);
+        
+        try {
+            await fetch(`${BASE_URL}/api/v1/peer-message/clear/${chatId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+        } catch (err) {
+            console.error("Error clearing chat", err);
+        }
+    }, [currentUser]);
+
+    const deleteMessageForMe = useCallback(async (messageId, chatId) => {
+        if (!currentUser) return;
+
+        setPeerMessages(prev => {
+            const messages = prev[chatId] || [];
+            const updated = messages.filter(m => m._id !== messageId);
+            AsyncStorage.setItem(`chat_messages_${chatId}`, JSON.stringify(updated));
+
+            // Update PeerChats if last message was deleted
+            if (messages.length > 0 && messages[0]._id === messageId) {
+                setPeerChats(prevChats => {
+                    const updatedChats = prevChats.map(chat => {
+                        if (chat._id === chatId) {
+                            const newLastMsg = updated[0];
+                            return {
+                                ...chat,
+                                lastMessage: newLastMsg ? (newLastMsg.deletedForEveryone ? "This message was deleted" : newLastMsg.text) : '',
+                                lastMessageTime: newLastMsg ? newLastMsg.timestamp : chat.updatedAt
+                            };
+                        }
+                        return chat;
+                    });
+                    AsyncStorage.setItem('peer_chats', JSON.stringify(updatedChats));
+                    return updatedChats;
+                });
+            }
+
+            return { ...prev, [chatId]: updated };
+        });
+
+        try {
+            const res = await fetch(`${BASE_URL}/api/v1/peer-message/delete/for-me/${messageId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+            if(!res.ok) {
+                console.error(await res.json());
+            }
+        } catch (err) {
+            console.error("Error deleting message for me", err);
+        }
+    }, [currentUser]);
+
+    const deleteMessageForEveryone = useCallback(async (messageId, chatId, participantId) => {
+        if (!currentUser) return;
+
+        setPeerMessages(prev => {
+            const messages = prev[chatId] || [];
+            const updated = messages.map(m => {
+                if (m._id === messageId) {
+                    return { ...m, deletedForEveryone: true, text: "This message was deleted" };
+                }
+                return m;
+            });
+            AsyncStorage.setItem(`chat_messages_${chatId}`, JSON.stringify(updated));
+
+            // Update PeerChats if last message was deleted
+            if (messages.length > 0 && messages[0]._id === messageId) {
+                setPeerChats(prevChats => {
+                    const updatedChats = prevChats.map(chat => {
+                        if (chat._id === chatId) {
+                            return {
+                                ...chat,
+                                lastMessage: "This message was deleted"
+                            };
+                        }
+                        return chat;
+                    });
+                    AsyncStorage.setItem('peer_chats', JSON.stringify(updatedChats));
+                    return updatedChats;
+                });
+            }
+
+            return { ...prev, [chatId]: updated };
+        });
+
+        try {
+            await fetch(`${BASE_URL}/api/v1/peer-message/delete/for-everyone/${messageId}?participantId=${participantId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+        } catch (err) {
+            console.error("Error deleting message for everyone", err);
+        }
+    }, [currentUser]);
+
     const fetchCurrentUser = useCallback(async () => {
         try {
             const token = await AsyncStorage.getItem('accessToken');
             const tokenExp = await AsyncStorage.getItem('accessTokenExp');
+            
             if (!token || (tokenExp && new Date(tokenExp) <= new Date())) {
                 refreshTokens();
                 return;
@@ -200,12 +362,19 @@ const UserProvider = ({ children }) => {
                     Authorization: `Bearer ${token}`,
                 },
             });
+            
             if (res.status === 452) {
                 refreshTokens();
                 return;
             }
             const json = await res.json();
+            if (!json.success) {
+                console.log(json)
+                setCurrentUser(null);
+                return;
+            }
             const currentUser = { ...json.data, accessToken: token };
+            console.log(currentUser.realFullname, currentUser._id)
             setCurrentUser(currentUser);
         }
         catch (err) {
@@ -307,9 +476,9 @@ const UserProvider = ({ children }) => {
 
             // Global Message Listeners
             newSocket.on('newMessage', (data) => {
-                const { chatId, message, senderId, timestamp } = data;
+                const { chatId, message, senderId, timestamp, messageId } = data;
                 const newMessage = {
-                    _id: Date.now().toString(),
+                    _id: messageId,
                     text: message,
                     sender: senderId,
                     timestamp: timestamp || new Date().toISOString(),
@@ -350,7 +519,7 @@ const UserProvider = ({ children }) => {
                 });
             });
 
-            newSocket.on('messageSeen', ({ chatId }) => {
+            newSocket.on('messageSeen', ({ chatId, messageIds }) => {
                 const chats = peerChatsRef.current;
                 const chat = chats.find(c => c._id === chatId);
                 const otherUserId = chat?.participant?._id;
@@ -361,7 +530,8 @@ const UserProvider = ({ children }) => {
                         if (!messages) return prev;
 
                         const updated = messages.map(msg => {
-                            if (msg.sender === currentUser._id && (!msg.readBy || !msg.readBy.includes(otherUserId))) {
+                            const shouldUpdate = messageIds ? messageIds.includes(msg._id) : true;
+                            if (shouldUpdate && msg.sender === currentUser._id && (!msg.readBy || !msg.readBy.includes(otherUserId))) {
                                 return { ...msg, readBy: [...(msg.readBy || []), otherUserId] };
                             }
                             return msg;
@@ -386,6 +556,23 @@ const UserProvider = ({ children }) => {
                             newState[chatId] = newMsgs;
                             AsyncStorage.setItem(`chat_messages_${chatId}`, JSON.stringify(newMsgs));
                             updated = true;
+
+                            // Update PeerChats if it was the last message
+                            if (index === 0) {
+                                setPeerChats(prevChats => {
+                                    const updatedChats = prevChats.map(chat => {
+                                        if (chat._id === chatId) {
+                                            return {
+                                                ...chat,
+                                                lastMessage: "This message was deleted"
+                                            };
+                                        }
+                                        return chat;
+                                    });
+                                    AsyncStorage.setItem('peer_chats', JSON.stringify(updatedChats));
+                                    return updatedChats;
+                                });
+                            }
                         }
                     });
                     
@@ -419,7 +606,12 @@ const UserProvider = ({ children }) => {
         markMessagesAsSeen,
         peerChats,
         fetchPeerChats,
-        setActiveChatId
+        setActiveChatId,
+        startChat,
+        deleteChat,
+        clearChat,
+        deleteMessageForMe,
+        deleteMessageForEveryone
     };
 
     return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

@@ -17,6 +17,7 @@ import Login from './src/screens/Login';
 import ForumScreen from './src/screens/ForumScreen';
 import Profile from './src/screens/Profile';
 import UserProvider from './src/context/UserContext';
+import 'react-native-get-random-values';
 
 function App() {
     const Stack = createNativeStackNavigator()

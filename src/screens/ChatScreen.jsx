@@ -20,12 +20,16 @@ import { BASE_URL } from '../constants';
 import { useUser } from '../context/UserContext';
 
 // Memoize MessageBubble outside component
-const MessageBubble = React.memo(({ message, chatType }) => {
+const MessageBubble = React.memo(({ message, chatType, onLongPress }) => {
     const isUser = message.sender === 'user';
     const isDeleted = message.deletedForEveryone;
 
     return (
-        <View style={[styles.messageContainer, isUser ? styles.userMessageContainer : styles.otherMessageContainer]}>
+        <TouchableOpacity 
+            activeOpacity={0.8}
+            onLongPress={() => onLongPress(message)}
+            style={[styles.messageContainer, isUser ? styles.userMessageContainer : styles.otherMessageContainer]}
+        >
             {!isUser && chatType === 'group' && message.avatar && (
                 <View style={styles.messageSenderAvatarContainer}>
                     {message.avatar ? (
@@ -48,7 +52,7 @@ const MessageBubble = React.memo(({ message, chatType }) => {
                     isUser ? styles.userMessageText : styles.otherMessageText,
                     isDeleted && { fontStyle: 'italic', color: isUser ? '#E0E7FF' : '#9CA3AF' }
                 ]}>
-                    {isDeleted ? "This message was deleted" : message.text}
+                    {message.text}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 4 }}>
                     <Text style={[styles.messageTime, isUser ? styles.userMessageTime : styles.otherMessageTime]}>
@@ -64,7 +68,7 @@ const MessageBubble = React.memo(({ message, chatType }) => {
                     )}
                 </View>
             </View>
-        </View>
+        </TouchableOpacity>
     );
 });
 
@@ -85,7 +89,7 @@ const GroupInfoModal = ({ visible, onClose, chat, token }) => {
                     text: 'Leave',
                     style: 'destructive',
                     onPress: async () => {
-                        const res = await fetch(`${BASE_URL}/chats/${chat.id}/leave`, {
+                        const res = await fetch(`${BASE_URL}/api/v1/peer-chat/delete/${chat._id}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -219,7 +223,21 @@ const ChatScreen = () => {
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
     const flatListRef = useRef(null);
-    const { currentUser, peerMessages, fetchChatMessages, sendChatMessage, markMessagesAsSeen, setActiveChatId } = useUser();
+    const processedMessageIds = useRef(new Set());
+    const { 
+        currentUser, 
+        peerMessages, 
+        fetchChatMessages, 
+        sendChatMessage, 
+        markMessagesAsSeen, 
+        setActiveChatId,
+        deleteChat,
+        clearChat,
+        deleteMessageForMe,
+        deleteMessageForEveryone
+    } = useUser();
+    const [showMenu, setShowMenu] = useState(false);
+    const [selectedMessage, setSelectedMessage] = useState(null);
     
     // Get chat data and initial messages from route params
     const { chat = {} } = route.params || {};
@@ -228,6 +246,7 @@ const ChatScreen = () => {
     useEffect(() => {
         if (chat._id) {
             setActiveChatId(chat._id);
+            processedMessageIds.current.clear();
             return () => setActiveChatId(null);
         }
     }, [chat._id, setActiveChatId]);
@@ -243,15 +262,19 @@ const ChatScreen = () => {
     useEffect(() => {
         if (chat._id && peerMessages[chat._id]) {
             const messages = peerMessages[chat._id];
-            const hasUnread = messages.some(msg => 
+            const unreadMessages = messages.filter(msg => 
+                msg._id &&
                 msg.sender !== currentUser._id && 
-                (!msg.readBy || !msg.readBy.includes(currentUser._id))
+                (!msg.readBy || !msg.readBy.includes(currentUser._id)) &&
+                !processedMessageIds.current.has(msg._id)
             );
 
-            if (hasUnread) {
+            if (unreadMessages.length > 0) {
                 const receiverId = chat.participant?._id;
                 if (receiverId) {
-                    markMessagesAsSeen(chat._id, receiverId);
+                    const unreadMessageIds = unreadMessages.map(m => m._id);
+                    unreadMessageIds.forEach(id => processedMessageIds.current.add(id));
+                    markMessagesAsSeen(chat._id, receiverId, unreadMessageIds);
                 }
             }
         }
@@ -306,6 +329,58 @@ const ChatScreen = () => {
         }
     };
 
+    const handleDeleteChat = () => {
+        Alert.alert(
+            "Delete Conversation",
+            "Are you sure you want to delete this conversation?",
+            [
+                { text: "Cancel", style: "cancel" },
+                { 
+                    text: "Delete", 
+                    style: "destructive",
+                    onPress: async () => {
+                        await deleteChat(chat._id);
+                        navigation.goBack();
+                    }
+                }
+            ]
+        );
+        setShowMenu(false);
+    };
+
+    const handleClearChat = () => {
+        Alert.alert(
+            "Clear Chat",
+            "Are you sure you want to clear all messages?",
+            [
+                { text: "Cancel", style: "cancel" },
+                { 
+                    text: "Clear", 
+                    style: "destructive",
+                    onPress: async () => {
+                        await clearChat(chat._id);
+                    }
+                }
+            ]
+        );
+        setShowMenu(false);
+    };
+
+    const handleMessageLongPress = (message) => {
+        setSelectedMessage(message);
+    };
+
+    const handleDeleteMessage = (type) => {
+        if (!selectedMessage) return;
+
+        if (type === 'me') {
+            deleteMessageForMe(selectedMessage.id, chat._id);
+        } else if (type === 'everyone') {
+            deleteMessageForEveryone(selectedMessage.id, chat._id, chat.participant?._id);
+        }
+        setSelectedMessage(null);
+    };
+
     // Memoize header avatar to prevent re-renders
     const HeaderAvatar = useMemo(() => {
         if (chat.type === 'group') {
@@ -329,7 +404,7 @@ const ChatScreen = () => {
 
     // Memoize renderItem function
     const renderItem = useMemo(() => {
-        return ({ item }) => <MessageBubble message={item} chatType={chat.type} />;
+        return ({ item }) => <MessageBubble message={item} chatType={chat.type} onLongPress={handleMessageLongPress} />;
     }, [chat.type]);
 
     return (
@@ -361,13 +436,81 @@ const ChatScreen = () => {
                         <Icon name="info" size={20} color="#9CA3AF" style={styles.infoIcon} />
                     )}
                 </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={styles.menuButton}
+                    onPress={() => setShowMenu(true)}
+                >
+                    <Icon name="more-vert" size={24} color="#6C63FF" />
+                </TouchableOpacity>
             </View>
+
+            {/* Menu Modal */}
+            <Modal
+                visible={showMenu}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowMenu(false)}
+            >
+                <TouchableOpacity 
+                    style={styles.menuOverlay} 
+                    activeOpacity={1} 
+                    onPress={() => setShowMenu(false)}
+                >
+                    <View style={styles.menuContainer}>
+                        <TouchableOpacity style={styles.menuItem} onPress={handleClearChat}>
+                            <Icon name="cleaning-services" size={20} color="#6C63FF" />
+                            <Text style={styles.menuText}>Clear Chat</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.menuItem} onPress={handleDeleteChat}>
+                            <Icon name="delete" size={20} color="#FF4444" />
+                            <Text style={[styles.menuText, { color: '#FF4444' }]}>Delete Conversation</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+            {/* Message Options Modal */}
+            <Modal
+                visible={!!selectedMessage}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setSelectedMessage(null)}
+            >
+                <TouchableOpacity 
+                    style={styles.menuOverlay} 
+                    activeOpacity={1} 
+                    onPress={() => setSelectedMessage(null)}
+                >
+                    <View style={styles.messageOptionsContainer}>
+                        <Text style={styles.messageOptionsTitle}>Message Options</Text>
+                        
+                        <TouchableOpacity 
+                            style={styles.messageOptionItem} 
+                            onPress={() => handleDeleteMessage('me')}
+                        >
+                            <Icon name="delete" size={20} color="#6C63FF" />
+                            <Text style={styles.messageOptionText}>Delete for me</Text>
+                        </TouchableOpacity>
+
+                        {selectedMessage?.sender === 'user' && (
+                            <TouchableOpacity 
+                                style={styles.messageOptionItem} 
+                                onPress={() => handleDeleteMessage('everyone')}
+                            >
+                                <Icon name="delete-forever" size={20} color="#FF4444" />
+                                <Text style={[styles.messageOptionText, { color: '#FF4444' }]}>Delete for everyone</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </TouchableOpacity>
+            </Modal>
 
             {/* Messages */}
             <FlatList
                 ref={flatListRef}
                 data={messages}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item, index) => item._id || index.toString()}
                 renderItem={renderItem}
                 style={[styles.messagesList, { paddingBottom: 90 + insets.bottom }]}
                 contentContainerStyle={styles.messagesContent}
@@ -618,6 +761,71 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    menuButton: {
+        padding: 8,
+        marginRight: -8,
+    },
+    menuOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    menuContainer: {
+        position: 'absolute',
+        top: 60,
+        right: 16,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 8,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+        minWidth: 180,
+    },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        gap: 12,
+    },
+    menuText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#1F2153',
+    },
+    messageOptionsContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 16,
+        width: '80%',
+        maxWidth: 300,
+    },
+    messageOptionsTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1F2153',
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    messageOptionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        gap: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F4FF',
+    },
+    messageOptionText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#1F2153',
     },
 
     // Modal Styles

@@ -13,9 +13,12 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
 
+import { useUser } from '../context/UserContext';
+
 const UserProfileModal = ({ visible, user, onClose }) => {
     const [fadeAnim] = useState(new Animated.Value(0));
     const navigation = useNavigation();
+    const { startChat } = useUser();
 
     React.useEffect(() => {
         if (visible) {
@@ -35,22 +38,23 @@ const UserProfileModal = ({ visible, user, onClose }) => {
 
     if (!user) return null;
 
-    const handleStartChat = () => {
+    const handleStartChat = async () => {
         onClose();
-        // Navigate to chat screen with this user
-        navigation.navigate('ChatScreen', {
-            chat: {
-                id: `chat_${user.username}`,
-                name: user.username,
-                type: 'individual',
-                avatar: user.avatar || null,
-                lastMessage: '',
-                lastMessageTime: 'Now',
-                unreadCount: 0,
-                isOnline: Math.random() > 0.5,
-            },
-            messages: [],
-        });
+        const chat = await startChat(user._id);
+        if (chat) {
+            navigation.navigate('ChatScreen', {
+                chat: {
+                    ...chat,
+                    participant: {
+                        _id: user._id,
+                        annonymousUsername: user.username,
+                        avatar: user.avatar
+                    },
+                    name: user.username,
+                    avatar: user.avatar
+                }
+            });
+        }
     };
 
     const handleBlock = () => {

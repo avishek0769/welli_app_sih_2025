@@ -145,7 +145,8 @@ const Login = ({ navigation }) => {
                 AsyncStorage.setItem('refreshToken', json.data.refreshToken);
                 AsyncStorage.setItem('accessTokenExp', json.data.accessTokenExp);
                 AsyncStorage.setItem('refreshTokenExp', json.data.refreshTokenExp);
-                setCurrentUser(json.data);
+                console.log(json.data);
+                // setCurrentUser(json.data);
             }
             else {
                 showAlert({

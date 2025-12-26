@@ -14,33 +14,32 @@ import { getIoInstance } from "../utils/socket.js";
 
 const messageQueue = new Queue("peerMessages", { connection })
 
-const handleSendMessage = (socket) => async ({ message, senderId, receiverId, chatId }) => { // TODO: Validation required for correct chatId, senderId, receiverId
+const handleSendMessage = (socket) => async ({ messageId, message, senderId, receiverId, chatId, timestamp }) => { // TODO: Validation required for correct chatId, senderId, receiverId
     try {
         const receiver = await User.findById(receiverId) // TODO: Optimise getting socket ID
-        const timestamp = Date.now();
     
         if (!receiver.socketId) {
             throw new ApiError(401, "Socket ID not present")
         }
         if (receiver.isActive) {
-            socket.to(receiver.socketId).emit("newMessage", { message, timestamp, chatId, senderId })
+            socket.to(receiver.socketId).emit("newMessage", { message, timestamp, chatId, senderId, messageId })
         }
     
         await messageQueue.add("new-message", {
+            _id: messageId,
             chat: chatId,
             sender: senderId,
-            receiver: receiverId,
             text: message,
             timestamp,
             attachments: [] // Will support in later versions
         })
     }
     catch (error) {
-        return ApiResponse(500, null, error.message);
+        return new ApiResponse(500, null, error.message);
     }
 }
 
-const handleSeenMessages = (socket) => async ({ userId, chatId, receiverId }) => {
+const handleSeenMessages = (socket) => async ({ userId, chatId, receiverId, messageIds }) => {
     try {
         const receiver = await User.findById(receiverId) // TODO: Optimise getting socket ID
     
@@ -48,15 +47,15 @@ const handleSeenMessages = (socket) => async ({ userId, chatId, receiverId }) =>
             throw new ApiError(401, "Socket ID not present")
         }
         if (receiver.isActive) {
-            socket.to(receiver.socketId).emit("messageSeen", { chatId })
+            socket.to(receiver.socketId).emit("messageSeen", { chatId, messageIds })
         }
     
         await messageQueue.add("seen-message", {
-            userId, chatId, receiverId
+            userId, chatId, receiverId, messageIds
         })
     }
     catch (error) {
-        return ApiResponse(500, null, error.message);
+        return new ApiResponse(500, null, error.message);
     }
 }
 
@@ -108,7 +107,7 @@ const getUnreadMessageCountByChat = asyncHandler(async (req, res) => {
 
 const deleteForMe = asyncHandler(async (req, res) => {
     const { messageId } = req.params;
-
+    
     const message = await PeerMessage.findById(messageId)
     if (!message) {
         throw new ApiError(404, "Message not found")
@@ -126,7 +125,7 @@ const deleteForMe = asyncHandler(async (req, res) => {
         messageId,
         { $addToSet: { deletedFor: req.user._id } }
     )
-
+    
     return res.status(200).send("Deleted the message for me")
 })
 
@@ -147,7 +146,7 @@ const deleteForEveryone = asyncHandler(async (req, res) => {
         {
             $set: {
                 deletedForEveryone: true,
-                text: ""
+                text: "This message was deleted"
             }
         }
     )
@@ -173,7 +172,12 @@ const clearChat = asyncHandler(async (req, res) => {
 
     await PeerMessage.updateMany(
         { chat: chatId },
-        { $addToSet: { deletedFor: req.user._id } }
+        {
+            $addToSet: {
+                deletedFor: req.user._id
+            },
+            updatedAt: Date.now()
+        }
     )
     await PeerMessage.deleteMany(
         {

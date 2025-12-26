@@ -12,12 +12,12 @@ import PeerMessage from "../models/peermessage.model.js";
 
 const createChat = asyncHandler(async (req, res) => {
     const { peerId } = req.params;
-
+    console.log(req.user._id, peerId);
     const peer = await User.findById(peerId)
     if (!peer.acceptMessages) {
         throw new ApiError(401, "User does not accept messages from strangers")
     }
-
+    
     const chat = await PeerChat.findOne({
         participants: { $all: [req.user._id, peerId] }
     })
@@ -27,7 +27,7 @@ const createChat = asyncHandler(async (req, res) => {
 
     const peerChat = await PeerChat.create({
         participants: [
-            new mongoose.Types.ObjectId(req.user._id),
+            req.user._id,
             new mongoose.Types.ObjectId(peerId)
         ],
     })

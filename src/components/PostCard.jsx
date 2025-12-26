@@ -192,6 +192,7 @@ const PostCard = ({ post, onLike, onComment, onEdit, onDelete, currentUserId }) 
             <UserProfileModal
                 visible={showUserProfile}
                 user={{
+                    _id: post.createdBy._id,
                     username: username,
                     avatar: avatar,
                     joinDate: 'Joined 3 months ago',

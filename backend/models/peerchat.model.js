@@ -10,7 +10,11 @@ const PeerChatSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'users',
         default: []
-    }]
+    }],
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
 });
 
 const PeerChat = mongoose.model('PeerChat', PeerChatSchema);

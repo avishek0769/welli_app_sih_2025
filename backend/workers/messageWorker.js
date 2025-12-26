@@ -26,8 +26,9 @@ const flushNewMessages = async () => {
 
         await PeerMessage.insertMany(
             messages.map(
-                ({ chat, sender, text, timestamp, receiver }) => {
+                ({ _id, chat, sender, text, timestamp }) => {
                     return {
+                        _id: new mongoose.Types.ObjectId(_id),
                         chat,
                         sender,
                         text,
@@ -56,25 +57,27 @@ const flushSeenMessages = async () => {
     try {
         let seenMessages = [...seenMessagesBuffer]
         seenMessagesBuffer = []
-        const grouped = new Map();
-
-        for (const { chatId, userId, receiverId } of seenMessages) {
-            if (!grouped.has(chatId)) {
-                grouped.set(chatId, { userIds: new Set(), receiverIds: new Set() });
-            }
-            grouped.get(chatId).userIds.add(userId);
-            grouped.get(chatId).receiverIds.add(receiverId);
-        }
-
+        
         const bulkOps = [];
-        for (const [chatId, { userIds }] of grouped.entries()) {
-            bulkOps.push({
-                updateMany: {
-                    filter: { chat: chatId, readBy: { $nin: [...userIds] } },
-                    update: { $addToSet: { readBy: { $each: [...userIds] } } }
-                }
-            });
+        
+        for (const { chatId, userId, messageIds } of seenMessages) {
+            if (messageIds && messageIds.length > 0) {
+                bulkOps.push({
+                    updateMany: {
+                        filter: { _id: { $in: messageIds }, readBy: { $ne: userId } },
+                        update: { $addToSet: { readBy: userId } }
+                    }
+                });
+            } else {
+                bulkOps.push({
+                    updateMany: {
+                        filter: { chat: chatId, readBy: { $ne: userId } },
+                        update: { $addToSet: { readBy: userId } }
+                    }
+                });
+            }
         }
+
         if (bulkOps.length > 0) {
             await PeerMessage.bulkWrite(bulkOps);
         }
