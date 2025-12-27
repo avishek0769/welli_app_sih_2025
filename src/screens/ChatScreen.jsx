@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { 
     View, 
     Text, 
@@ -11,7 +11,8 @@ import {
     Modal,
     ScrollView,
     Alert,
-    Image
+    Image,
+    ActivityIndicator
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -69,6 +70,21 @@ const MessageBubble = React.memo(({ message, chatType, onLongPress }) => {
                 </View>
             </View>
         </TouchableOpacity>
+    );
+}, (prevProps, nextProps) => {
+    const pMsg = prevProps.message;
+    const nMsg = nextProps.message;
+    
+    return (
+        prevProps.chatType === nextProps.chatType &&
+        prevProps.onLongPress === nextProps.onLongPress &&
+        pMsg.id === nMsg.id &&
+        pMsg.text === nMsg.text &&
+        pMsg.isSeen === nMsg.isSeen &&
+        pMsg.deletedForEveryone === nMsg.deletedForEveryone &&
+        pMsg.time === nMsg.time &&
+        pMsg.sender === nMsg.sender &&
+        pMsg.avatar === nMsg.avatar
     );
 });
 
@@ -228,6 +244,7 @@ const ChatScreen = () => {
         currentUser, 
         peerMessages, 
         fetchChatMessages, 
+        loadMoreMessages,
         sendChatMessage, 
         markMessagesAsSeen, 
         setActiveChatId,
@@ -238,6 +255,10 @@ const ChatScreen = () => {
     } = useUser();
     const [showMenu, setShowMenu] = useState(false);
     const [selectedMessage, setSelectedMessage] = useState(null);
+    const [page, setPage] = useState(0);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const isLoadingMoreRef = useRef(false);
+    const [hasMoreMessages, setHasMoreMessages] = useState(true);
     
     // Get chat data and initial messages from route params
     const { chat = {} } = route.params || {};
@@ -247,9 +268,33 @@ const ChatScreen = () => {
         if (chat._id) {
             setActiveChatId(chat._id);
             processedMessageIds.current.clear();
+            setPage(0);
+            setHasMoreMessages(true);
             return () => setActiveChatId(null);
         }
     }, [chat._id, setActiveChatId]);
+
+    const handleLoadMore = async () => {
+        if (isLoadingMoreRef.current || !hasMoreMessages) return;
+
+        isLoadingMoreRef.current = true;
+        setIsLoadingMore(true);
+        try {
+            const nextPage = page + 1;
+            const newMessagesCount = await loadMoreMessages(chat._id, nextPage);
+            
+            if (newMessagesCount > 0) {
+                setPage(nextPage);
+            } else {
+                setHasMoreMessages(false);
+            }
+        } catch (error) {
+            console.error("Error loading more messages:", error);
+        } finally {
+            isLoadingMoreRef.current = false;
+            setIsLoadingMore(false);
+        }
+    };
 
     // Fetch messages on mount
     useEffect(() => {
@@ -366,9 +411,9 @@ const ChatScreen = () => {
         setShowMenu(false);
     };
 
-    const handleMessageLongPress = (message) => {
+    const handleMessageLongPress = useCallback((message) => {
         setSelectedMessage(message);
-    };
+    }, []);
 
     const handleDeleteMessage = (type) => {
         if (!selectedMessage) return;
@@ -405,7 +450,7 @@ const ChatScreen = () => {
     // Memoize renderItem function
     const renderItem = useMemo(() => {
         return ({ item }) => <MessageBubble message={item} chatType={chat.type} onLongPress={handleMessageLongPress} />;
-    }, [chat.type]);
+    }, [chat.type, handleMessageLongPress]);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -510,7 +555,7 @@ const ChatScreen = () => {
             <FlatList
                 ref={flatListRef}
                 data={messages}
-                keyExtractor={(item, index) => item._id || index.toString()}
+                keyExtractor={(item, index) => item.id || index.toString()}
                 renderItem={renderItem}
                 style={[styles.messagesList, { paddingBottom: 90 + insets.bottom }]}
                 contentContainerStyle={styles.messagesContent}
@@ -518,7 +563,15 @@ const ChatScreen = () => {
                 removeClippedSubviews={true}
                 maxToRenderPerBatch={10}
                 windowSize={10}
+                initialNumToRender={15}
                 inverted
+                onEndReached={handleLoadMore}
+                onEndReachedThreshold={0.1}
+                ListFooterComponent={isLoadingMore ? (
+                    <View style={{ paddingVertical: 20 }}>
+                        <ActivityIndicator size="small" color="#6C63FF" />
+                    </View>
+                ) : null}
             />
 
             {/* Input Area */}
@@ -828,7 +881,6 @@ const styles = StyleSheet.create({
         color: '#1F2153',
     },
 
-    // Modal Styles
     modalContainer: {
         flex: 1,
         backgroundColor: '#F8FAFF',

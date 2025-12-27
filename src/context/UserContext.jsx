@@ -40,38 +40,103 @@ const UserProvider = ({ children }) => {
     const fetchChatMessages = useCallback(async (chatId) => {
         if (!currentUser) return;
         
-        // Load from storage first
         const stored = await AsyncStorage.getItem(`chat_messages_${chatId}`);
-        if (stored) {
-            setPeerMessages(prev => ({ ...prev, [chatId]: JSON.parse(stored) }));
+        const parsedStored = stored ? JSON.parse(stored) : [];
+
+        if (parsedStored.length > 0) { 
+            setPeerMessages(prev => ({ ...prev, [chatId]: parsedStored }));
         }
 
-        // Sync with DB
         try {
             const res = await fetch(`${BASE_URL}/api/v1/peer-message/all/${chatId}`, {
                 headers: { Authorization: `Bearer ${currentUser.accessToken}` }
             });
             const data = await res.json();
-            console.log("Messages", data)
+        
             if (data.success) {
-                const messages = data.data.messages; 
-                setPeerMessages(prev => ({ ...prev, [chatId]: messages }));
-                await AsyncStorage.setItem(`chat_messages_${chatId}`, JSON.stringify(messages));
+                const apiMessages = data.data.messages;
+                const messageMap = new Map();
+                
+                parsedStored.forEach(msg => {
+                    if (msg._id) messageMap.set(msg._id, msg);
+                });
+                
+                apiMessages.forEach(msg => {
+                    if (msg._id) messageMap.set(msg._id, msg);
+                });
+                
+                const mergedMessages = Array.from(messageMap.values()).sort((a, b) => 
+                    new Date(b.timestamp) - new Date(a.timestamp)
+                );
+
+                setPeerMessages(prev => ({ ...prev, [chatId]: mergedMessages }));
+                
+                // Limit stored messages to 100 to prevent unlimited growth
+                const messagesToStore = mergedMessages.slice(0, 100);
+                await AsyncStorage.setItem(`chat_messages_${chatId}`, JSON.stringify(messagesToStore));
+
+                // Update last message in PeerChats
+                setPeerChats(prev => {
+                    const updated = prev.map(chat => {
+                        if (chat._id === chatId) {
+                            const lastMsg = mergedMessages[0];
+                            return {
+                                ...chat,
+                                lastMessage: lastMsg ? lastMsg.text : '',
+                                lastMessageTime: lastMsg ? lastMsg.timestamp : chat.updatedAt
+                            };
+                        }
+                        return chat;
+                    });
+                    AsyncStorage.setItem('peer_chats', JSON.stringify(updated));
+                    return updated;
+                });
+                console.log("Merged Messages", mergedMessages.length);
             }
         } catch (err) {
             console.error("Error fetching messages:", err);
         }
     }, [currentUser]);
 
+    const loadMoreMessages = useCallback(async (chatId, page = 1) => {
+        if (!currentUser) return;
+
+        try {
+            const res = await fetch(`${BASE_URL}/api/v1/peer-message/all/${chatId}?page=${page}`, {
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+            const data = await res.json();
+
+            if (data.success && data.data.messages.length > 0) {
+                const newMessages = data.data.messages;
+                
+                setPeerMessages(prev => {
+                    const currentMessages = prev[chatId] || [];
+                    const existingIds = new Set(currentMessages.map(m => m._id));
+                    const uniqueNewMessages = newMessages.filter(m => !existingIds.has(m._id));
+                    
+                    if (uniqueNewMessages.length === 0) return prev;
+
+                    const updated = [...currentMessages, ...uniqueNewMessages].sort((a, b) => 
+                        new Date(b.timestamp) - new Date(a.timestamp)
+                    );
+                    
+                    return { ...prev, [chatId]: updated };
+                });
+                return data.data.messages.length; // Return count to know if we should stop loading
+            }
+            return 0;
+        } catch (err) {
+            console.error("Error loading more messages:", err);
+            return 0;
+        }
+    }, [currentUser]);
+
     const fetchPeerChats = useCallback(async () => {
         if (!currentUser) return;
         
-        // Load from storage first
-        const stored = await AsyncStorage.getItem('peer_chats');
-        if (stored) {
-            setPeerChats(JSON.parse(stored));
-        }
-
+        const stored = JSON.parse(await AsyncStorage.getItem('peer_chats'));
+        
         try {
             const res = await fetch(`${BASE_URL}/api/v1/peer-chat/all`, {
                 method: 'GET',
@@ -81,19 +146,38 @@ const UserProvider = ({ children }) => {
                 },
             });
             const data = await res.json();
-            console.log("Chats", data)
+            
             if (data.success) {
-                const mappedChats = data.data.map(chat => ({
-                    ...chat,
-                    name: chat.participant.annonymousUsername || 'Unknown',
-                    avatar: chat.participant.avatar,
-                    lastMessage: chat.lastMessage?.text,
-                    lastMessageTime: chat.lastMessage?.timestamp || chat.updatedAt,
-                    unreadCount: chat.unreadCount || 0,
-                    type: 'peer'
-                }));
-                setPeerChats(mappedChats);
-                await AsyncStorage.setItem('peer_chats', JSON.stringify(mappedChats));
+                const mappedChats = data.data.map(chat => {
+                    const storedChat = stored ? stored.find(c => c._id === chat._id) : null;
+                    const localUnread = storedChat ? (storedChat.unreadCount || 0) : 0;
+                    
+                    return {
+                        ...chat,
+                        name: chat.participant.annonymousUsername || 'Unknown',
+                        avatar: chat.participant.avatar,
+                        lastMessage: chat.lastMessage?.text,
+                        lastMessageTime: chat.lastMessage?.timestamp || chat.updatedAt,
+                        unreadCount: Math.max(chat.unreadCount || 0, localUnread),
+                        type: 'peer'
+                    };
+                });
+                
+                const finalChats = mappedChats.map(chat => {
+                    const storedChat = stored ? stored.find(c => c._id === chat._id) : null;
+                    
+                    if (storedChat && new Date(storedChat.lastMessageTime) > new Date(chat.lastMessageTime)) {
+                        return {
+                            ...chat,
+                            lastMessage: storedChat.lastMessage,
+                            lastMessageTime: storedChat.lastMessageTime,
+                        };
+                    }
+                    return chat;
+                });
+
+                setPeerChats(finalChats);
+                await AsyncStorage.setItem('peer_chats', JSON.stringify(finalChats));
             }
         } catch (error) {
             console.error("Failed to fetch chats", error);
@@ -104,7 +188,7 @@ const UserProvider = ({ children }) => {
         if (!currentUser) return;
         
         const bsonId = new BSON.ObjectId().toString();
-        console.log(bsonId)
+        
         const newMessage = {
             _id: bsonId,
             text: text,
@@ -113,15 +197,14 @@ const UserProvider = ({ children }) => {
             deletedForEveryone: false,
         };
 
-        // Optimistic Update
         setPeerMessages(prev => {
             const current = prev[chatId] || [];
             const updated = [newMessage, ...current];
-            AsyncStorage.setItem(`chat_messages_${chatId}`, JSON.stringify(updated));
+            // Limit stored messages to 100
+            AsyncStorage.setItem(`chat_messages_${chatId}`, JSON.stringify(updated.slice(0, 100)));
             return { ...prev, [chatId]: updated };
         });
 
-        // Update PeerChats Optimistically
         setPeerChats(prev => {
             const updated = prev.map(chat => {
                 if (chat._id === chatId) {
@@ -133,7 +216,7 @@ const UserProvider = ({ children }) => {
                 }
                 return chat;
             });
-            // Move updated chat to top
+            
             const chatIndex = updated.findIndex(c => c._id === chatId);
             if (chatIndex > 0) {
                 const [chat] = updated.splice(chatIndex, 1);
@@ -164,7 +247,6 @@ const UserProvider = ({ children }) => {
                 messageIds
             });
 
-            // Optimistically mark as seen locally
             setPeerMessages(prev => {
                 const messages = prev[chatId] || [];
                 const updated = messages.map(msg => {
@@ -177,7 +259,6 @@ const UserProvider = ({ children }) => {
                 return { ...prev, [chatId]: updated };
             });
 
-            // Update PeerChats unread count
             setPeerChats(prev => {
                 const updated = prev.map(chat => {
                     if (chat._id === chatId) {
@@ -434,6 +515,13 @@ const UserProvider = ({ children }) => {
     useEffect(() => {
         if (currentUser) {
             fetchPeerChats();
+            const timer1 = setTimeout(fetchPeerChats, 5000);
+            const timer2 = setTimeout(fetchPeerChats, 10000);
+
+            return () => {
+                clearTimeout(timer1);
+                clearTimeout(timer2);
+            };
         }
     }, [currentUser, fetchPeerChats]);
 
@@ -475,7 +563,7 @@ const UserProvider = ({ children }) => {
             });
 
             // Global Message Listeners
-            newSocket.on('newMessage', (data) => {
+            newSocket.on('newMessage', async (data) => {
                 const { chatId, message, senderId, timestamp, messageId } = data;
                 const newMessage = {
                     _id: messageId,
@@ -484,13 +572,22 @@ const UserProvider = ({ children }) => {
                     timestamp: timestamp || new Date().toISOString(),
                     deletedForEveryone: false
                 };
+
+                const stored = await AsyncStorage.getItem(`chat_messages_${chatId}`);
+                const parsedStored = stored ? JSON.parse(stored) : null;
                 
                 setPeerMessages(prev => {
                     const current = prev[chatId] || [];
                     if (current.some(m => m._id === newMessage._id)) return prev;
-                    
-                    const updated = [newMessage, ...current];
-                    AsyncStorage.setItem(`chat_messages_${chatId}`, JSON.stringify(updated));
+
+                    if((current.length && parsedStored.length) && 
+                    (current[0].timestamp >= newMessage.timestamp)) {
+                        return prev;
+                    }
+
+                    const updated = [newMessage, ...parsedStored];
+                    // Limit stored messages to 100
+                    AsyncStorage.setItem(`chat_messages_${chatId}`, JSON.stringify(updated.slice(0, 100)));
                     return { ...prev, [chatId]: updated };
                 });
 
@@ -602,6 +699,7 @@ const UserProvider = ({ children }) => {
         setSocketId,
         peerMessages,
         fetchChatMessages,
+        loadMoreMessages,
         sendChatMessage,
         markMessagesAsSeen,
         peerChats,

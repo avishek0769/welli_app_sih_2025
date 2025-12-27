@@ -635,8 +635,8 @@ const ForumScreen = ({ route }) => {
 
                         <Text style={styles.sectionTitle}>Members ({forumDetails.totalMembers})</Text>
                         <View style={styles.membersList}>
-                            {forumDetails.members.map(member => (
-                                <View key={member._id} style={styles.memberItem}>
+                            {forumDetails.members.map((member, index) => (
+                                <View key={member._id || index} style={styles.memberItem}>
                                     <View style={styles.memberAvatarContainer}>
                                         <Image source={{ uri: member.avatar }} style={styles.memberAvatar} />
                                         {member.isOnline && <View style={styles.onlineBadge} />}

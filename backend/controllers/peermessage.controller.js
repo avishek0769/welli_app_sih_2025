@@ -18,9 +18,6 @@ const handleSendMessage = (socket) => async ({ messageId, message, senderId, rec
     try {
         const receiver = await User.findById(receiverId) // TODO: Optimise getting socket ID
     
-        if (!receiver.socketId) {
-            throw new ApiError(401, "Socket ID not present")
-        }
         if (receiver.isActive) {
             socket.to(receiver.socketId).emit("newMessage", { message, timestamp, chatId, senderId, messageId })
         }
