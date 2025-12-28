@@ -10,6 +10,7 @@ import {
     Image,
     ScrollView,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
@@ -28,6 +29,7 @@ const ForumScreen = ({ route }) => {
     const [selectedPost, setSelectedPost] = useState(null);
     const [showCommentsModal, setShowCommentsModal] = useState(false);
     const [showForumInfo, setShowForumInfo] = useState(false);
+    const [loading, setLoading] = useState(true);
     const { currentUser } = useUser()
 
     const [forumDetails, setForumDetails] = useState(() => {
@@ -46,6 +48,7 @@ const ForumScreen = ({ route }) => {
 
         const fetchPosts = async () => {
             try {
+                setLoading(true);
                 const res = await fetch(`${BASE_URL}/api/v1/post/forum/${forumId}`, {
                     method: 'GET',
                     headers: {
@@ -60,6 +63,8 @@ const ForumScreen = ({ route }) => {
                 }
             } catch (err) {
                 console.error('Error fetching posts:', err);
+            } finally {
+                setLoading(false);
             }
         };
 
@@ -582,6 +587,21 @@ const ForumScreen = ({ route }) => {
                 contentContainerStyle={styles.postsContent}
                 ItemSeparatorComponent={() => <View style={styles.postSeparator} />}
                 ListFooterComponent={() => <View style={{ height: 70 }} />}
+                ListEmptyComponent={() => (
+                    <View style={styles.emptyState}>
+                        {loading ? (
+                            <ActivityIndicator size="large" color="#6C63FF" />
+                        ) : (
+                            <>
+                                <Icon name="post-add" size={48} color="#E5E7EB" />
+                                <Text style={styles.emptyStateText}>No posts yet</Text>
+                                <Text style={styles.emptyStateSubtext}>
+                                    Be the first to start a conversation in this forum!
+                                </Text>
+                            </>
+                        )}
+                    </View>
+                )}
             />
 
             {/* Create Post Modal */}
@@ -829,6 +849,23 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#EF4444',
+    },
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+    },
+    emptyStateText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#9CA3AF',
+        marginTop: 16,
+    },
+    emptyStateSubtext: {
+        fontSize: 14,
+        color: '#9CA3AF',
+        marginTop: 4,
+        textAlign: 'center',
     },
 });
 

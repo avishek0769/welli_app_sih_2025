@@ -9,6 +9,7 @@ import {
     Modal,
     TextInput,
     Image,
+    ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -460,6 +461,7 @@ const PeerSupport = () => {
     const [showJoinModal, setShowJoinModal] = useState(false);
     const [showVolunteersModal, setShowVolunteersModal] = useState(false);
     const [forums, setForums] = useState([]);
+    const [loading, setLoading] = useState(false);
     const { currentUser, peerChats, fetchPeerChats } = useUser()
 
     const handleItemPress = (item) => {
@@ -542,8 +544,9 @@ const PeerSupport = () => {
 
     useFocusEffect(
         React.useCallback(() => {
-            if (activeTab === 'forums') {
-                const fetchForumsAndUnseen = async () => {
+            const fetchData = async () => {
+                setLoading(true);
+                if (activeTab === 'forums') {
                     try {
                         const forumsRes = await fetch(`${BASE_URL}/api/v1/forum/joined`, {
                             method: 'GET',
@@ -584,9 +587,12 @@ const PeerSupport = () => {
                     } catch (error) {
                         console.error('Error fetching forums or unseen counts:', error);
                     }
-                };
-                fetchForumsAndUnseen();
-            }
+                } else {
+                    await fetchPeerChats();
+                }
+                setLoading(false);
+            };
+            fetchData();
         }, [activeTab])
     );
 
@@ -638,6 +644,29 @@ const PeerSupport = () => {
                 showsVerticalScrollIndicator={false}
                 ListFooterComponent={() => (
                     <View style={{ height: 70 }} />
+                )}
+                ListEmptyComponent={() => (
+                    <View style={styles.emptyState}>
+                        {loading ? (
+                            <ActivityIndicator size="large" color="#6C63FF" />
+                        ) : (
+                            <>
+                                <Icon 
+                                    name={activeTab === 'forums' ? "forum" : "chat-bubble-outline"} 
+                                    size={48} 
+                                    color="#E5E7EB" 
+                                />
+                                <Text style={styles.emptyStateText}>
+                                    {activeTab === 'forums' ? "No forums joined yet" : "No active chats"}
+                                </Text>
+                                <Text style={styles.emptyStateSubtext}>
+                                    {activeTab === 'forums' 
+                                        ? "Join a forum to start discussing with peers" 
+                                        : "Connect with a volunteer to start chatting"}
+                                </Text>
+                            </>
+                        )}
+                    </View>
                 )}
             />
 

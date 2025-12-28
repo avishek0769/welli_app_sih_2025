@@ -314,6 +314,14 @@ const UserProvider = ({ children }) => {
             AsyncStorage.setItem('peer_chats', JSON.stringify(updated));
             return updated;
         });
+
+        // Remove messages from storage and state
+        AsyncStorage.removeItem(`chat_messages_${chatId}`);
+        setPeerMessages(prev => {
+            const newState = { ...prev };
+            delete newState[chatId];
+            return newState;
+        });
         
         try {
             await fetch(`${BASE_URL}/api/v1/peer-chat/delete/${chatId}`, {
