@@ -29,11 +29,28 @@ def get_emotion_classifier():
         )
     return _emotion_classifier
 
+import re
+
 def detect_emotion(text: str) -> str:
     """Detects the dominant emotion in the given text."""
     classifier = get_emotion_classifier()
     result = classifier(text[:500])
     return result[0]["label"].lower()
+
+def parse_duration(duration):
+    """Parses ISO 8601 duration string to human readable format."""
+    match = re.match(r'PT(\d+H)?(\d+M)?(\d+S)?', duration)
+    if not match:
+        return duration
+    
+    hours = int(match.group(1)[:-1]) if match.group(1) else 0
+    minutes = int(match.group(2)[:-1]) if match.group(2) else 0
+    seconds = int(match.group(3)[:-1]) if match.group(3) else 0
+    
+    if hours > 0:
+        return f"{hours}:{minutes:02d}:{seconds:02d}"
+    else:
+        return f"{minutes}:{seconds:02d}"
 
 def fetch_youtube_videos(query, max_results=5):
     """Fetches videos from YouTube based on a search query."""
@@ -47,12 +64,35 @@ def fetch_youtube_videos(query, max_results=5):
         safeSearch="strict"
     ).execute()
 
-    videos = []
+    video_ids = []
     for item in search_response.get("items", []):
-        video_id = item["id"]["videoId"]
-        title = item["snippet"]["title"]
-        url = f"https://www.youtube.com/watch?v={video_id}"
-        videos.append({"title": title, "url": url})
+        video_ids.append(item["id"]["videoId"])
+    
+    if not video_ids:
+        return []
+
+    # Fetch detailed information for the videos
+    videos_response = youtube.videos().list(
+        part="snippet,contentDetails,statistics",
+        id=",".join(video_ids)
+    ).execute()
+
+    videos = []
+    for item in videos_response.get("items", []):
+        snippet = item["snippet"]
+        content_details = item["contentDetails"]
+        statistics = item["statistics"]
+        
+        video = {
+            "title": snippet["title"],
+            "url": f"https://www.youtube.com/watch?v={item['id']}",
+            "thumbnail": snippet["thumbnails"].get("high", snippet["thumbnails"]["default"])["url"],
+            "channel": snippet["channelTitle"],
+            "views": statistics.get("viewCount", "0"),
+            "duration": parse_duration(content_details["duration"])
+        }
+        videos.append(video)
+    
     return videos
 
 def recommend_videos(conversation):

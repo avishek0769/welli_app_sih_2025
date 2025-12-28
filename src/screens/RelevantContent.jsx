@@ -12,84 +12,53 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { MotiView } from 'moti';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BASE_URL } from '../constants';
+import { useNavigation } from '@react-navigation/native';
 
 const RelevantContent = ({ onClose }) => {
     const [loading, setLoading] = useState(true);
     const [videos, setVideos] = useState([]);
-    const [articles, setArticles] = useState([]);
+    const navigation = useNavigation();
 
-    // Mock function to simulate fetching recommendations from your ML system
+    const formatViews = (views) => {
+        if (!views) return '0';
+        const num = parseInt(views);
+        if (isNaN(num)) return views;
+        if (num >= 1000000) {
+            return (num / 1000000).toFixed(1) + 'M';
+        }
+        if (num >= 1000) {
+            return (num / 1000).toFixed(1) + 'K';
+        }
+        return num.toString();
+    };
+
     const fetchRecommendations = async () => {
-        setLoading(true);
-        
-        // Simulate API call delay
-        setTimeout(() => {
-            // Mock YouTube videos data - replace with your ML API response
-            const mockVideos = [
-                {
-                    id: 1,
-                    title: 'Quick 5-Minute Stress Relief Meditation',
-                    thumbnail: 'https://i.ytimg.com/vi/inpok4MKVLM/mqdefault.jpg',
-                    duration: '5:23',
-                    channelName: 'Mindful Peace',
-                    videoUrl: 'https://www.youtube.com/watch?v=inpok4MKVLM',
-                    views: '2.1M views',
-                },
-                {
-                    id: 2,
-                    title: 'Deep Breathing Techniques for Anxiety',
-                    thumbnail: 'https://i.ytimg.com/vi/tybOi4hjZFQ/mqdefault.jpg',
-                    duration: '8:45',
-                    channelName: 'Wellness Hub',
-                    videoUrl: 'https://www.youtube.com/watch?v=tybOi4hjZFQ',
-                    views: '850K views',
-                },
-                {
-                    id: 3,
-                    title: 'Morning Mindfulness Routine',
-                    thumbnail: 'https://i.ytimg.com/vi/ZToicYcHIOU/mqdefault.jpg',
-                    duration: '12:15',
-                    channelName: 'Daily Calm',
-                    videoUrl: 'https://www.youtube.com/watch?v=ZToicYcHIOU',
-                    views: '1.5M views',
-                },
-            ];
+        try {
+            setLoading(true);
+            const token = await AsyncStorage.getItem('accessToken');
+            
+            // Fetch videos from backend
+            const response = await fetch(`${BASE_URL}/api/v1/user/video-recommendation`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+                setVideos(data.data);
+            }
 
-            // Mock articles data - replace with your ML API response
-            const mockArticles = [
-                {
-                    id: 1,
-                    title: 'Understanding Stress: Causes and Solutions',
-                    description: 'Learn about the science behind stress and effective ways to manage it in your daily life.',
-                    source: 'Mental Health Today',
-                    readTime: '6 min read',
-                    articleUrl: 'https://example.com/stress-management',
-                    publishedDate: '2 days ago',
-                },
-                {
-                    id: 2,
-                    title: 'The Power of Mindful Breathing',
-                    description: 'Discover how simple breathing techniques can transform your mental well-being.',
-                    source: 'Wellness Journal',
-                    readTime: '4 min read',
-                    articleUrl: 'https://example.com/mindful-breathing',
-                    publishedDate: '1 week ago',
-                },
-                {
-                    id: 3,
-                    title: 'Sleep Hygiene: Your Guide to Better Rest',
-                    description: 'Essential tips and habits for improving your sleep quality and mental health.',
-                    source: 'Health & Mind',
-                    readTime: '8 min read',
-                    articleUrl: 'https://example.com/sleep-hygiene',
-                    publishedDate: '3 days ago',
-                },
-            ];
-
-            setVideos(mockVideos);
-            setArticles(mockArticles);
+        } catch (error) {
+            console.error("Error fetching recommendations:", error);
+        } finally {
             setLoading(false);
-        }, 2000);
+        }
     };
 
     useEffect(() => {
@@ -104,19 +73,11 @@ const RelevantContent = ({ onClose }) => {
         }
     };
 
-    const handleArticlePress = async (articleUrl) => {
-        try {
-            await Linking.openURL(articleUrl);
-        } catch (error) {
-            console.log('Error opening article:', error);
-        }
-    };
-
     if (loading) {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
                         <Icon name="close" size={24} color="#6C63FF" />
                     </TouchableOpacity>
                     <Text style={styles.title}>Relevant Content</Text>
@@ -135,7 +96,7 @@ const RelevantContent = ({ onClose }) => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
                     <Icon name="close" size={24} color="#6C63FF" />
                 </TouchableOpacity>
                 <Text style={styles.title}>Relevant Content</Text>
@@ -169,7 +130,7 @@ const RelevantContent = ({ onClose }) => {
                     <View style={styles.videosContainer}>
                         {videos.map((video, index) => (
                             <MotiView
-                                key={video.id}
+                                key={index}
                                 from={{ opacity: 0, translateX: -30 }}
                                 animate={{ opacity: 1, translateX: 0 }}
                                 transition={{ 
@@ -180,7 +141,7 @@ const RelevantContent = ({ onClose }) => {
                             >
                                 <TouchableOpacity
                                     style={styles.videoCard}
-                                    onPress={() => handleVideoPress(video.videoUrl)}
+                                    onPress={() => handleVideoPress(video.url)}
                                     activeOpacity={0.8}
                                 >
                                     <View style={styles.thumbnailContainer}>
@@ -200,58 +161,8 @@ const RelevantContent = ({ onClose }) => {
                                     <View style={styles.videoInfo}>
                                         <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
                                         <View style={styles.videoMeta}>
-                                            <Text style={styles.channelName}>{video.channelName}</Text>
-                                            <Text style={styles.videoViews}>{video.views}</Text>
-                                        </View>
-                                    </View>
-                                </TouchableOpacity>
-                            </MotiView>
-                        ))}
-                    </View>
-                </View>
-
-                {/* Articles Section */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Icon name="article" size={24} color="#6C63FF" />
-                        <Text style={styles.sectionTitle}>Recommended Articles</Text>
-                    </View>
-
-                    <View style={styles.articlesContainer}>
-                        {articles.map((article, index) => (
-                            <MotiView
-                                key={article.id}
-                                from={{ opacity: 0, translateX: -30 }}
-                                animate={{ opacity: 1, translateX: 0 }}
-                                transition={{ 
-                                    type: 'timing', 
-                                    duration: 400, 
-                                    delay: (videos.length * 100) + (index * 100)
-                                }}
-                            >
-                                <TouchableOpacity
-                                    style={styles.articleCard}
-                                    onPress={() => handleArticlePress(article.articleUrl)}
-                                    activeOpacity={0.8}
-                                >
-                                    <View style={styles.articleHeader}>
-                                        <View style={styles.articleIcon}>
-                                            <Icon name="article" size={20} color="#6C63FF" />
-                                        </View>
-                                        <View style={styles.articleMeta}>
-                                            <Text style={styles.articleSource}>{article.source}</Text>
-                                            <Text style={styles.articleDate}>{article.publishedDate}</Text>
-                                        </View>
-                                        <Icon name="open-in-new" size={18} color="#9CA3AF" />
-                                    </View>
-                                    
-                                    <Text style={styles.articleTitle}>{article.title}</Text>
-                                    <Text style={styles.articleDescription}>{article.description}</Text>
-                                    
-                                    <View style={styles.articleFooter}>
-                                        <View style={styles.readTimeBadge}>
-                                            <Icon name="schedule" size={14} color="#6B7280" />
-                                            <Text style={styles.readTimeText}>{article.readTime}</Text>
+                                            <Text style={styles.channelName}>{video.channel}</Text>
+                                            <Text style={styles.videoViews}>{formatViews(video.views)} views</Text>
                                         </View>
                                     </View>
                                 </TouchableOpacity>
