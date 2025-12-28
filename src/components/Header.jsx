@@ -5,9 +5,9 @@ import { useUser } from '../context/UserContext';
 
 const Header = () => {
     const navigation = useNavigation();
-    const { user } = useUser();
+    const { currentUser } = useUser();
 
-    const avatarUri = user?.avatar || user?.profileImage || null;
+    const avatarUri = currentUser?.avatar || null;
 
     return (
         <View style={styles.header}>
@@ -31,7 +31,6 @@ const Header = () => {
                     ) : (
                         <Icon name="person" size={22} color="#6C63FF" />
                     )}
-                    <View style={styles.notificationBadge} />
                 </View>
             </TouchableOpacity>
         </View>

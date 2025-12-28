@@ -258,6 +258,13 @@ const BubblePopGame = () => {
         }, cleanupTime);
     };
 
+    const handleMiss = () => {
+        if (!gameActive) return;
+        
+        Vibration.vibrate(50);
+        setScore(prev => Math.max(0, prev - 15));
+    };
+
     // Handle difficulty selection
     const handleDifficultySelect = (difficulty) => {
         setCurrentDifficulty(difficulty);
@@ -407,7 +414,11 @@ const BubblePopGame = () => {
             )}
 
             {/* Game Area */}
-            <View style={styles.gameArea}>
+            <TouchableOpacity 
+                style={styles.gameArea} 
+                activeOpacity={1} 
+                onPress={handleMiss}
+            >
                 {bubbles.map((bubble, index) => {
                     const animationDuration = currentDifficulty?.level === 'extreme' ? 100 : 
                                            currentDifficulty?.level === 'hard' ? 200 : 300;
@@ -478,7 +489,7 @@ const BubblePopGame = () => {
                         </MotiView>
                     );
                 })}
-            </View>
+            </TouchableOpacity>
 
             {/* Instructions */}
             {currentDifficulty && (
