@@ -522,7 +522,7 @@ export default function Chatbot() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <Header />
+            {/* <Header /> */}
             
             <View style={styles.mainContent}>
                 {/* Sidebar */}
@@ -812,6 +812,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        paddingTop: 40,
         paddingHorizontal: 16,
         paddingVertical: 12,
         backgroundColor: '#FFFFFF',

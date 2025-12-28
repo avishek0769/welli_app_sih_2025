@@ -280,6 +280,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        paddingTop: 40,
         paddingHorizontal: 16,
         paddingVertical: 16,
         backgroundColor: '#FFFFFF',

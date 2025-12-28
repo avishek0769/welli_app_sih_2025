@@ -470,7 +470,7 @@ const Counselling = ({ navigation }) => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <Header title="Book Counselling" showBack={false} />
+            {/* <Header title="Book Counselling" showBack={false} /> */}
 
             <ScrollView
                 style={styles.content}
@@ -784,6 +784,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 24,
         marginVertical: 20,
+        marginTop: 45,
     },
     section: {
         marginBottom: 32,

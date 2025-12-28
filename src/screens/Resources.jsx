@@ -82,7 +82,7 @@ const Resources = () => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <Header />
+            {/* <Header /> */}
 
             <View style={styles.content}>
                 <View style={styles.headerSection}>
@@ -162,6 +162,7 @@ const styles = StyleSheet.create({
     },
     headerSection: {
         paddingVertical: 20,
+        marginTop: 20,
         paddingHorizontal: 16,
         alignItems: 'center',
     },

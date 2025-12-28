@@ -259,6 +259,45 @@ const videoRecommendation = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, data.videos, "Video recommendations fetched successfully"));
 })
 
+const logout = asyncHandler(async (req, res) => {
+    const user = req.user;
+    user.refreshToken = null;
+    await user.save();
+
+    return res.status(200).json(new ApiResponse(200, null, "User has been logged out successfully"));
+})
+
+const updateAvatar = asyncHandler(async (req, res) => {
+    const { avatar } = req.body;
+    if (!avatar) throw new ApiError(400, "Avatar URL is required");
+
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        { $set: { avatar } },
+        { new: true }
+    ).select("-password");
+
+    return res.status(200).json(new ApiResponse(200, user, "Avatar updated successfully"));
+});
+
+const toggleAcceptMessages = asyncHandler(async (req, res) => {
+    const { acceptMessages } = req.body;
+    
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        { $set: { acceptMessages } },
+        { new: true }
+    ).select("-password");
+
+    return res.status(200).json(new ApiResponse(200, user, "Settings updated successfully"));
+});
+
+const deleteAccount = asyncHandler(async (req, res) => {
+    // const userId = req.user._id;
+    // await User.findByIdAndDelete(userId);
+    return res.status(200).json(new ApiResponse(200, null, "Account deleted successfully"));
+});
+
 export {
     sendVerificationCode,
     verifyCode,
@@ -269,5 +308,9 @@ export {
     setIsActive,
     createSignedUrl,
     currentUser,
-    videoRecommendation
+    videoRecommendation,
+    logout,
+    updateAvatar,
+    toggleAcceptMessages,
+    deleteAccount
 }

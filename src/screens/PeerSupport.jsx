@@ -599,15 +599,13 @@ const PeerSupport = () => {
                         style={styles.volunteersButton}
                         onPress={() => setShowVolunteersModal(true)}
                     >
-                        <Icon name="psychology" size={16} color="#059669" />
-                        <Text style={styles.volunteersButtonText}>Volunteers</Text>
+                        <Icon name="psychology" size={24} color="#059669" />
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.joinForumButton}
                         onPress={() => setShowJoinModal(true)}
                     >
-                        <Text style={styles.joinForumButtonText}>Forum</Text>
-                        <Icon name="add" size={18} color="#6C63FF" />
+                        <Icon name="add" size={24} color="#6C63FF" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -672,7 +670,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingTop: 35,
+        paddingTop: 40,
         paddingBottom: 16,
         backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
@@ -715,34 +713,22 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     volunteersButton: {
-        flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
+        justifyContent: 'center',
+        width: 40,
+        height: 40,
         borderRadius: 20,
         backgroundColor: '#ECFDF5',
         borderWidth: 1,
         borderColor: '#A7F3D0',
-        gap: 6,
-    },
-    volunteersButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#059669',
     },
     joinForumButton: {
-        flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
+        justifyContent: 'center',
+        width: 40,
+        height: 40,
         borderRadius: 20,
         backgroundColor: '#F0F4FF',
-        gap: 6,
-    },
-    joinForumButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#6C63FF',
     },
     chatList: {
         flex: 1,

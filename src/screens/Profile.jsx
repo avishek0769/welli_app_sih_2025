@@ -1,258 +1,404 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
-    TextInput,
-    Switch,
-    TouchableOpacity,
     StyleSheet,
-    SafeAreaView,
+    Image,
+    TouchableOpacity,
+    Switch,
     ScrollView,
     Alert,
+    ActivityIndicator,
+    SafeAreaView
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { launchImageLibrary } from 'react-native-image-picker';
+import { useUser } from '../context/UserContext';
+import { BASE_URL } from '../constants';
+import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const DEFAULT_PROFILE_KEY = '@Welli_profile';
+const Profile = () => {
+    const { currentUser, setCurrentUser } = useUser();
+    const navigation = useNavigation();
+    const [isUploading, setIsUploading] = useState(false);
+    const [isToggling, setIsToggling] = useState(false);
 
-const validatePassword = (p) => {
-    if (!p) return 'Password is required';
-    if (p.length < 8) return 'Password must be at least 8 characters';
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(p)) return 'Must include uppercase, lowercase, and number';
-    return null;
-};
+    const handleLogout = async () => {
+        Alert.alert(
+            "Logout",
+            "Are you sure you want to logout?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Logout",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await fetch(`${BASE_URL}/api/v1/user/logout`, {
+                                method: 'POST',
+                                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+                            });
+                            await AsyncStorage.clear();
+                            setCurrentUser(null);
+                            navigation.navigate('Login');
+                        } catch (error) {
+                            console.error("Logout error", error);
+                            Alert.alert("Error", "Failed to logout");
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
-const Profile = ({ navigation }) => {
-    const [profile, setProfile] = useState({
-        anonymousName: '',
-        age: '',
-        gender: '',
-        institution: '',
-        receiveMessages: true,
-        receiveNotifications: true,
-        showAge: false,
-        publicProfile: false,
-    });
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            "Delete Account",
+            "Are you sure you want to delete your account? This action cannot be undone and all your data will be lost.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            const res = await fetch(`${BASE_URL}/api/v1/user/delete-account`, {
+                                method: 'DELETE',
+                                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+                            });
+                            
+                            if (res.ok) {
+                                await AsyncStorage.clear();
+                                setCurrentUser(null);
+                            } else {
+                                throw new Error("Failed to delete account");
+                            }
+                        } catch (error) {
+                            console.error("Delete account error", error);
+                            Alert.alert("Error", "Failed to delete account");
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
-    const [passwords, setPasswords] = useState({
-        current: '',
-        newPassword: '',
-        confirmNew: '',
-    });
-
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        (async () => {
-            try {
-                const raw = await AsyncStorage.getItem(DEFAULT_PROFILE_KEY);
-                if (raw) setProfile(JSON.parse(raw));
-            } catch (e) {
-                // ignore
-            } finally {
-                setLoading(false);
-            }
-        })();
-    }, []);
-
-    const saveProfile = async () => {
-        // basic validation
-        if (!profile.anonymousName) {
-            return Alert.alert('Validation', 'Anonymous name is required');
-        }
-        if (profile.age && (isNaN(profile.age) || +profile.age < 13 || +profile.age > 120)) {
-            return Alert.alert('Validation', 'Please enter a valid age (13-120) or leave empty');
-        }
-
-        // password change flow (optional)
-        if (passwords.newPassword || passwords.confirmNew) {
-            const err = validatePassword(passwords.newPassword);
-            if (err) return Alert.alert('Password error', err);
-            if (passwords.newPassword !== passwords.confirmNew) return Alert.alert('Password error', 'Passwords do not match');
-            // NOTE: integrate real password change with backend here
-            // For now just clear password fields after "save"
-        }
-
+    const handleToggleMessages = async (value) => {
+        setIsToggling(true);
         try {
-            await AsyncStorage.setItem(DEFAULT_PROFILE_KEY, JSON.stringify(profile));
-            setPasswords({ current: '', newPassword: '', confirmNew: '' });
-            Alert.alert('Saved', 'Profile updated successfully');
-        } catch (e) {
-            Alert.alert('Error', 'Failed to save profile');
+            const res = await fetch(`${BASE_URL}/api/v1/user/toggle-messages`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${currentUser.accessToken}`
+                },
+                body: JSON.stringify({ acceptMessages: value })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                setCurrentUser(prev => ({ ...prev, acceptMessages: value }));
+            } else {
+                Alert.alert("Error", "Failed to update settings");
+            }
+        } catch (error) {
+            console.error("Toggle error", error);
+            Alert.alert("Error", "Failed to update settings");
+        } finally {
+            setIsToggling(false);
         }
     };
 
-    const generateAnonymousName = () => {
-        const list = [
-            'WellnessSeeker', 'MindfulStudent', 'HopeBuilder', 'CalmWanderer', 'PeacefulSoul',
-            'BraveHeart', 'QuietMind', 'StrongSpirit', 'GentleWarrior', 'SereneStudent',
-        ];
-        const base = list[Math.floor(Math.random() * list.length)];
-        const num = Math.floor(Math.random() * 9000) + 100;
-        setProfile({ ...profile, anonymousName: `${base}${num}` });
+    const handleEditAvatar = async () => {
+        const options = {
+            mediaType: 'photo',
+            quality: 0.5,
+        };
+
+        launchImageLibrary(options, async (response) => {
+            if (response.didCancel) return;
+            if (response.errorCode) {
+                Alert.alert("Error", "Image picker error");
+                return;
+            }
+
+            const asset = response.assets[0];
+            setIsUploading(true);
+
+            try {
+                // 1. Get Signed URL
+                const fileName = `avatar-${currentUser._id}-${Date.now()}.jpg`;
+                const signedUrlRes = await fetch(`${BASE_URL}/api/v1/user/signed-url?fileName=${fileName}&fileType=${asset.type}`, {
+                    headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+                });
+                const signedUrlData = await signedUrlRes.json();
+                
+                if (!signedUrlData.success) throw new Error("Failed to get upload URL");
+
+                // 2. Upload to S3
+                const uploadRes = await fetch(signedUrlData.data.signedUrl, {
+                    method: 'PUT',
+                    body: await fetch(asset.uri).then(r => r.blob()),
+                    headers: {
+                        'Content-Type': asset.type
+                    }
+                });
+
+                if (!uploadRes.ok) throw new Error("Failed to upload image");
+
+                // 3. Update User Profile
+                const imageUrl = signedUrlData.data.signedUrl.split('?')[0];
+                const updateRes = await fetch(`${BASE_URL}/api/v1/user/update-avatar`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${currentUser.accessToken}`
+                    },
+                    body: JSON.stringify({ avatar: imageUrl })
+                });
+                const updateData = await updateRes.json();
+
+                if (updateData.success) {
+                    setCurrentUser(prev => ({ ...prev, avatar: imageUrl }));
+                    Alert.alert("Success", "Profile picture updated");
+                }
+            } catch (error) {
+                console.error("Upload error", error);
+                Alert.alert("Error", "Failed to update profile picture");
+            } finally {
+                setIsUploading(false);
+            }
+        });
     };
+
+    if (!currentUser) return null;
 
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation?.goBack?.()}>
-                        <Icon name="arrow-back" size={24} color="#1F2153" />
-                    </TouchableOpacity>
-                    <Text style={styles.title}>Profile</Text>
-                    <View style={{ width: 24 }} />
+                    <Text style={styles.headerTitle}>Profile</Text>
                 </View>
 
-                <View style={styles.card}>
-                    <Text style={styles.label}>Anonymous Name</Text>
-                    <View style={styles.row}>
-                        <TextInput
-                            value={profile.anonymousName}
-                            onChangeText={(t) => setProfile({ ...profile, anonymousName: t })}
-                            placeholder="Anonymous name"
-                            style={styles.input}
-                            maxLength={30}
-                        />
-                        <TouchableOpacity style={styles.iconBtn} onPress={generateAnonymousName}>
-                            <Icon name="auto-awesome" size={20} color="#6C63FF" />
+                <View style={styles.profileCard}>
+                    <View style={styles.avatarContainer}>
+                        {currentUser.avatar ? (
+                            <Image source={{ uri: currentUser.avatar }} style={styles.avatar} />
+                        ) : (
+                            <View style={styles.avatarPlaceholder}>
+                                <Icon name="person" size={60} color="#6C63FF" />
+                            </View>
+                        )}
+                        <TouchableOpacity 
+                            style={styles.editAvatarButton}
+                            onPress={handleEditAvatar}
+                            disabled={isUploading}
+                        >
+                            {isUploading ? (
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                                <Icon name="edit" size={20} color="#FFFFFF" />
+                            )}
                         </TouchableOpacity>
                     </View>
 
-                    <Text style={styles.label}>Age (optional)</Text>
-                    <TextInput
-                        value={profile.age}
-                        onChangeText={(t) => setProfile({ ...profile, age: t.replace(/[^0-9]/g, '') })}
-                        placeholder="Age"
-                        keyboardType="numeric"
-                        style={styles.input}
-                    />
-
-                    <Text style={styles.label}>Gender</Text>
-                    <View style={styles.pills}>
-                        {['Male', 'Female', 'Other', 'Prefer not to say'].map((g) => (
-                            <TouchableOpacity
-                                key={g}
-                                style={[
-                                    styles.pill,
-                                    profile.gender === g && styles.pillActive
-                                ]}
-                                onPress={() => setProfile({ ...profile, gender: g })}
-                            >
-                                <Text style={[styles.pillText, profile.gender === g && styles.pillTextActive]}>{g}</Text>
-                            </TouchableOpacity>
-                        ))}
+                    <Text style={styles.name}>{currentUser.realFullname}</Text>
+                    <Text style={styles.username}>@{currentUser.annonymousUsername}</Text>
+                    
+                    <View style={styles.infoRow}>
+                        <Icon name="phone" size={16} color="#6B7280" />
+                        <Text style={styles.infoText}>{currentUser.phone}</Text>
                     </View>
-
-                    <Text style={styles.label}>Institution (optional)</Text>
-                    <TextInput
-                        value={profile.institution}
-                        onChangeText={(t) => setProfile({ ...profile, institution: t })}
-                        placeholder="School / College"
-                        style={styles.input}
-                        maxLength={50}
-                    />
                 </View>
 
-                <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>Privacy & Messaging</Text>
-
-                    <View style={styles.switchRow}>
-                        <Text style={styles.switchLabel}>Allow messages from others</Text>
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Settings</Text>
+                    
+                    <View style={styles.settingItem}>
+                        <View style={styles.settingInfo}>
+                            <Text style={styles.settingLabel}>Accept Anonymous Messages</Text>
+                            <Text style={styles.settingDescription}>
+                                Allow other users to send you message requests
+                            </Text>
+                        </View>
                         <Switch
-                            value={!!profile.receiveMessages}
-                            onValueChange={(v) => setProfile({ ...profile, receiveMessages: v })}
-                        />
-                    </View>
-
-                    <View style={styles.switchRow}>
-                        <Text style={styles.switchLabel}>Receive notifications</Text>
-                        <Switch
-                            value={!!profile.receiveNotifications}
-                            onValueChange={(v) => setProfile({ ...profile, receiveNotifications: v })}
-                        />
-                    </View>
-
-                    <View style={styles.switchRow}>
-                        <Text style={styles.switchLabel}>Show age on profile</Text>
-                        <Switch
-                            value={!!profile.showAge}
-                            onValueChange={(v) => setProfile({ ...profile, showAge: v })}
-                        />
-                    </View>
-
-                    <View style={styles.switchRow}>
-                        <Text style={styles.switchLabel}>Public profile</Text>
-                        <Switch
-                            value={!!profile.publicProfile}
-                            onValueChange={(v) => setProfile({ ...profile, publicProfile: v })}
+                            value={currentUser.acceptMessages}
+                            onValueChange={handleToggleMessages}
+                            trackColor={{ false: "#E5E7EB", true: "#C7D2FE" }}
+                            thumbColor={currentUser.acceptMessages ? "#6C63FF" : "#9CA3AF"}
+                            disabled={isToggling}
                         />
                     </View>
                 </View>
 
-                <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>Change Password</Text>
+                <View style={styles.section}>
+                    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                        <Icon name="logout" size={20} color="#FF4444" />
+                        <Text style={styles.logoutText}>Logout</Text>
+                    </TouchableOpacity>
 
-                    <Text style={styles.label}>Current Password</Text>
-                    <TextInput
-                        value={passwords.current}
-                        onChangeText={(t) => setPasswords({ ...passwords, current: t })}
-                        placeholder="Current password"
-                        secureTextEntry
-                        style={styles.input}
-                        maxLength={64}
-                    />
-
-                    <Text style={styles.label}>New Password</Text>
-                    <TextInput
-                        value={passwords.newPassword}
-                        onChangeText={(t) => setPasswords({ ...passwords, newPassword: t })}
-                        placeholder="New password"
-                        secureTextEntry
-                        style={styles.input}
-                        maxLength={64}
-                    />
-
-                    <Text style={styles.label}>Confirm New Password</Text>
-                    <TextInput
-                        value={passwords.confirmNew}
-                        onChangeText={(t) => setPasswords({ ...passwords, confirmNew: t })}
-                        placeholder="Confirm new password"
-                        secureTextEntry
-                        style={styles.input}
-                        maxLength={64}
-                    />
+                    <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
+                        <Icon name="delete-forever" size={20} color="#FF4444" />
+                        <Text style={styles.deleteText}>Delete Account & Data</Text>
+                    </TouchableOpacity>
                 </View>
-
-                <TouchableOpacity style={styles.saveBtn} onPress={saveProfile} disabled={loading}>
-                    <Text style={styles.saveText}>{loading ? 'Loading...' : 'Save Profile'}</Text>
-                </TouchableOpacity>
-
-                <View style={{ height: 40 }} />
             </ScrollView>
         </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFF' },
-    content: { padding: 20, paddingBottom: 40 },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-    title: { fontSize: 20, fontWeight: '700', color: '#1F2153' },
-    card: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 16, elevation: 2 },
-    label: { color: '#6B7280', marginBottom: 8, fontWeight: '600' },
-    input: { backgroundColor: '#F7F9FF', borderRadius: 10, padding: 12, marginBottom: 12, color: '#1F2153' },
-    row: { flexDirection: 'row', alignItems: 'center' },
-    iconBtn: { marginLeft: 8, padding: 10, backgroundColor: '#F0F4FF', borderRadius: 10 },
-    pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    pill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F7F9FF', marginRight: 8, marginBottom: 8 },
-    pillActive: { backgroundColor: '#6C63FF' },
-    pillText: { color: '#6B7280' },
-    pillTextActive: { color: '#fff', fontWeight: '700' },
-    sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 12, color: '#1F2153' },
-    switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 },
-    switchLabel: { color: '#1F2153', fontWeight: '600' },
-    saveBtn: { backgroundColor: '#6C63FF', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
-    saveText: { color: '#fff', fontWeight: '700' },
+    container: {
+        flex: 1,
+        backgroundColor: '#F8FAFF',
+    },
+    scrollContent: {
+        padding: 16,
+    },
+    header: {
+        marginTop: 16,
+        marginBottom: 24,
+    },
+    headerTitle: {
+        fontSize: 28,
+        fontWeight: '700',
+        color: '#1F2153',
+    },
+    profileCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 24,
+        alignItems: 'center',
+        marginBottom: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    avatarContainer: {
+        position: 'relative',
+        marginBottom: 16,
+    },
+    avatar: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+    },
+    avatarPlaceholder: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: '#F0F4FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    editAvatarButton: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        backgroundColor: '#6C63FF',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    name: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#1F2153',
+        marginBottom: 4,
+    },
+    username: {
+        fontSize: 14,
+        color: '#6C63FF',
+        marginBottom: 12,
+        fontWeight: '500',
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#F8FAFF',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+    },
+    infoText: {
+        fontSize: 14,
+        color: '#6B7280',
+    },
+    section: {
+        marginBottom: 24,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#1F2153',
+        marginBottom: 12,
+        marginLeft: 4,
+    },
+    settingItem: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    settingInfo: {
+        flex: 1,
+        marginRight: 16,
+    },
+    settingLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1F2153',
+        marginBottom: 4,
+    },
+    settingDescription: {
+        fontSize: 12,
+        color: '#6B7280',
+        lineHeight: 18,
+    },
+    logoutButton: {
+        backgroundColor: '#FFF5F5',
+        borderRadius: 16,
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#FED7D7',
+    },
+    logoutText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FF4444',
+    },
+    deleteButton: {
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    deleteText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#FF4444',
+    },
 });
 
-export default Profile;
+export default Profile

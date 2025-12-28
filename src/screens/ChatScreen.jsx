@@ -31,7 +31,7 @@ const MessageBubble = React.memo(({ message, chatType, onLongPress }) => {
             onLongPress={() => onLongPress(message)}
             style={[styles.messageContainer, isUser ? styles.userMessageContainer : styles.otherMessageContainer]}
         >
-            {!isUser && chatType === 'group' && message.avatar && (
+            {!isUser && chatType === 'group' && (
                 <View style={styles.messageSenderAvatarContainer}>
                     {message.avatar ? (
                         <Image
@@ -39,7 +39,7 @@ const MessageBubble = React.memo(({ message, chatType, onLongPress }) => {
                             style={{ width: 28, height: 28, borderRadius: 14 }}
                         />
                     ) : (
-                        <Icon name="person" size={28} color="#6C63FF" />
+                        <Icon name="person" size={20} color="#6C63FF" />
                     )}
                 </View>
             )}
@@ -430,21 +430,20 @@ const ChatScreen = () => {
     const HeaderAvatar = useMemo(() => {
         if (chat.type === 'group') {
             return <Icon name="group" size={20} color="#6C63FF" />;
-        } else if (chat.avatar) {
-            return (
-                <View style={styles.headerSvgAvatarContainer}>
-                    {chat.avatar ? (
-                        <Image
-                            source={{ uri: chat.avatar }}
-                            style={{ width: 40, height: 40, borderRadius: 20 }}
-                        />
-                    ) : (
-                        <Icon name="person" size={40} color="#6C63FF" />
-                    )}
-                </View>
-            );
         }
-        return null;
+        
+        return (
+            <View style={styles.headerSvgAvatarContainer}>
+                {chat.avatar ? (
+                    <Image
+                        source={{ uri: chat.avatar }}
+                        style={{ width: 40, height: 40, borderRadius: 20 }}
+                    />
+                ) : (
+                    <Icon name="person" size={24} color="#6C63FF" />
+                )}
+            </View>
+        );
     }, [chat.type, chat.avatar]);
 
     // Memoize renderItem function
