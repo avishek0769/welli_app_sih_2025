@@ -222,7 +222,7 @@ const currentUser = asyncHandler(async (req, res) => {
 })
 
 const videoRecommendation = asyncHandler(async (req, res) => {
-    const response = await fetch("http://127.0.0.1:4000/api/v1/chatbot-conversation/latest?page=0&limit=5", {
+    const response = await fetch(`${process.env.BACKEND_API_URL}/api/v1/chatbot-conversation/latest?page=0&limit=5`, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${req.headers.authorization.split(" ")[1]}`,

@@ -1,6 +1,7 @@
-langchain
-langchain-core
-langchain-community
+langchain==0.1.16
+langchain-core==0.1.45
+langchain-community==0.0.32
+numpy<2
 langchain-huggingface
 langchain-groq
 faiss-cpu
@@ -10,3 +11,4 @@ requests
 boto3
 flask
 flask-cors
+gTTS

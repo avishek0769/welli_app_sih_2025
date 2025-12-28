@@ -9,19 +9,10 @@ import asyncHandler from "../utils/asyncHandler.js";
 const createChatbotConversation = asyncHandler(async (req, res) => {
     const { title } = req.body;
 
-    const chat = new ChatbotConversation({
+    const chat = await ChatbotConversation.create({
         user: req.user._id,
-        title
+        title: title || "New Chat"
     })
-
-    const response = await fetch("http://localhost:5000/api/chat", {
-        method: "POST",
-        body: JSON.stringify({ chat_id: chat._id, name: title })
-    })
-    if(!response.ok) {
-        throw new ApiError(500, "Failed to create chatbot conversation in external service")
-    }
-    await chat.save();
 
     return res.status(200).json(new ApiResponse(200, chat, "Chatbot conversation created successfully"))
 })

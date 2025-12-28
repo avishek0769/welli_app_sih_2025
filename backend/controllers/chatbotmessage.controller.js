@@ -1,3 +1,4 @@
+import mongoose from "mongoose"
 import ChatbotConversation from "../models/chatbotcoversation.model.js"
 import ChatbotMessage from "../models/chatbotmessage.model.js"
 import ApiError from "../utils/ApiError.js"
@@ -6,14 +7,14 @@ import asyncHandler from "../utils/asyncHandler.js"
 import uploadToS3 from "../utils/uploadToS3.js"
 
 const createChatbotMessage = asyncHandler(async (req, res) => {
-    const { userInput, chatId } = req.body
-
+    const { userInput, chatId, _id } = req.body
+    
     const chat = await ChatbotConversation.findById(chatId)
     if(chat.user.toString() != req.user._id.toString()) {
         throw new ApiError(402, "This chat does not belong to this user")
     }
     
-    const response = await fetch(`http://localhost:5000/api/chat/message`, {
+    const response = await fetch(`${process.env.CHATBOT_API_HOST}/api/chat/message`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -26,11 +27,14 @@ const createChatbotMessage = asyncHandler(async (req, res) => {
 
     const data = await response.json()
     
-    const message = await ChatbotMessage.create({
+    const messageData = {
+        _id: new mongoose.Types.ObjectId(_id),
         chat: chatId,
         promptText: userInput,
         responseText: data.reply,
-    })
+    }
+
+    const message = await ChatbotMessage.create(messageData)
 
     return res.status(200).json(new ApiResponse(200, message, "Chatbot response fetched"))
 })
@@ -67,7 +71,7 @@ const getAudio = asyncHandler(async (req, res) => {
         return res.status(200).json(new ApiResponse(200, { audioUrl: message.responseAudioUrl }, "Fetched audio for the chatbot message"))
     }
 
-    const response = await fetch("http://localhost:5000/api/chat/message-audio", {
+    const response = await fetch(`${process.env.CHATBOT_API_HOST}/api/chat/message-audio`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -11,40 +11,29 @@ import {
     KeyboardAvoidingView,
     Platform,
     Animated,
+    ActivityIndicator,
+    Alert,
+    Modal
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useUser } from '../context/UserContext';
+import { BASE_URL } from '../constants';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Header from '../components/Header';
+import { BSON } from 'bson';
+import Sound from 'react-native-sound';
+
+// Enable playback in silence mode
+Sound.setCategory('Playback');
 
 const { width, height } = Dimensions.get('window');
 
-/* ---------- Header Component ---------- */
-const ChatHeader = () => {
-    return (
-        <View style={styles.header}>
-            <View style={styles.headerLeft}>
-                <View style={styles.appLogo}>
-                    <View style={styles.logoGradient}>
-                        <Icon name="psychology" size={26} color="#FFFFFF" />
-                    </View>
-                </View>
-                <View style={styles.chatbotInfo}>
-                    <Text style={styles.chatbotName}>Welli Assistant</Text>
-                    <Text style={styles.chatbotStatus}>AI Mental Health Companion</Text>
-                </View>
-            </View>
-            <TouchableOpacity style={styles.menuButton} activeOpacity={0.8}>
-                <Icon name="more-vert" size={24} color="#6C63FF" />
-            </TouchableOpacity>
-        </View>
-    );
-};
-
-/* ---------- Conversation Item Component ---------- */
-const ConversationItem = ({ conversation, onPress, isActive }) => {
+const ConversationItem = ({ conversation, onPress, onLongPress, isActive }) => {
     return (
         <TouchableOpacity 
             style={[styles.conversationItem, isActive && styles.activeConversation]}
             onPress={onPress}
+            onLongPress={onLongPress}
             activeOpacity={0.7}
         >
             <View style={styles.conversationIcon}>
@@ -62,9 +51,64 @@ const ConversationItem = ({ conversation, onPress, isActive }) => {
     );
 };
 
-/* ---------- Message Component ---------- */
 const MessageBubble = ({ message }) => {
     const isUser = message.sender === 'user';
+    const { currentUser } = useUser();
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+    const soundRef = useRef(null);
+
+    useEffect(() => {
+        return () => {
+            if (soundRef.current) {
+                soundRef.current.release();
+            }
+        };
+    }, []);
+
+    const playAudio = async () => {
+        if (isPlaying) {
+            soundRef.current?.stop();
+            setIsPlaying(false);
+            return;
+        }
+
+        if (soundRef.current) {
+            soundRef.current.play((success) => {
+                setIsPlaying(false);
+            });
+            setIsPlaying(true);
+            return;
+        }
+
+        setIsLoadingAudio(true);
+        try {
+            const response = await fetch(`${BASE_URL}/api/v1/chatbot-message/audio/${message.id}`, {
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+            const data = await response.json();
+            
+            if (data.success && data.data.audioUrl) {
+                const sound = new Sound(data.data.audioUrl, null, (error) => {
+                    if (error) {
+                        console.log('failed to load the sound', error);
+                        setIsLoadingAudio(false);
+                        return;
+                    }
+                    setIsPlaying(true);
+                    sound.play((success) => {
+                        setIsPlaying(false);
+                    });
+                });
+                soundRef.current = sound;
+            }
+        } catch (error) {
+            console.error("Error playing audio", error);
+            Alert.alert("Error", "Failed to play audio");
+        } finally {
+            setIsLoadingAudio(false);
+        }
+    };
     
     return (
         <View style={[styles.messageContainer, isUser ? styles.userMessageContainer : styles.botMessageContainer]}>
@@ -77,6 +121,24 @@ const MessageBubble = ({ message }) => {
                 <Text style={[styles.messageText, isUser ? styles.userMessageText : styles.botMessageText]}>
                     {message.text}
                 </Text>
+                {!isUser && message.id && (
+                    <View style={styles.audioContainer}>
+                        <TouchableOpacity 
+                            onPress={playAudio} 
+                            style={styles.audioButton}
+                            disabled={isLoadingAudio}
+                        >
+                            {isLoadingAudio ? (
+                                <ActivityIndicator size="small" color="#6C63FF" />
+                            ) : (
+                                <Icon name={isPlaying ? "stop" : "volume-up"} size={20} color="#6C63FF" />
+                            )}
+                            <Text style={styles.audioText}>
+                                {isLoadingAudio ? "Loading..." : (isPlaying ? "Stop" : "Listen")}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
                 <Text style={[styles.messageTime, isUser ? styles.userMessageTime : styles.botMessageTime]}>
                     {message.time}
                 </Text>
@@ -85,29 +147,119 @@ const MessageBubble = ({ message }) => {
     );
 };
 
-/* ---------- Main Chatbot Component ---------- */
+const ChatMessageItem = ({ item }) => {
+    const time = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    return (
+        <View>
+            <MessageBubble 
+                message={{ 
+                    text: item.promptText, 
+                    sender: 'user', 
+                    time: time 
+                }} 
+            />
+            {item.responseText && (
+                <MessageBubble 
+                    message={{ 
+                        id: item._id,
+                        text: item.responseText, 
+                        sender: 'bot', 
+                        time: time 
+                    }} 
+                />
+            )}
+        </View>
+    );
+};
+
 export default function Chatbot() {
-    const [messages, setMessages] = useState([
-        {
-            id: '1',
-            text: 'Hello! I\'m your Welli Assistant. I\'m here to support your mental wellbeing. How are you feeling today?',
-            sender: 'bot',
-            time: '10:30 AM'
-        }
-    ]);
+    const { currentUser } = useUser();
+    const [messages, setMessages] = useState([]);
+    const [conversations, setConversations] = useState([]);
     const [inputText, setInputText] = useState('');
     const [sidebarVisible, setSidebarVisible] = useState(false);
-    const [activeConversation, setActiveConversation] = useState(0);
+    const [activeConversationId, setActiveConversationId] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isSending, setIsSending] = useState(false);
+    const [page, setPage] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [editingConversation, setEditingConversation] = useState(null);
+    const [newTitle, setNewTitle] = useState('');
+
     const flatListRef = useRef(null);
     const sidebarAnimation = useRef(new Animated.Value(-250)).current;
+    const isPaginationRef = useRef(false);
 
-    // Mock conversation history
-    const conversations = [
-        { id: 0, title: 'Feeling anxious about work', timestamp: '2 hours ago' },
-        { id: 1, title: 'Sleep problems discussion', timestamp: 'Yesterday' },
-        { id: 2, title: 'Stress management tips', timestamp: '2 days ago' },
-        { id: 3, title: 'Morning motivation chat', timestamp: '1 week ago' },
-    ];
+    useEffect(() => {
+        loadInitialData();
+        fetchConversations();
+    }, []);
+
+    const loadInitialData = async () => {
+        try {
+            const storedChatId = await AsyncStorage.getItem('chatbot_latest_chatId');
+            const storedMessages = await AsyncStorage.getItem('chatbot_latest_messages');
+
+            if (storedChatId && storedMessages) {
+                setActiveConversationId(storedChatId);
+                setMessages(JSON.parse(storedMessages));
+            } else {
+                fetchLatestChat();
+            }
+        } catch (error) {
+            console.error("Error loading initial data", error);
+            fetchLatestChat();
+        }
+    };
+
+    const fetchConversations = async () => {
+        if (!currentUser) return;
+        try {
+            const response = await fetch(`${BASE_URL}/api/v1/chatbot-conversation?page=0&limit=20`, {
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                setConversations(data.data);
+            }
+        } catch (error) {
+            console.error("Error fetching conversations", error);
+        }
+    };
+
+    const fetchLatestChat = async () => {
+        if (!currentUser) return;
+        setIsLoading(true);
+        try {
+            const response = await fetch(`${BASE_URL}/api/v1/chatbot-conversation/latest`, {
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+            const data = await response.json();
+            if (data.success && data.data.chat) {
+                const chatId = data.data.chat._id;
+                setActiveConversationId(chatId);
+                await AsyncStorage.setItem('chatbot_latest_chatId', chatId);
+                
+                // Fetch latest messages for this chat using the message endpoint
+                const msgResponse = await fetch(`${BASE_URL}/api/v1/chatbot-message/${chatId}?page=0&limit=20`, {
+                    headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+                });
+                const msgData = await msgResponse.json();
+                if (msgData.success) {
+                    const sortedMessages = msgData.data.reverse();
+                    setMessages(sortedMessages);
+                    await AsyncStorage.setItem('chatbot_latest_messages', JSON.stringify(sortedMessages));
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching latest chat", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const toggleSidebar = () => {
         setSidebarVisible(!sidebarVisible);
@@ -118,44 +270,90 @@ export default function Chatbot() {
         }).start();
     };
 
-    const sendMessage = () => {
-        if (inputText.trim()) {
-            const newUserMessage = {
-                id: Date.now().toString(),
-                text: inputText.trim(),
-                sender: 'user',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            };
+    const sendMessage = async () => {
+        if (!inputText.trim() || isSending) return;
 
-            setMessages(prev => [...prev, newUserMessage]);
-            setInputText('');
+        const text = inputText.trim();
+        setInputText('');
+        setIsSending(true);
 
-            // Simulate bot response
-            setTimeout(() => {
-                const botResponse = {
-                    id: (Date.now() + 1).toString(),
-                    text: getBotResponse(newUserMessage.text),
-                    sender: 'bot',
-                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                };
-                setMessages(prev => [...prev, botResponse]);
-            }, 1000);
+        // Generate ObjectId
+        const messageId = new BSON.ObjectId().toString();
+        const timestamp = new Date().toISOString();
+
+        // Optimistic update with combined object
+        const newMessage = {
+            _id: messageId,
+            promptText: text,
+            responseText: null, // Loading state
+            timestamp: timestamp
+        };
+        
+        setMessages(prev => [...prev, newMessage]);
+
+        try {
+            let currentChatId = activeConversationId;
+            
+            if (!currentChatId || typeof currentChatId !== 'string') {
+                const createRes = await fetch(`${BASE_URL}/api/v1/chatbot-conversation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${currentUser.accessToken}`
+                    },
+                    body: JSON.stringify({ title: text.substring(0, 20) || "New Chat" })
+                });
+                const createData = await createRes.json();
+
+                if (createData.success && createData.data?._id) {
+                    currentChatId = createData.data._id;
+                    setActiveConversationId(currentChatId);
+                    await AsyncStorage.setItem('chatbot_latest_chatId', currentChatId);
+                    fetchConversations(); // Refresh sidebar 
+                }
+                else {
+                    throw new Error("Failed to create conversation");
+                }
+            }
+
+            const response = await fetch(`${BASE_URL}/api/v1/chatbot-message`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${currentUser.accessToken}`
+                },
+                body: JSON.stringify({ 
+                    userInput: text, 
+                    chatId: currentChatId,
+                    _id: messageId 
+                })
+            });
+            
+            const data = await response.json();
+            console.log(data)
+            if (data.success) {
+                const msg = data.data;
+                
+                setMessages(prev => {
+                    const newMessages = prev.map(m => 
+                        m._id === messageId ? msg : m
+                    );
+                    AsyncStorage.setItem('chatbot_latest_messages', JSON.stringify(newMessages));
+                    return newMessages;
+                });
+            }
+        } catch (error) {
+            console.error("Error sending message", error);
+            Alert.alert("Error", "Failed to send message");
+            // Remove the optimistic message on error
+            setMessages(prev => prev.filter(m => m._id !== messageId));
+        } finally {
+            setIsSending(false);
         }
     };
 
-    const getBotResponse = (userMessage) => {
-        const responses = [
-            "I understand how you're feeling. It's completely normal to experience these emotions.",
-            "Thank you for sharing that with me. Can you tell me more about what's been bothering you?",
-            "That sounds challenging. Have you tried any relaxation techniques like deep breathing?",
-            "I'm here to listen. Remember that taking care of your mental health is important.",
-            "It's great that you're reaching out. What would you like to work on today?"
-        ];
-        return responses[Math.floor(Math.random() * responses.length)];
-    };
-
-    const selectConversation = (conversationId) => {
-        setActiveConversation(conversationId);
+    const selectConversation = async (conversationId) => {
+        setActiveConversationId(conversationId);
         setSidebarVisible(false);
         Animated.timing(sidebarAnimation, {
             toValue: -250,
@@ -163,27 +361,168 @@ export default function Chatbot() {
             useNativeDriver: true,
         }).start();
         
-        // Load conversation messages (mock implementation)
-        setMessages([
-            {
-                id: '1',
-                text: 'Hello! Welcome back. How can I help you today?',
-                sender: 'bot',
-                time: '10:30 AM'
+        setIsLoading(true);
+        setPage(0);
+        setHasMore(true);
+        
+        try {
+            const response = await fetch(`${BASE_URL}/api/v1/chatbot-message/${conversationId}?page=0&limit=20`, {
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                // The API returns messages sorted by timestamp -1 (newest first)
+                // We need to reverse them to show oldest first
+                const sortedMessages = data.data.reverse();
+                setMessages(sortedMessages);
             }
-        ]);
+        } catch (error) {
+            console.error("Error fetching conversation messages", error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    useEffect(() => {
-        if (flatListRef.current && messages.length > 0) {
-            flatListRef.current.scrollToEnd({ animated: true });
+    const fetchMoreMessages = async () => {
+        if (!activeConversationId || !hasMore || loadingMore) return;
+        
+        setLoadingMore(true);
+        const nextPage = page + 1;
+        
+        try {
+            const response = await fetch(`${BASE_URL}/api/v1/chatbot-message/${activeConversationId}?page=${nextPage}&limit=20`, {
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                const newMessages = data.data;
+                if (newMessages.length === 0) {
+                    setHasMore(false);
+                } else {
+                    // newMessages are newest first (descending).
+                    // We want to prepend them to the TOP of the list (which is the oldest part).
+                    // So we reverse them to get oldest -> newest of that chunk.
+                    const sortedNewMessages = newMessages.reverse();
+                    
+                    isPaginationRef.current = true;
+                    setMessages(prev => [...sortedNewMessages, ...prev]);
+                    setPage(nextPage);
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching more messages", error);
+        } finally {
+            setLoadingMore(false);
         }
-    }, [messages]);
+    };
+
+    const handleScroll = (event) => {
+        const offsetY = event.nativeEvent.contentOffset.y;
+        if (offsetY <= 0 && !loadingMore && hasMore && messages.length > 0) {
+            fetchMoreMessages();
+        }
+    };
+
+    const startNewChat = () => {
+        setActiveConversationId(null);
+        setMessages([]);
+        setSidebarVisible(false);
+        Animated.timing(sidebarAnimation, {
+            toValue: -250,
+            duration: 300,
+            useNativeDriver: true,
+        }).start();
+    };
+
+    const handleLongPress = (conversation) => {
+        Alert.alert(
+            "Conversation Options",
+            "Choose an action",
+            [
+                {
+                    text: "Edit Title",
+                    onPress: () => {
+                        setEditingConversation(conversation);
+                        setNewTitle(conversation.title);
+                        setEditModalVisible(true);
+                    }
+                },
+                {
+                    text: "Delete Conversation",
+                    onPress: () => {
+                        Alert.alert(
+                            "Delete Conversation",
+                            "Are you sure you want to delete this conversation?",
+                            [
+                                { text: "Cancel", style: "cancel" },
+                                { 
+                                    text: "Delete", 
+                                    style: "destructive",
+                                    onPress: () => deleteConversation(conversation._id)
+                                }
+                            ]
+                        );
+                    },
+                    style: "destructive"
+                },
+                {
+                    text: "Cancel",
+                    style: "cancel"
+                }
+            ]
+        );
+    };
+
+    const deleteConversation = async (chatId) => {
+        try {
+            const response = await fetch(`${BASE_URL}/api/v1/chatbot-conversation/${chatId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+            
+            if (response.ok) {
+                setConversations(prev => prev.filter(c => c._id !== chatId));
+                if (activeConversationId === chatId) {
+                    startNewChat();
+                }
+                Alert.alert("Success", "Conversation deleted");
+            }
+        } catch (error) {
+            console.error("Error deleting conversation", error);
+            Alert.alert("Error", "Failed to delete conversation");
+        }
+    };
+
+    const updateConversationTitle = async () => {
+        if (!editingConversation || !newTitle.trim()) return;
+        
+        try {
+            const response = await fetch(`${BASE_URL}/api/v1/chatbot-conversation/${editingConversation._id}`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${currentUser.accessToken}` 
+                },
+                body: JSON.stringify({ title: newTitle })
+            });
+            
+            if (response.ok) {
+                setConversations(prev => prev.map(c => 
+                    c._id === editingConversation._id ? { ...c, title: newTitle } : c
+                ));
+                setEditModalVisible(false);
+                setEditingConversation(null);
+                setNewTitle('');
+            }
+        } catch (error) {
+            console.error("Error updating title", error);
+            Alert.alert("Error", "Failed to update title");
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
             <Header />
-            {/* <ChatHeader /> */}
             
             <View style={styles.mainContent}>
                 {/* Sidebar */}
@@ -199,12 +538,13 @@ export default function Chatbot() {
                     </View>
                     <FlatList
                         data={conversations}
-                        keyExtractor={(item) => item.id.toString()}
+                        keyExtractor={(item) => item._id}
                         renderItem={({ item }) => (
                             <ConversationItem
                                 conversation={item}
-                                isActive={activeConversation === item.id}
-                                onPress={() => selectConversation(item.id)}
+                                isActive={activeConversationId === item._id}
+                                onPress={() => selectConversation(item._id)}
+                                onLongPress={() => handleLongPress(item)}
                             />
                         )}
                         showsVerticalScrollIndicator={false}
@@ -218,20 +558,35 @@ export default function Chatbot() {
                             <Icon name="menu" size={24} color="#6C63FF" />
                         </TouchableOpacity>
                         <Text style={styles.chatTitle}>Chat with Welli</Text>
-                        <TouchableOpacity style={styles.newChatButton}>
+                        <TouchableOpacity style={styles.newChatButton} onPress={startNewChat}>
                             <Icon name="add" size={20} color="#6C63FF" />
                         </TouchableOpacity>
                     </View>
 
-                    <FlatList
-                        ref={flatListRef}
-                        data={messages}
-                        keyExtractor={(item) => item.id}
-                        renderItem={({ item }) => <MessageBubble message={item} />}
-                        style={styles.messagesList}
-                        contentContainerStyle={styles.messagesContent}
-                        showsVerticalScrollIndicator={false}
-                    />
+                    {isLoading ? (
+                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <ActivityIndicator size="large" color="#6C63FF" />
+                        </View>
+                    ) : (
+                        <FlatList
+                            ref={flatListRef}
+                            data={messages}
+                            keyExtractor={(item) => item._id}
+                            renderItem={({ item }) => <ChatMessageItem item={item} />}
+                            style={styles.messagesList}
+                            contentContainerStyle={styles.messagesContent}
+                            showsVerticalScrollIndicator={false}
+                            onScroll={handleScroll}
+                            scrollEventThrottle={16}
+                            ListHeaderComponent={loadingMore ? <ActivityIndicator size="small" color="#6C63FF" /> : null}
+                        />
+                    )}
+                    
+                    {isSending && (
+                         <View style={{ padding: 10, marginLeft: 16 }}>
+                            <Text style={{ color: '#6B7280', fontStyle: 'italic' }}>Welli is typing...</Text>
+                         </View>
+                    )}
                 </View>
             </View>
 
@@ -253,15 +608,50 @@ export default function Chatbot() {
                             maxLength={500}
                         />
                         <TouchableOpacity
-                            style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+                            style={[styles.sendButton, (!inputText.trim() || isSending) && styles.sendButtonDisabled]}
                             onPress={sendMessage}
-                            disabled={!inputText.trim()}
+                            disabled={!inputText.trim() || isSending}
                         >
                             <Icon name="send" size={20} color={inputText.trim() ? "#FFFFFF" : "#9CA3AF"} />
                         </TouchableOpacity>
                     </View>
                 </View>
             </KeyboardAvoidingView>
+
+            {/* Edit Title Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={editModalVisible}
+                onRequestClose={() => setEditModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Edit Conversation Title</Text>
+                        <TextInput
+                            style={styles.modalInput}
+                            value={newTitle}
+                            onChangeText={setNewTitle}
+                            placeholder="Enter new title"
+                            autoFocus
+                        />
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity 
+                                style={[styles.modalButton, styles.cancelButton]}
+                                onPress={() => setEditModalVisible(false)}
+                            >
+                                <Text style={styles.cancelButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={[styles.modalButton, styles.saveButton]}
+                                onPress={updateConversationTitle}
+                            >
+                                <Text style={styles.saveButtonText}>Save</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -520,6 +910,25 @@ const styles = StyleSheet.create({
     botMessageTime: {
         color: '#9CA3AF',
     },
+    audioContainer: {
+        marginTop: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    audioButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F0F4FF',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 16,
+    },
+    audioText: {
+        fontSize: 12,
+        color: '#6C63FF',
+        marginLeft: 6,
+        fontWeight: '600',
+    },
     inputContainer: {
         backgroundColor: '#FFFFFF',
         paddingHorizontal: 16,
@@ -556,5 +965,66 @@ const styles = StyleSheet.create({
     },
     sendButtonDisabled: {
         backgroundColor: '#F3F4F6',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        borderRadius: 20,
+        padding: 20,
+        width: '80%',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 15,
+        color: '#1F2153',
+        textAlign: 'center',
+    },
+    modalInput: {
+        borderWidth: 1,
+        borderColor: '#E8F0FF',
+        borderRadius: 10,
+        padding: 10,
+        marginBottom: 20,
+        color: '#1F2153',
+        backgroundColor: '#F8FAFF',
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    modalButton: {
+        flex: 1,
+        padding: 10,
+        borderRadius: 10,
+        alignItems: 'center',
+        marginHorizontal: 5,
+    },
+    cancelButton: {
+        backgroundColor: '#F3F4F6',
+    },
+    saveButton: {
+        backgroundColor: '#6C63FF',
+    },
+    cancelButtonText: {
+        color: '#6B7280',
+        fontWeight: '600',
+    },
+    saveButtonText: {
+        color: 'white',
+        fontWeight: '600',
     },
 });
