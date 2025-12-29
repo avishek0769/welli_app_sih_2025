@@ -192,10 +192,17 @@ const unseenPostCountByUser = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, forums, "Unseen post count fetched successfully"))
 })
 
+const getPostCountByUser = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const count = await Post.countDocuments({ createdBy: userId });
+    return res.status(200).json(new ApiResponse(200, { count }, "Post count fetched successfully"));
+})
+
 export {
     createPost,
     editPost,
     deletePost,
     getAllPosts,
-    unseenPostCountByUser
+    unseenPostCountByUser,
+    getPostCountByUser
 }

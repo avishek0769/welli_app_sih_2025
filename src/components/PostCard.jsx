@@ -39,9 +39,6 @@ const PostCard = ({ post, onLike, onComment, onEdit, onDelete, currentUserId }) 
     };
 
     const handleUserPress = () => {
-        // Don't show profile for current user's posts
-        const username = post.createdBy.annonymousUsername || 'Anonymous';
-        if (username === 'You') return;
         setShowUserProfile(true);
     };
 
@@ -103,7 +100,7 @@ const PostCard = ({ post, onLike, onComment, onEdit, onDelete, currentUserId }) 
                 <TouchableOpacity 
                     style={styles.userInfo}
                     onPress={handleUserPress}
-                    activeOpacity={username === 'You' ? 1 : 0.7}
+                    activeOpacity={0.7}
                 >
                     <View style={[styles.avatar, !avatar && { backgroundColor: '#6C63FF', borderRadius: 20 }]}>
                         {avatar && <Image source={{ uri: avatar }}
@@ -196,8 +193,6 @@ const PostCard = ({ post, onLike, onComment, onEdit, onDelete, currentUserId }) 
                     username: username,
                     avatar: avatar,
                     joinDate: 'Joined 3 months ago',
-                    postsCount: Math.floor(Math.random() * 50) + 10,
-                    supportGiven: Math.floor(Math.random() * 200) + 50,
                     category: category,
                 }}
                 onClose={() => setShowUserProfile(false)}

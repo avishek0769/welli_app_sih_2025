@@ -12,13 +12,15 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
+import { BASE_URL } from '../constants';
 
 import { useUser } from '../context/UserContext';
 
 const UserProfileModal = ({ visible, user, onClose }) => {
     const [fadeAnim] = useState(new Animated.Value(0));
     const navigation = useNavigation();
-    const { startChat } = useUser();
+    const { startChat, currentUser } = useUser();
+    const [postCount, setPostCount] = useState(0);
 
     React.useEffect(() => {
         if (visible) {
@@ -35,6 +37,27 @@ const UserProfileModal = ({ visible, user, onClose }) => {
             }).start();
         }
     }, [visible, fadeAnim]);
+
+    React.useEffect(() => {
+        if (user?._id && visible) {
+            const fetchPostCount = async () => {
+                try {
+                    const response = await fetch(`${BASE_URL}/api/v1/post/count/${user._id}`, {
+                        headers: {
+                            Authorization: `Bearer ${currentUser.accessToken}`
+                        }
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        setPostCount(data.data.count);
+                    }
+                } catch (error) {
+                    console.error("Error fetching post count:", error);
+                }
+            };
+            fetchPostCount();
+        }
+    }, [user, visible, currentUser]);
 
     if (!user) return null;
 
@@ -175,7 +198,7 @@ const UserProfileModal = ({ visible, user, onClose }) => {
                     {/* Posts Count */}
                     <View style={styles.statsContainer}>
                         <View style={styles.statItem}>
-                            <Text style={styles.statNumber}>{user.postsCount}</Text>
+                            <Text style={styles.statNumber}>{postCount}</Text>
                             <Text style={styles.statLabel}>Total Posts</Text>
                         </View>
                     </View>
@@ -184,11 +207,13 @@ const UserProfileModal = ({ visible, user, onClose }) => {
                     <View style={styles.actionsContainer}>
                         <Text style={styles.actionsTitle}>Actions</Text>
                         
-                        <ActionButton
-                            icon="chat"
-                            text="Start Personal Chat"
-                            onPress={handleStartChat}
-                        />
+                        {user._id !== currentUser._id && (
+                            <ActionButton
+                                icon="chat"
+                                text="Start Personal Chat"
+                                onPress={handleStartChat}
+                            />
+                        )}
                         
                         <ActionButton
                             icon="block"
