@@ -86,12 +86,12 @@ const signUp = asyncHandler(async (req, res) => {
 
     if (user.isVerified && !user.hasSignedup) {
         user.annonymousUsername = annonymousUsername,
-            user.realFullname = realFullname,
-            user.gender = gender,
-            user.age = age,
-            user.password = password,
-            user.refreshToken = refreshToken,
-            user.avatar = avatar
+        user.realFullname = realFullname,
+        user.gender = gender,
+        user.age = age,
+        user.password = password,
+        user.refreshToken = refreshToken,
+        user.avatar = avatar
         user.hasSignedup = true
         await user.save()
     }

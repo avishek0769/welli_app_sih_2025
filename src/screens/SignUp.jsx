@@ -483,12 +483,13 @@ const SignUp = ({ navigation }) => {
                     password: profileData.password,
                     gender: profileData.gender,
                     age: profileData.age,
-                    phoneNumber,
+                    phoneNumber: '+91' + phoneNumber,
                     avatar: uploadedUrl || null,
                 }),
             });
             const json = await res.json()
             setCurrentUser(json.data);
+            console.log(json)
             AsyncStorage.setItem('accessToken', json.data.accessToken);
             AsyncStorage.setItem('refreshToken', json.data.refreshToken);
             AsyncStorage.setItem('accessTokenExp', json.data.accessTokenExp);
@@ -498,7 +499,7 @@ const SignUp = ({ navigation }) => {
         catch (error) {
             showAlert({
                 title: 'Account Creation Failed',
-                message: 'Something went wrong. Please try again.',
+                message: error.message || 'Could not create account. Please try again.',
                 type: 'error',
                 buttonText: 'Retry'
             });
