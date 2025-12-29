@@ -42,7 +42,7 @@ const UserProvider = ({ children }) => {
         
         const stored = await AsyncStorage.getItem(`chat_messages_${chatId}`);
         const parsedStored = stored ? JSON.parse(stored) : [];
-
+        console.log("Peer-Messages Local", parsedStored)
         if (parsedStored.length > 0) { 
             setPeerMessages(prev => ({ ...prev, [chatId]: parsedStored }));
         }
@@ -52,7 +52,7 @@ const UserProvider = ({ children }) => {
                 headers: { Authorization: `Bearer ${currentUser.accessToken}` }
             });
             const data = await res.json();
-        
+            console.log("Peer-Messages API", data)
             if (data.success) {
                 const apiMessages = data.data.messages;
                 const messageMap = new Map();
@@ -132,11 +132,36 @@ const UserProvider = ({ children }) => {
         }
     }, [currentUser]);
 
+    const restoreChat = useCallback(async (chatId) => {
+        if (!currentUser) return;
+         try {
+            await fetch(`${BASE_URL}/api/v1/peer-chat/restore/${chatId}`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+            });
+            
+            setPeerChats(prev => {
+                const updated = prev.map(c => {
+                    if (c._id === chatId) {
+                         const deletedFor = (c.deletedFor || []).filter(id => id !== currentUser._id);
+                         return { ...c, deletedFor };
+                    }
+                    return c;
+                });
+                AsyncStorage.setItem('peer_chats', JSON.stringify(updated));
+                return updated;
+            });
+
+        } catch (err) {
+            console.error("Error restoring chat", err);
+        }
+    }, [currentUser]);
+
     const fetchPeerChats = useCallback(async () => {
         if (!currentUser) return;
         
         const stored = JSON.parse(await AsyncStorage.getItem('peer_chats'));
-        
+        console.log("Peer-Chats Local", stored)
         try {
             const res = await fetch(`${BASE_URL}/api/v1/peer-chat/all`, {
                 method: 'GET',
@@ -146,7 +171,7 @@ const UserProvider = ({ children }) => {
                 },
             });
             const data = await res.json();
-            
+            console.log("Peer-Chats API", data)
             if (data.success) {
                 const mappedChats = data.data.map(chat => {
                     const storedChat = stored ? stored.find(c => c._id === chat._id) : null;
@@ -158,7 +183,7 @@ const UserProvider = ({ children }) => {
                         avatar: chat.participant.avatar,
                         lastMessage: chat.lastMessage?.text,
                         lastMessageTime: chat.lastMessage?.timestamp || chat.updatedAt,
-                        unreadCount: Math.max(chat.unreadCount || 0, localUnread),
+                        unreadCount: chat.unreadCount,
                         type: 'peer'
                     };
                 });
@@ -176,8 +201,33 @@ const UserProvider = ({ children }) => {
                     return chat;
                 });
 
-                setPeerChats(finalChats);
-                await AsyncStorage.setItem('peer_chats', JSON.stringify(finalChats));
+                // Check for unread + deleted chats and restore them
+                const chatsToRestore = finalChats.filter(c => 
+                    c.unreadCount > 0 && 
+                    c.deletedFor && 
+                    c.deletedFor.includes(currentUser._id)
+                );
+
+                for (const chat of chatsToRestore) {
+                    fetch(`${BASE_URL}/api/v1/peer-chat/restore/${chat._id}`, {
+                        method: 'PATCH',
+                        headers: { Authorization: `Bearer ${currentUser.accessToken}` }
+                    }).catch(err => console.error("Error restoring chat in background", err));
+                }
+
+                // Update local state to reflect restoration immediately
+                const restoredChats = finalChats.map(c => {
+                    if (c.unreadCount > 0 && c.deletedFor?.includes(currentUser._id)) {
+                        return { 
+                            ...c, 
+                            deletedFor: c.deletedFor.filter(id => id !== currentUser._id) 
+                        };
+                    }
+                    return c;
+                });
+
+                setPeerChats(restoredChats);
+                await AsyncStorage.setItem('peer_chats', JSON.stringify(restoredChats));
             }
         } catch (error) {
             console.error("Failed to fetch chats", error);
@@ -310,7 +360,16 @@ const UserProvider = ({ children }) => {
         if (!currentUser) return;
         
         setPeerChats(prev => {
-            const updated = prev.filter(c => c._id !== chatId);
+            const updated = prev.map(c => {
+                if (c._id === chatId) {
+                    // Add current user to deletedFor if not present
+                    const deletedFor = c.deletedFor || [];
+                    if (!deletedFor.includes(currentUser._id)) {
+                        return { ...c, deletedFor: [...deletedFor, currentUser._id] };
+                    }
+                }
+                return c;
+            });
             AsyncStorage.setItem('peer_chats', JSON.stringify(updated));
             return updated;
         });
@@ -324,11 +383,16 @@ const UserProvider = ({ children }) => {
         });
         
         try {
-            await fetch(`${BASE_URL}/api/v1/peer-chat/delete/${chatId}`, {
+            const res = await fetch(`${BASE_URL}/api/v1/peer-chat/delete/${chatId}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${currentUser.accessToken}` }
             });
-        } catch (err) {
+            if(!res.ok) {
+                console.error(await res.json());
+            }
+            else console.log(await res.text());
+        }
+        catch (err) {
             console.error("Error deleting chat", err);
         }
     }, [currentUser]);
@@ -573,6 +637,26 @@ const UserProvider = ({ children }) => {
             // Global Message Listeners
             newSocket.on('newMessage', async (data) => {
                 const { chatId, message, senderId, timestamp, messageId } = data;
+
+                // Check if chat exists locally
+                let chatExists = peerChatsRef.current.some(c => c._id === chatId);
+
+                if (!chatExists) {
+                    await fetchPeerChats();
+                    // Check again after fetching
+                    const storedChats = await AsyncStorage.getItem('peer_chats');
+                    const parsedChats = storedChats ? JSON.parse(storedChats) : [];
+                    chatExists = parsedChats.some(c => c._id === chatId);
+                    
+                    if (!chatExists) return;
+                }
+
+                // Check if chat is deleted for user and restore it
+                const currentChat = peerChatsRef.current.find(c => c._id === chatId);
+                if (currentChat && currentChat.deletedFor?.includes(currentUser._id)) {
+                    await restoreChat(chatId);
+                }
+
                 const newMessage = {
                     _id: messageId,
                     text: message,
@@ -582,7 +666,7 @@ const UserProvider = ({ children }) => {
                 };
 
                 const stored = await AsyncStorage.getItem(`chat_messages_${chatId}`);
-                const parsedStored = stored ? JSON.parse(stored) : null;
+                const parsedStored = stored ? JSON.parse(stored) : [];
                 
                 setPeerMessages(prev => {
                     const current = prev[chatId] || [];

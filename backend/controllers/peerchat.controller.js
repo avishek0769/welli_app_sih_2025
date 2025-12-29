@@ -12,7 +12,7 @@ import PeerMessage from "../models/peermessage.model.js";
 
 const createChat = asyncHandler(async (req, res) => {
     const { peerId } = req.params;
-    console.log(req.user._id, peerId);
+    
     const peer = await User.findById(peerId)
     if (!peer.acceptMessages) {
         throw new ApiError(401, "User does not accept messages from strangers")
@@ -37,42 +37,63 @@ const createChat = asyncHandler(async (req, res) => {
 
 const deleteChat = asyncHandler(async (req, res) => {
     const { chatId } = req.params;
+    const chat = await PeerChat.findById(chatId);
+    
+    const userId = req.user._id.toString();
+    const participantId = chat.participants.find(id => id.toString() != userId).toString();
 
-    const messages = await PeerMessage.countDocuments({ chat: chatId })
+    if (!chat) {
+        throw new ApiError(404, "Chat not found");
+    }
+    if (!chat.participants.map(id => id.toString()).includes(userId)) {
+        throw new ApiError(403, "Not authorized to delete this chat");
+    }
+    
+    const messagesCountOfPart = await PeerMessage.countDocuments({
+        chat: chatId,
+        deletedFor: { $nin: [participantId] }
+    });
+    const alreadyDeletedForPart = chat.deletedFor.includes(participantId);
 
-    if(messages === 0) {
-        const chat = await PeerChat.findByIdAndDelete(chatId)
-        if(!chat) {
-            throw new ApiError(404, "Chat not found")
-        }
-        return res.status(200).send("Chat deleted successfully")
+    if (alreadyDeletedForPart && messagesCountOfPart === 0) {
+        await PeerMessage.deleteMany({ chat: chatId });
+        await PeerChat.findByIdAndDelete(chatId);
+        return res.status(200).send("Chat deleted successfully");
+    }
+    if(alreadyDeletedForPart) {
+        await PeerChat.findByIdAndUpdate(chatId, {
+            $pull: { deletedFor: participantId }
+        });
     }
 
-    const chat = await PeerChat.findById(chatId)
+    await PeerChat.findByIdAndUpdate(chatId, {
+        $addToSet: { deletedFor: userId },
+    });
 
-    if (chat.deletedFor.length && chat.participants.includes(req.user._id.toString())) {
-        await PeerMessage.deleteMany({ chat: chatId })
-        const deletedChat = await PeerChat.findByIdAndDelete(chatId)
-        if(!deletedChat) {
-            throw new ApiError(404, "Chat not found")
-        }
-    }
-    else if(chat.participants.includes(req.user._id.toString())) {
-        const updatedChat = await PeerChat.findByIdAndUpdate(
-            chatId,
-            { $addToSet: { deletedFor: req.user._id } }
-        )
-        if(!updatedChat) {
-            throw new ApiError(404, "Chat not found")
-        }
-        await PeerMessage.updateMany(
-            { chat: chat._id },
-            { $addToSet: { deletedFor: req.user._id } }
-        )
-    }
+    await PeerMessage.updateMany(
+        { chat: chatId },
+        { $addToSet: { deletedFor: userId } }
+    );    
 
-    return res.status(200).send("Chat deleted successfully")
-})
+    await PeerMessage.deleteMany({
+        chat: chatId,
+        $expr: { $eq: [{ $size: "$deletedFor" }, 2] }
+    })
+
+    return res.status(200).send("Chat deleted successfully");
+});
+
+const restoreChat = asyncHandler(async (req, res) => {
+    const { chatId } = req.params;
+    const userId = req.user._id;
+
+    await PeerChat.findByIdAndUpdate(chatId, {
+        $pull: { deletedFor: userId }
+    });
+
+    return res.status(200).send("Chat restored successfully");
+});
+
 
 const getChats = asyncHandler(async (req, res) => {
     const chats = await PeerChat.aggregate([
@@ -131,14 +152,15 @@ const getChats = asyncHandler(async (req, res) => {
         {
             $lookup: {
                 from: "peermessages",
-                let: { chatId: "$_id", currentUser: req.user._id },
+                let: { chatId: "$_id", currentUser: new mongoose.Types.ObjectId(req.user._id) },
                 pipeline: [
                     {
                         $match: {
                             $expr: {
                                 $and: [
                                     { $eq: ["$chat", "$$chatId"] },
-                                    { $not: { $in: ["$$currentUser", "$readBy"] } }
+                                    { $not: { $in: ["$$currentUser", "$readBy"] } },
+                                    { $not: { $in: ["$$currentUser", "$deletedFor"] } }
                                 ]
                             }
                         },
@@ -176,5 +198,6 @@ const getChats = asyncHandler(async (req, res) => {
 export {
     createChat,
     deleteChat,
-    getChats
+    getChats,
+    restoreChat
 }

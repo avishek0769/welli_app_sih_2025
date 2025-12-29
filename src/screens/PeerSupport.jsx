@@ -632,7 +632,7 @@ const PeerSupport = () => {
             </View>
 
             <FlatList
-                data={activeTab === 'forums' ? forums : peerChats}
+                data={activeTab === 'forums' ? forums : peerChats.filter(chat => !chat.deletedFor?.includes(currentUser._id))}
                 keyExtractor={(item) => item._id || item.id}
                 renderItem={({ item }) => (
                     <ChatListItem

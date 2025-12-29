@@ -72,7 +72,7 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment, on
     };
 
     const handleUserPress = (user) => {
-        if (user.username === 'You') return;
+        if (user._id === currentUser._id) return;
         setSelectedUser(user);
         setShowUserProfile(true);
     };
@@ -96,7 +96,7 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment, on
                         supportGiven: Math.floor(Math.random() * 150) + 20,
                         category: 'Support Member',
                     })}
-                    activeOpacity={comment.commenter.annonymousUsername === 'You' ? 1 : 0.7}
+                    activeOpacity={comment.commenter._id === currentUser._id ? 1 : 0.7}
                 >
                     <View style={[styles.commentAvatar, !comment.commenter.avatar && { backgroundColor: '#6C63FF', borderRadius: 14 }]}>
                         {comment.commenter.avatar ? (
@@ -197,7 +197,7 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment, on
                                     supportGiven: Math.floor(Math.random() * 200) + 50,
                                     category: post.category,
                                 })}
-                                activeOpacity={post.createdBy.annonymousUsername === 'You' ? 1 : 0.7}
+                                activeOpacity={post.createdBy._id === currentUser._id ? 1 : 0.7}
                             >
                                 <View style={[styles.avatar, !post.createdBy.avatar && { backgroundColor: '#6C63FF', borderRadius: 20 }]}>
                                     {post.createdBy.avatar ? <Image source={{ uri: post.createdBy.avatar }}

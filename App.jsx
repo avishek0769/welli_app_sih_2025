@@ -18,9 +18,15 @@ import ForumScreen from './src/screens/ForumScreen';
 import Profile from './src/screens/Profile';
 import UserProvider from './src/context/UserContext';
 import 'react-native-get-random-values';
+import { useEffect } from 'react';
+import ImmersiveMode from 'react-native-immersive-mode';
 
 function App() {
     const Stack = createNativeStackNavigator()
+
+    useEffect(() => {
+        ImmersiveMode.setBarMode('BottomSticky');
+    }, []);
 
     return (
         <GestureHandlerRootView>
