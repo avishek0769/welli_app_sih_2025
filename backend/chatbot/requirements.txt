@@ -12,3 +12,4 @@ boto3
 flask
 flask-cors
 gTTS
+google-api-python-client

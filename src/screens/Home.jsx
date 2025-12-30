@@ -14,22 +14,13 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Header from "../components/Header";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BASE_URL } from '../constants';
 
 const { width } = Dimensions.get("window");
 
 
-/* ---------- Welcome Section Component ---------- */
 const WelcomeSection = () => {
-    const [currentTime, setCurrentTime] = useState(new Date());
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentTime(new Date());
-        }, 60000); // Update every minute
-
-        return () => clearInterval(timer);
-    }, []);
-
     const getWellnessQuote = () => {
         const quotes = [
             "Your mental health is a priority. Your happiness is essential.",
@@ -90,7 +81,6 @@ const WelcomeSection = () => {
 };
 
 
-/* ---------- QuickAccessTile Component - Enhanced ---------- */
 const QuickAccessTile = ({ label, onPress, iconName, description }) => {
     return (
         <TouchableOpacity
@@ -144,52 +134,31 @@ const quickTiles = [
     },
 ];
 
-/* ---------- SuggestionsCard Component - Enhanced ---------- */
 const SuggestionsCard = () => {
-    const [suggestions, setSuggestions] = useState([
-        {
-            id: "1",
-            title: "5-Minute Breathing Exercise for Anxiety Relief",
-            thumbnail: "https://i.ytimg.com/vi/8TTABLdGCKI/hq720.jpg?sqp=-oaymwEnCNAFEJQDSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLD2tma1ukT7GGtJWNSSuBv-Pf5NVw",
-            duration: "5:32",
-            category: "Breathing",
-            videoUrl: "https://youtu.be/8TTABLdGCKI?si=OQDnfZXzrpwnHEFY"
-        },
-        {
-            id: "2",
-            title: "Mindful Body Scan Meditation for Stress",
-            thumbnail: "https://i.ytimg.com/vi/6iDKF-TrAfE/hq720.jpg?sqp=-oaymwEnCNAFEJQDSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLDgxjIdhXxKtHEAgTmU1jN-eKdiNw",
-            duration: "7:45",
-            category: "Meditation",
-            videoUrl: "https://www.youtube.com/watch?v=inpok4MKVLM"
-        },
-        {
-            id: "3",
-            title: "Quick Progressive Muscle Relaxation",
-            thumbnail: "https://i.ytimg.com/vi/kdLTOurs2lA/hq720.jpg?sqp=-oaymwEnCNAFEJQDSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLA7_XCfZuuTHK_mm_9T1IM_tmBEZg",
-            duration: "4:28",
-            category: "Relaxation",
-            videoUrl: "https://www.youtube.com/watch?v=kdLTOurs2lA"
-        }
-    ]);
+    const [suggestions, setSuggestions] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const [loading, setLoading] = useState(false);
-
-    // Simulate API call - replace with your actual API call
     const fetchSuggestions = async () => {
         setLoading(true);
         try {
-            // Replace this with your actual API call
-            // const response = await fetch('your-api-endpoint');
-            // const data = await response.json();
-            // setSuggestions(data);
+            const token = await AsyncStorage.getItem('accessToken');
+            const response = await fetch(`${BASE_URL}/api/v1/user/video-recommendation`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+                setSuggestions(data.data);
+            }
 
-            // Simulated delay
-            setTimeout(() => {
-                setLoading(false);
-            }, 1000);
         } catch (error) {
-            console.error('Error fetching suggestions:', error);
+            console.error("Error fetching recommendations:", error);
+        } finally {
             setLoading(false);
         }
     };
@@ -198,7 +167,6 @@ const SuggestionsCard = () => {
         fetchSuggestions();
     }, []);
 
-    // Function to handle YouTube video opening
     const handleVideoPress = async (videoUrl) => {
         try {
             await Linking.openURL(videoUrl);
@@ -211,7 +179,7 @@ const SuggestionsCard = () => {
         <TouchableOpacity
             style={[styles.suggestionCard, { marginRight: index === suggestions.length - 1 ? 16 : 12 }]}
             activeOpacity={0.8}
-            onPress={() => handleVideoPress(item.videoUrl)}
+            onPress={() => handleVideoPress(item.url)}
         >
             <View style={styles.thumbnailContainer}>
                 <Image source={{ uri: item.thumbnail }} style={styles.suggestionThumbnail} />
@@ -224,7 +192,7 @@ const SuggestionsCard = () => {
             </View>
             <View style={styles.suggestionContent}>
                 <View style={styles.categoryBadge}>
-                    <Text style={styles.categoryText}>{item.category}</Text>
+                    <Text style={styles.categoryText}>{item.channel}</Text>
                 </View>
                 <Text style={styles.suggestionTitle} numberOfLines={2}>
                     {item.title}
@@ -264,7 +232,7 @@ const SuggestionsCard = () => {
             <FlatList
                 data={suggestions}
                 renderItem={renderSuggestionItem}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item, index) => index.toString()}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.suggestionsList}
@@ -273,7 +241,6 @@ const SuggestionsCard = () => {
     );
 };
 
-/* ---------- BookingStatusCard Component - Enhanced ---------- */
 const BookingStatusCard = ({ status, acceptedAt }) => {
     const [showBookingModal, setShowBookingModal] = useState(false);
 
@@ -548,7 +515,6 @@ const BookingModal = ({ visible, onClose, counselorName }) => {
     );
 };
 
-/* ---------- Updated HomeScreen with View All Button ---------- */
 const Home = () => {
     const [bookingStatus, setBookingStatus] = useState("Pending");
     const navigation = useNavigation();

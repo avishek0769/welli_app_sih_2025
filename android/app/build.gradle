@@ -95,10 +95,10 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file("my-release-key.keystore")
-            storePassword "nokia1234"
-            keyAlias "my-key-alias"
-            keyPassword "nokia1234"
+            storeFile file("welli-release.keystore")
+            storePassword WELLI_STORE_PASSWORD
+            keyAlias "welli"
+            keyPassword WELLI_KEY_PASSWORD
         }
     }
 

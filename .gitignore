@@ -34,6 +34,7 @@ local.properties
 *.keystore
 !debug.keystore
 .kotlin/
+**/gradle.properties
 
 # node.js
 #
@@ -115,3 +116,4 @@ vectorstore/
 *.pt
 *.ckpt
 *.h5
+

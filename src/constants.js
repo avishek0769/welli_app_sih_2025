@@ -1,1 +1,1 @@
-export const BASE_URL = "https://9vkj509k-4000.inc1.devtunnels.ms"
+export const BASE_URL = "https://welli.avishekadhikary.tech"
