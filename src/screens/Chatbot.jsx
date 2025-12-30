@@ -583,16 +583,16 @@ export default function Chatbot() {
                     )}
                     
                     {isSending && (
-                         <View style={{ padding: 10, marginLeft: 16 }}>
+                        <View style={{ padding: 10, marginLeft: 16 }}>
                             <Text style={{ color: '#6B7280', fontStyle: 'italic' }}>Welli is typing...</Text>
-                         </View>
+                        </View>
                     )}
                 </View>
             </View>
 
             {/* Input Area */}
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
                 style={{ marginBottom: 55 }}
             >
@@ -755,6 +755,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 16,
+        paddingTop: 44,
         borderBottomWidth: 1,
         borderBottomColor: '#F0F4FF',
     },

@@ -168,7 +168,7 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment, on
             <SafeAreaView style={styles.container}>
                 <KeyboardAvoidingView 
                     style={styles.keyboardView}
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
                 >
                     {/* Header */}
@@ -252,12 +252,12 @@ const CommentsModal = ({ visible, post, onClose, onAddComment, onLikeComment, on
                     <View style={styles.inputContainer}>
                         <View style={styles.inputRow}>
                             <View style={styles.inputAvatar}>
-                                {post.createdBy.avatar ? <Image source={{ uri: post.createdBy.avatar }}
+                                {currentUser.avatar ? <Image source={{ uri: currentUser.avatar }}
                                     style={styles.avatar}
                                     resizeMode="cover"
                                 /> : (
                                     <Text style={styles.avatarText}>
-                                        {post.createdBy.annonymousUsername.charAt(0).toUpperCase()}
+                                        {currentUser.annonymousUsername.charAt(0).toUpperCase()}
                                     </Text>
                                 )}
                             </View>

@@ -575,7 +575,7 @@ const ChatScreen = () => {
 
             {/* Input Area */}
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
                 style={[styles.keyboardAvoidingView, { paddingBottom: insets.bottom }]}
             >
