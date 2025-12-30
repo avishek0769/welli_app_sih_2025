@@ -301,12 +301,6 @@ const Login = ({ navigation }) => {
                             All data is encrypted and secure.
                         </Text>
                     </View>
-
-                    <View style={styles.demoCredentials}>
-                        <Text style={styles.demoTitle}>Demo Credentials:</Text>
-                        <Text style={styles.demoText}>Phone: 9999999999</Text>
-                        <Text style={styles.demoText}>Password: 1234</Text>
-                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
 
@@ -530,26 +524,6 @@ const styles = StyleSheet.create({
         color: '#9CA3AF',
         textAlign: 'center',
         lineHeight: 18,
-    },
-    demoCredentials: {
-        backgroundColor: '#FEF3C7',
-        borderRadius: 12,
-        padding: 16,
-        marginTop: 20,
-        borderWidth: 1,
-        borderColor: '#FCD34D',
-    },
-    demoTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#92400E',
-        marginBottom: 8,
-    },
-    demoText: {
-        fontSize: 12,
-        color: '#92400E',
-        fontFamily: 'monospace',
-        marginBottom: 2,
     },
 
     // Custom Alert Styles (same as SignUp)
