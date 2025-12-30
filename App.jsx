@@ -16,6 +16,7 @@ import SignUp from './src/screens/SignUp';
 import Login from './src/screens/Login';
 import ForumScreen from './src/screens/ForumScreen';
 import Profile from './src/screens/Profile';
+import FlashScreen from './src/screens/FlashScreen';
 import UserProvider from './src/context/UserContext';
 import 'react-native-get-random-values';
 import { useEffect } from 'react';
@@ -36,7 +37,8 @@ function App() {
                         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
                         <NavigationContainer>
-                            <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }} >
+                            <Stack.Navigator initialRouteName="FlashScreen" screenOptions={{ headerShown: false }} >
+                                <Stack.Screen name="FlashScreen" component={FlashScreen} />
                                 <Stack.Screen name="TabNavigator" component={TabNavigator} />
                                 <Stack.Screen name="ChatScreen" component={ChatScreen} />
                                 <Stack.Screen name="CalmingSounds" component={CalmingSounds} />
