@@ -599,7 +599,6 @@ const UserProvider = ({ children }) => {
 
     useEffect(() => {
         fetchCurrentUser();
-        updateOnlineStatus(true);
 
         const subscription = AppState.addEventListener("change", nextAppState => {
             if (nextAppState === "active") {

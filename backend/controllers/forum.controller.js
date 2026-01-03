@@ -29,12 +29,32 @@ const createForum = asyncHandler(async (req, res) => {
 const getAllForums = asyncHandler(async (req, res) => {
     const { page = 0, limit = 10 } = req.query;
 
-    const forums = await Forum
-        .find({ members: { $not: { $in: [req.user._id] } } })
-        .select("-members")
-        .sort({ totalMembers: -1 })
-        .skip(page * limit)
-        .limit(limit)
+    const forums = await Forum.aggregate([
+        {
+            $match: {
+                members: { $not: { $in: [new mongoose.Types.ObjectId(req.user._id)] } }
+            }
+        },
+        {
+            $addFields: {
+                totalMembers: { $size: "$members" }
+            }
+        },
+        {
+            $sort: { totalMembers: -1 }
+        },
+        {
+            $project: {
+                members: 0
+            }
+        },
+        {
+            $skip: parseInt(page) * parseInt(limit)
+        },
+        {
+            $limit: parseInt(limit)
+        }
+    ])
 
     return res.status(200).json(new ApiResponse(200, forums, "Fetched all forums"))  
 })
@@ -42,12 +62,29 @@ const getAllForums = asyncHandler(async (req, res) => {
 const searchForums = asyncHandler(async (req, res) => {
     const { q, page = 0, limit = 10 } = req.query;
 
-    const forums = await Forum.find(
-        { name: { $regex: q, $options: "i" } }
-    )
-    .select("-members")
-    .skip(page * limit)
-    .limit(limit)
+    const forums = await Forum.aggregate([
+        {
+            $match: {
+                name: { $regex: q, $options: "i" }
+            }
+        },
+        {
+            $addFields: {
+                totalMembers: { $size: "$members" }
+            }
+        },
+        {
+            $project: {
+                members: 0
+            }
+        },
+        {
+            $skip: parseInt(page) * parseInt(limit)
+        },
+        {
+            $limit: parseInt(limit)
+        }
+    ])
 
     return res.status(200).json(new ApiResponse(200, forums, "Fetched searched forums"))
 })
@@ -58,8 +95,7 @@ const joinForum = asyncHandler(async (req, res) => {
     await Forum.findByIdAndUpdate(
         forumId,
         {
-            $addToSet: { members: req.user._id },
-            $inc: { totalMembers: 1 }
+            $addToSet: { members: req.user._id }
         }
     )
 
@@ -77,8 +113,7 @@ const leaveForum = asyncHandler(async (req, res) => {
     await Forum.findByIdAndUpdate(
         forumId,
         {
-            $pull: { members: req.user._id },
-            $inc: { totalMembers: -1 }
+            $pull: { members: req.user._id }
         }
     )
 
@@ -121,9 +156,23 @@ const getForumMembers = asyncHandler(async (req, res) => {
 
 const getForumDetails = asyncHandler(async (req, res) => {
     const { forumId } = req.params;
-    const forum = await Forum.findById(forumId).select("-members")
+    const forum = await Forum.aggregate([
+        {
+            $match: { _id: new mongoose.Types.ObjectId(forumId) }
+        },
+        {
+            $addFields: {
+                totalMembers: { $size: "$members" }
+            }
+        },
+        {
+            $project: {
+                members: 0
+            }
+        }
+    ])
 
-    return res.status(200).json(new ApiResponse(200, forum, "Fetched forum details"))
+    return res.status(200).json(new ApiResponse(200, forum[0], "Fetched forum details"))
 })
 
 const joinedForums = asyncHandler(async (req, res) => {
@@ -157,7 +206,8 @@ const joinedForums = asyncHandler(async (req, res) => {
             $addFields: {
                 unseenCount: {
                     $ifNull: [{ $arrayElemAt: ["$unseenPost.unseenPostCount", 0] }, 0]
-                }
+                },
+                totalMembers: { $size: "$members" }
             }
         },
         {
