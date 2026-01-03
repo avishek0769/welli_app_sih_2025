@@ -242,7 +242,7 @@ const videoRecommendation = asyncHandler(async (req, res) => {
     }
 
     // 2. Fetch chatbot messages to build query
-    const latestChatbotConversation = await ChatbotConversation.findOne({ user: req.user._id }).sort({ timestamp: -1 });
+    const latestChatbotConversation = await ChatbotConversation.findOne({ user: req.user._id }).sort({ lastUpdated: -1 });
     if (!latestChatbotConversation) {
         return res.status(200).json(new ApiResponse(200, user.recommendations || [], "No recent chat history to generate new recommendations"));
     }
