@@ -13,13 +13,25 @@ const createChatbotMessage = asyncHandler(async (req, res) => {
     if(chat.user.toString() != req.user._id.toString()) {
         throw new ApiError(402, "This chat does not belong to this user")
     }
+
+    const previousMessages = await ChatbotMessage.find({ chat: chatId })
+        .sort({ timestamp: -1 })
+        .limit(10);
+
+    const history = previousMessages.reverse().map(msg => ([
+        { role: 'user', content: msg.promptText },
+        { role: 'assistant', content: msg.responseText }
+    ])).flat();
     
     const response = await fetch(`${process.env.CHATBOT_API_HOST}/api/chat/message`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({ message: userInput })
+        body: JSON.stringify({ 
+            message: userInput,
+            history: history
+        })
     })
     if(!response.ok) {
         throw new ApiError(500, "Failed to fetch response from chatbot service")

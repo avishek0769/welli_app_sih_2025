@@ -8,6 +8,8 @@ from flask_cors import CORS
 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
 from langchain.chains import RetrievalQA
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -23,6 +25,9 @@ If the user's question refers to medical facts, use the provided context to answ
 If the context is not enough, say "I don't know" — do not hallucinate medical facts.
 Be concise and use clear, simple language suitable for patients.
 
+Conversation History:
+{history}
+
 User question: {question}
 
 Context (retrieved documents):
@@ -33,7 +38,7 @@ os.environ.setdefault("GROQ_API_KEY", os.getenv("GROQ_API_KEY", ""))
 
 
 def set_custom_prompt(template: str):
-    return PromptTemplate(template=template, input_variables=["context", "question"])
+    return PromptTemplate(template=template, input_variables=["context", "question", "history"])
 
 
 def load_llm(model_name="llama-3.3-70b-versatile"):
@@ -56,15 +61,24 @@ def get_qa_chain():
     with _init_lock:
         if _qa_chain:
             return _qa_chain
+        
         vectorstore = load_vectorstore()
-        _qa_chain = RetrievalQA.from_chain_type(
-            llm=load_llm(),
-            chain_type="stuff",
-            retriever=vectorstore.as_retriever(search_kwargs={"k": 3}),
-            return_source_documents=False,
-            chain_type_kwargs={
-                "prompt": set_custom_prompt(CUSTOM_PROMPT_TEMPLATE)
-            },
+        retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+        llm = load_llm()
+        prompt = set_custom_prompt(CUSTOM_PROMPT_TEMPLATE)
+
+        def format_docs(docs):
+            return "\n\n".join(doc.page_content for doc in docs)
+
+        _qa_chain = (
+            {
+                "context": (lambda x: x["query"]) | retriever | format_docs,
+                "question": lambda x: x["query"],
+                "history": lambda x: x["history"]
+            }
+            | prompt
+            | llm
+            | StrOutputParser()
         )
         return _qa_chain
 
@@ -89,17 +103,30 @@ def chat_message():
     """
     payload = request.get_json(silent=True) or {}
     user_text = (payload.get("message") or "").strip()
+    history_list = payload.get("history") or []
+
+    history_str = ""
+    for msg in history_list:
+        role = msg.get('role')
+        content = msg.get('content')
+        if role == 'user':
+            history_str += f"User: {content}\n"
+        elif role == 'assistant':
+            history_str += f"Assistant: {content}\n"
+
     if not user_text:
         return jsonify({"error": "message required"}), 400
 
     qa = get_qa_chain()
     try:
         # Use the chain to generate a reply. API may return dict or string depending on chain.
-        resp = qa.invoke({"query": user_text})
+        resp = qa.invoke({"query": user_text, "history": history_str})
         assistant_text = (resp.get("result") if isinstance(
             resp, dict) else str(resp)) or ""
-    except Exception:
-        assistant_text = "Error generating response."
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        assistant_text = f"Error generating response: {str(e)}"
 
     return jsonify({"reply": assistant_text})
 

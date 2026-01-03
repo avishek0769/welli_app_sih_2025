@@ -371,8 +371,6 @@ export default function Chatbot() {
             });
             const data = await response.json();
             if (data.success) {
-                // The API returns messages sorted by timestamp -1 (newest first)
-                // We need to reverse them to show oldest first
                 const sortedMessages = data.data.reverse();
                 setMessages(sortedMessages);
             }
@@ -399,9 +397,6 @@ export default function Chatbot() {
                 if (newMessages.length === 0) {
                     setHasMore(false);
                 } else {
-                    // newMessages are newest first (descending).
-                    // We want to prepend them to the TOP of the list (which is the oldest part).
-                    // So we reverse them to get oldest -> newest of that chunk.
                     const sortedNewMessages = newMessages.reverse();
                     
                     isPaginationRef.current = true;
@@ -579,6 +574,13 @@ export default function Chatbot() {
                             onScroll={handleScroll}
                             scrollEventThrottle={16}
                             ListHeaderComponent={loadingMore ? <ActivityIndicator size="small" color="#6C63FF" /> : null}
+                            onContentSizeChange={() => {
+                                if (!isPaginationRef.current) {
+                                    flatListRef.current?.scrollToEnd({ animated: true });
+                                }
+                                isPaginationRef.current = false;
+                            }}
+                            onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
                         />
                     )}
                     
