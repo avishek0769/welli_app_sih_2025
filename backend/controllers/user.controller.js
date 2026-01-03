@@ -315,6 +315,8 @@ const videoRecommendation = asyncHandler(async (req, res) => {
 const logout = asyncHandler(async (req, res) => {
     const user = req.user;
     user.refreshToken = null;
+    user.isActive = false;
+    user.socketId = null;
     await user.save();
 
     return res.status(200).json(new ApiResponse(200, null, "User has been logged out successfully"));
