@@ -488,6 +488,9 @@ const SignUp = ({ navigation }) => {
                 }),
             });
             const json = await res.json()
+            if(!json.success) {
+                throw new Error(json.message || 'Account creation failed');
+            }
             setCurrentUser(json.data);
             console.log(json)
             AsyncStorage.setItem('accessToken', json.data.accessToken);

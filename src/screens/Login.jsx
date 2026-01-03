@@ -71,7 +71,7 @@ const CustomAlert = ({ visible, onClose, title, message, type = 'error', buttonT
 
 const Login = ({ navigation }) => {
     const [formData, setFormData] = useState({
-        phoneNumber: '',
+        identifier: '',
         password: '',
     });
     const [isLoading, setIsLoading] = useState(false);
@@ -102,18 +102,20 @@ const Login = ({ navigation }) => {
     };
 
     const handleLogin = async () => {
+        const identifier = formData.identifier.trim();
         // Validation
-        if (!formData.phoneNumber || !formData.password) {
+        if (!identifier || !formData.password) {
             showAlert({
                 title: 'Missing Information',
-                message: 'Please enter both phone number and password',
+                message: 'Please enter both username/phone and password',
                 type: 'info',
                 buttonText: 'Got It'
             });
             return;
         }
 
-        if (formData.phoneNumber.length !== 10) {
+        const isPhone = /^\d+$/.test(identifier);
+        if (isPhone && identifier.length !== 10) {
             showAlert({
                 title: 'Invalid Phone Number',
                 message: 'Please enter a valid 10-digit phone number',
@@ -125,13 +127,18 @@ const Login = ({ navigation }) => {
 
         setIsLoading(true);
         try {
+            let loginIdentifier = identifier;
+            if (isPhone) {
+                loginIdentifier = '+91' + identifier;
+            }
+
             const res = await fetch(`${BASE_URL}/api/v1/user/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    phoneNumber: '+91' + formData.phoneNumber,
+                    identifier: loginIdentifier,
                     password: formData.password,
                 }),
             })
@@ -215,19 +222,16 @@ const Login = ({ navigation }) => {
 
                         <View style={styles.formContainer}>
                             <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>Phone Number</Text>
+                                <Text style={styles.inputLabel}>Username or Phone Number</Text>
                                 <View style={styles.phoneInputContainer}>
-                                    <View style={styles.countryCode}>
-                                        <Text style={styles.countryCodeText}>+91</Text>
-                                    </View>
                                     <TextInput
                                         style={styles.phoneInput}
-                                        placeholder="Enter phone number"
+                                        placeholder="Enter username or phone number"
                                         placeholderTextColor="#9CA3AF"
-                                        value={formData.phoneNumber}
-                                        onChangeText={(text) => setFormData({...formData, phoneNumber: text})}
-                                        keyboardType="phone-pad"
-                                        maxLength={10}
+                                        value={formData.identifier}
+                                        onChangeText={(text) => setFormData({...formData, identifier: text})}
+                                        keyboardType="default"
+                                        autoCapitalize="none"
                                         autoFocus
                                     />
                                 </View>
@@ -268,9 +272,9 @@ const Login = ({ navigation }) => {
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                style={[styles.loginButton, (!formData.phoneNumber || !formData.password || isLoading) && styles.buttonDisabled]}
+                                style={[styles.loginButton, (!formData.identifier || !formData.password || isLoading) && styles.buttonDisabled]}
                                 onPress={handleLogin}
-                                disabled={!formData.phoneNumber || !formData.password || isLoading}
+                                disabled={!formData.identifier || !formData.password || isLoading}
                                 activeOpacity={0.8}
                             >
                                 <Text style={styles.loginButtonText}>
@@ -418,14 +422,12 @@ const styles = StyleSheet.create({
     phoneInput: {
         flex: 1,
         backgroundColor: '#FFFFFF',
-        borderTopRightRadius: 12,
-        borderBottomRightRadius: 12,
+        borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 16,
         fontSize: 16,
         borderWidth: 2,
         borderColor: '#E8F0FF',
-        borderLeftWidth: 0,
         color: '#1F2153',
     },
     passwordInputContainer: {

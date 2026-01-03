@@ -112,15 +112,20 @@ const signUp = asyncHandler(async (req, res) => {
 })
 
 const login = asyncHandler(async (req, res) => {
-    const { phoneNumber, password } = req.body;
+    const { identifier, password } = req.body;
 
-    if (!phoneNumber || !password) {
-        throw new ApiError(401, "Phone number or password is empty")
+    if (!identifier || !password) {
+        throw new ApiError(401, "Username/Phone number or password is empty")
     }
 
-    const user = await User.findOne({ phone: phoneNumber })
+    const user = await User.findOne({
+        $or: [
+            { phone: identifier },
+            { annonymousUsername: identifier }
+        ]
+    })
     if (!user) {
-        throw new ApiError(402, "Phone number is invalid")
+        throw new ApiError(402, "Invalid credentials")
     }
     const isCorrect = await user.isPasswordCorrect(password)
 
