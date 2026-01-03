@@ -1,8 +1,10 @@
-import aws from "aws-sdk"
+import { S3Client } from "@aws-sdk/client-s3";
 
-const s3 = new aws.S3({
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+const s3 = new S3Client({
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    },
     region: process.env.AWS_REGION,
 })
 
@@ -17,7 +19,8 @@ const uploadToS3 = async (arrayBuffer, key, mimeType) => {
     }
 
     try {
-        const uploadResult = await s3.upload(params).promise()
+        const command = new PutObjectCommand(params);
+        const uploadResult = await s3.send(command);
         return uploadResult.Location
     }
     catch (error) {

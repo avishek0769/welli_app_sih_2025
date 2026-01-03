@@ -5,13 +5,16 @@ import ApiResponse from "../utils/ApiResponse.js"
 import ApiError from "../utils/ApiError.js"
 import jwt from "jsonwebtoken";
 import Forum from "../models/forum.model.js";
-import AWS from "aws-sdk";
+import { S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import ChatbotMessage from "../models/chatbotmessage.model.js"
 import ChatbotConversation from "../models/chatbotcoversation.model.js";
 
-const s3 = new AWS.S3({
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+const s3 = new S3Client({
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    },
     region: process.env.AWS_REGION
 });
 const client = new twilio(process.env.ACCOUNT_SID, process.env.AUTH_TOKEN)
@@ -216,8 +219,8 @@ const createSignedUrl = asyncHandler(async (req, res) => {
         Expires: 60,
         ContentType: fileType,
     };
-
-    const signedUrl = await s3.getSignedUrlPromise('putObject', params);
+    const command = new PutObjectCommand(params);
+    const signedUrl = await getSignedUrl(s3, command, { expiresIn: 60 });
 
     return res.status(200).json(new ApiResponse(200, { signedUrl }, "Signed URL created successfully"))
 })
