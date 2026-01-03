@@ -131,6 +131,28 @@ def chat_message():
     return jsonify({"reply": assistant_text})
 
 
+@app.route("/api/chat/check-relevance", methods=["POST"])
+def check_relevance():
+    payload = request.get_json(silent=True) or {}
+    user_text = (payload.get("message") or "").strip()
+    
+    if not user_text:
+        return jsonify({"reply": "no"})
+
+    llm = load_llm()
+    prompt = PromptTemplate(
+        template="Is the following text relevant to mental health, psychology, or emotional well-being? Answer only 'yes' or 'no'.\n\nText: {text}",
+        input_variables=["text"]
+    )
+    chain = prompt | llm | StrOutputParser()
+    
+    try:
+        result = chain.invoke({"text": user_text})
+        return jsonify({"reply": result.strip().lower()})
+    except:
+        return jsonify({"reply": "no"})
+
+
 @app.route("/api/chat/message-audio", methods=["POST"])
 def post_message_audio():
     data = request.get_json(silent=True) or {}

@@ -64,21 +64,19 @@ const userSchema = new Schema({
     recommendations: {
         type: [
             {
-                title: {
-                    type: String,
-                    required: true
-                },
-                thumbnail: {
-                    type: String,
-                    required: true
-                },
-                link: {
-                    type: String,
-                    required: true
-                }
+                title: { type: String },
+                thumbnail: { type: String },
+                url: { type: String },
+                channel: { type: String },
+                duration: { type: String },
+                views: { type: String }
             }
         ],
         default: []
+    },
+    lastRecommendationTime: {
+        type: Date,
+        default: null
     },
     forums: [{
         type: Schema.Types.ObjectId,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
     View,
     Text,
@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Header from "../components/Header";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BASE_URL } from '../constants';
 
@@ -163,9 +163,11 @@ const SuggestionsCard = () => {
         }
     };
 
-    useEffect(() => {
-        fetchSuggestions();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            fetchSuggestions();
+        }, [])
+    );
 
     const handleVideoPress = async (videoUrl) => {
         try {

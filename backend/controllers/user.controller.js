@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 import Forum from "../models/forum.model.js";
 import AWS from "aws-sdk";
 import ChatbotMessage from "../models/chatbotmessage.model.js"
+import ChatbotConversation from "../models/chatbotcoversation.model.js";
 
 const s3 = new AWS.S3({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -222,24 +223,54 @@ const currentUser = asyncHandler(async (req, res) => {
 })
 
 const videoRecommendation = asyncHandler(async (req, res) => {
-    const response = await fetch(`${process.env.BACKEND_API_URL}/api/v1/chatbot-conversation/latest?page=0&limit=5`, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${req.headers.authorization.split(" ")[1]}`,
-            'Content-Type': 'application/json'
+    const user = await User.findById(req.user._id);
+    
+    // 1. Check if within 1 hour
+    if (user.lastRecommendationTime) {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        if (user.lastRecommendationTime > oneHourAgo && user.recommendations && user.recommendations.length > 0) {
+            return res.status(200).json(new ApiResponse(200, user.recommendations, "Video recommendations fetched from cache"));
         }
-    });
-
-    let userQuery = ""
-    const chatbotMessages = await response.json();
-    chatbotMessages.data.messages.map(message => {
-        userQuery += message.promptText
-    })
-
-    if (!userQuery.trim()) {
-        throw new ApiError(400, "Not enough data to generate recommendations")
     }
 
+    // 2. Fetch chatbot messages to build query
+    const latestChatbotConversation = await ChatbotConversation.findOne({ user: req.user._id }).sort({ timestamp: -1 });
+    if (!latestChatbotConversation) {
+        return res.status(200).json(new ApiResponse(200, user.recommendations || [], "No recent chat history to generate new recommendations"));
+    }
+
+    let chatId = latestChatbotConversation._id;
+    const chatbotMessages = await ChatbotMessage.find({ chat: chatId })
+    .sort({ timestamp: -1 })
+    .limit(5);
+
+    let userQuery = ""
+    if(chatbotMessages && chatbotMessages.length > 0) {
+        chatbotMessages.map(message => {
+            userQuery += message.promptText
+            userQuery += " "
+        })
+    }
+    
+    if (!userQuery.trim()) {
+        return res.status(200).json(new ApiResponse(200, user.recommendations || [], "No recent chat history to generate new recommendations"));
+    }
+    
+    // 3. Check relevance
+    const relevanceResponse = await fetch(`${process.env.CHATBOT_API_HOST}/api/chat/check-relevance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userQuery })
+    });
+    
+    const relevanceData = await relevanceResponse.json();
+    const isRelevant = relevanceData.reply && relevanceData.reply.includes('yes');
+    
+    if (!isRelevant) {
+        return res.status(200).json(new ApiResponse(200, user.recommendations || [], "Query not relevant to mental health, returning cached/empty"));
+    }
+
+    // 4. Fetch recommendations
     const pythonApiUrl = `${process.env.VIDEO_RECOMMENDER_API_HOST}/api/recommend-videos`;
 
     const resp = await fetch(pythonApiUrl, {
@@ -251,12 +282,26 @@ const videoRecommendation = asyncHandler(async (req, res) => {
     });
 
     const data = await resp.json();
-
+    
     if (!data.success) {
-        throw new Error(data.error || "Failed to get recommendations from Python service");
+        return res.status(200).json(new ApiResponse(200, user.recommendations || [], "Failed to fetch new recommendations, returning cached"));
     }
 
-    return res.status(200).json(new ApiResponse(200, data.videos, "Video recommendations fetched successfully"));
+    // 5. Update user model
+    const newRecommendations = data.videos.map(v => ({
+        title: v.title,
+        thumbnail: v.thumbnail,
+        url: v.url,
+        channel: v.channel,
+        duration: v.duration,
+        views: v.views
+    }));
+    
+    user.recommendations = newRecommendations;
+    user.lastRecommendationTime = new Date();
+    await user.save();
+
+    return res.status(200).json(new ApiResponse(200, newRecommendations, "Video recommendations fetched successfully"));
 })
 
 const logout = asyncHandler(async (req, res) => {

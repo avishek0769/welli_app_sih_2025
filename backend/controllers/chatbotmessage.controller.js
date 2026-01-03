@@ -47,6 +47,8 @@ const createChatbotMessage = asyncHandler(async (req, res) => {
     }
 
     const message = await ChatbotMessage.create(messageData)
+    chat.lastUpdated = Date.now();
+    await chat.save()
 
     return res.status(200).json(new ApiResponse(200, message, "Chatbot response fetched"))
 })
