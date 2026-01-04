@@ -308,6 +308,7 @@ const ForumScreen = ({ route }) => {
                 });
 
                 if (!uploadRes.ok) {
+                    console.log('Upload response:', await uploadRes.text());
                     console.error('Failed to upload image to S3');
                     Alert.alert("Error", "Failed to upload image");
                     return;

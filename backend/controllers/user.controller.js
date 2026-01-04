@@ -5,7 +5,7 @@ import ApiResponse from "../utils/ApiResponse.js"
 import ApiError from "../utils/ApiError.js"
 import jwt from "jsonwebtoken";
 import Forum from "../models/forum.model.js";
-import { S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import ChatbotMessage from "../models/chatbotmessage.model.js"
 import ChatbotConversation from "../models/chatbotcoversation.model.js";
@@ -216,7 +216,6 @@ const createSignedUrl = asyncHandler(async (req, res) => {
     const params = {
         Bucket: process.env.AWS_S3_BUCKET_NAME,
         Key: fileName,
-        Expires: 60,
         ContentType: fileType,
     };
     const command = new PutObjectCommand(params);
